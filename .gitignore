@@ -1,0 +1,10 @@
+node_modules/
+# sample reports are not committed (the lab owns them); the human-read
+# expected.json of each public sample is. Volunteer reports stay private.
+samples/**
+!samples/*/
+!samples/*/expected.json
+samples/private/
+.DS_Store
+*.pdf
+docs/
