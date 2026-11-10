@@ -8,3 +8,4 @@ samples/private/
 .DS_Store
 *.pdf
 docs/
+dist/
