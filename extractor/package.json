@@ -10,7 +10,10 @@
     "typecheck": "tsc --noEmit",
     "samples": "sh scripts/fetch-samples.sh",
     "extract": "tsx scripts/extract.ts",
-    "accuracy": "tsx scripts/accuracy.ts"
+    "accuracy": "tsx scripts/accuracy.ts",
+    "dev": "vite --config web/vite.config.ts",
+    "build": "vite build --config web/vite.config.ts",
+    "preview": "vite preview --config web/vite.config.ts"
   },
   "keywords": [],
   "author": "",
@@ -21,8 +24,10 @@
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
+    "playwright-core": "^1.65.0",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
+    "vite": "^8.3.7",
     "vitest": "^5.1.0"
   }
 }

@@ -24,6 +24,8 @@ npm run extract -- path/to/report.pdf            # JSON
 npm run extract -- --csv a.pdf b.pdf > data.csv   # one row per marker
 ```
 
+It also runs in the browser. `npm run build` writes a static page to `extractor/dist/` (`npm run dev` serves it while developing). The page reads the PDF on the user's device: the pdf.js worker is bundled with it, and it makes no network request once it has loaded.
+
 **What it keeps:** sex, age in years, the month of collection, the month of the report, and every result row (marker, value, unit, reference range, the lab's verdict).
 
 **What it never keeps:** name, date of birth, address, accession number, ordering physician, exact dates.
@@ -41,7 +43,7 @@ npm run extract -- --csv a.pdf b.pdf > data.csv   # one row per marker
 
 ```sh
 npm run samples     # download the public sample reports (not committed; the lab owns them)
-npm test
+npm test            # includes a check of the built page in Google Chrome, skipped if Chrome is absent
 npm run typecheck
 npm run accuracy    # compare the extractor with human readings; prints an overall percentage
 ```
