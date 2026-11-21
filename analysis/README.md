@@ -544,9 +544,11 @@ stopping), and each trajectory: recovered, improving, stable, worsening (of auth
 A group, or a side of one outcome, with fewer than 10 authors is refused (S4), as is a symptom
 fewer than 10 authors report; both go to `refused`. No count below 5 is shown (S11): sizes below 5
 are hidden, and a row where a side has fewer than 5 with the outcome, or fewer than 5 without it,
-hides its counts, shares, effect and odds ratio, since with the sizes any of them gives the count
-back; it keeps its sizes, p-value and label. As for subgroup links, the p-value with the sizes
-still narrows a small count down; for review in M3-11.
+hides its counts, shares, effect, odds ratio, p-value and q-value, since with the sizes any of
+them gives the count back (the p-value with the total of reporters another row of the same
+outcome shows: on the r/PSSD export that recovered every such count before it was hidden); it keeps
+its sizes and label. A size below 5, which a `min_group_size` under 5 would let through, is hidden
+too. The label still says a small row's q-value is at most 0.10; for review in M3-11.
 
 The result has `findings`, `refused`, `summary`, `skipped` (empty), `note`, `statement` and
 `record` (with `analysis` `drug and symptom profile` and the settings, `top_drugs` included).

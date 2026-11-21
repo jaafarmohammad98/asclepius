@@ -393,11 +393,16 @@ def drug_shares(row: pd.Series) -> dict[str, object]:
     return {
         "type": "shares",
         "caption": "share who took the drug",
-        "sides": [
-            {"group": row["group_a"], "n": shown(row["n_a"]), "share": plain(row["share_a"])},
-            {"group": row["group_b"], "n": shown(row["n_b"]), "share": plain(row["share_b"])},
-        ],
+        "sides": share_sides(row),
     }
+
+
+def share_sides(row: pd.Series) -> list[dict[str, object]]:
+    """Each side of a yes/no row: its size and share (`share_a`, `share_b`), as the row hides them."""
+    return [
+        {"group": row[f"group_{s}"], "n": shown(row[f"n_{s}"]), "share": plain(row[f"share_{s}"])}
+        for s in ("a", "b")
+    ]
 
 
 def score_plot(row: pd.Series, clusters: ClusterResult, data: LabDataset) -> dict[str, object]:
@@ -451,10 +456,7 @@ def outcome_shares(row: pd.Series) -> dict[str, object]:
     return {
         "type": "shares",
         "caption": caption,
-        "sides": [
-            {"group": row["group_a"], "n": shown(row["n_a"]), "share": plain(row["share_a"])},
-            {"group": row["group_b"], "n": shown(row["n_b"]), "share": plain(row["share_b"])},
-        ],
+        "sides": share_sides(row),
     }
 
 

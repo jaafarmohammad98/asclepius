@@ -131,9 +131,8 @@ def test_drug_classes_and_the_most_common_single_drugs_are_compared(tmp_path):
     assert set(trajectory["marker_id"]) == {
         "trajectory:recovered", "trajectory:improving", "trajectory:stable", "trajectory:worsening"
     }  # fmt: skip
-    # one correction over every test of the run
-    assert result.findings["q_value"].notna().all()
-    assert len(result.findings) == result.findings["p_value"].notna().sum()
+    # one correction over every test of the run; small rows hide their p and q values, not the label
+    assert result.findings["label"].notna().all()
 
 
 def test_a_group_below_ten_authors_is_refused_and_small_counts_are_hidden(tmp_path):
@@ -148,9 +147,18 @@ def test_a_group_below_ten_authors_is_refused_and_small_counts_are_hidden(tmp_pa
     # a row with a cell below 5 shows no share, count or odds ratio that would give it back
     small = result.findings[result.findings["reported_a"].isna()]
     assert len(small)
-    hidden = ["reported_b", "share_a", "share_b", "odds_ratio", "effect_size", "ci_low", "ci_high"]
+    # and no p-value: with the sizes and another row's total of reporters, it gives the cell back
+    hidden = ["reported_b", "share_a", "share_b", "odds_ratio", "effect_size", "ci_low", "p_value", "q_value"]
     assert small[hidden].isna().all().all()
-    assert small["p_value"].notna().all() and small["label"].notna().all()
+    assert small["label"].notna().all()  # labelled in the run's one correction
+
+
+def test_sizes_below_5_are_hidden_even_when_the_group_size_limit_is_lower(tmp_path):
+    result = profile_drugs(self_reports(tmp_path, authors=30), Settings(min_group_size=2))
+    for column in ("n_a", "n_b"):
+        sizes = result.findings[column].dropna()
+        assert len(sizes) and not (sizes < 5).any()
+    assert result.findings["n_a"].isna().any()  # isotretinoin has 2 to 4 authors here
 
 
 def test_authors_with_drugs_in_several_classes_count_in_each_and_the_output_says_so(tmp_path):

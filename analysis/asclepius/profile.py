@@ -16,7 +16,7 @@ classes and between the most common single drugs, and does the same for onset an
 - Every row of the run is corrected together and labelled by `asclepius.run.label_findings` with
   `self_report=True`: "self-report, no controls", never strong (spec S2, S5, S10).
 - No count below 5 is shown (spec S11): sizes below 5 are hidden, and a row with a cell below 5
-  (reporters or non-reporters on a side) shows only its sizes, p-value and label.
+  (reporters or non-reporters on a side) shows only its sizes and label.
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ import pandas as pd
 from asclepius.cluster import MIN_SHOWN
 from asclepius.record import run_record
 from asclepius.refrange import wilson_interval
-from asclepius.run import NOTHING_RELIABLE, Settings, label_findings, statement
+from asclepius.run import NOTHING_RELIABLE, RunResult, Settings, label_findings, statement
 from asclepius.selfreport import SelfReportDataset
 
 ANALYSIS = "drug and symptom profile"  # the run record's `analysis`
@@ -65,8 +65,11 @@ COLUMNS = (
     "odds_ratio_high",
     "p_value",
 )
-# what a row with a cell below 5 hides: each gives the cells back, with the sizes
+# what a row with a cell below 5 hides: each gives the cells back, with the sizes (the p-value
+# with the total of reporters another row shows)
 CELL_COLUMNS = (
+    "p_value",
+    "q_value",
     "reported_a",
     "reported_b",
     "share_a",
@@ -120,6 +123,8 @@ _LISTED = {
     "isotretinoin": ("isotretinoin",),
 }  # fmt: skip
 DRUG_CLASSES = {drug: cls for cls, drugs in _LISTED.items() for drug in drugs}
+# names of a class, not a drug, besides `unspecified_...`: not compared as single drugs
+UNSPECIFIED = frozenset({"tca", "tricyclic_antidepressant"})
 
 
 def author_profiles(data: SelfReportDataset) -> pd.DataFrame:
@@ -137,7 +142,7 @@ def author_profiles(data: SelfReportDataset) -> pd.DataFrame:
 
 
 @dataclass(frozen=True)
-class ProfileResult:
+class ProfileResult(RunResult):
     """What `profile_drugs` found.
 
     `findings`: one row per outcome and group (`COLUMNS`), with `q_value`, `label` and `caveat`.
@@ -148,14 +153,8 @@ class ProfileResult:
     S8). `settings`, `record`: as for `run_analysis` (spec S7).
     """
 
-    findings: pd.DataFrame
-    refused: pd.DataFrame
     summary: pd.DataFrame
-    skipped: pd.DataFrame
     note: str
-    statement: str
-    settings: dict[str, object]
-    record: dict[str, object]
 
 
 def profile_drugs(
@@ -289,7 +288,7 @@ def _single_drugs(has_drug: pd.DataFrame, top: int) -> list[str]:
     for drug in counts.index:
         if len(chosen) == top:
             break
-        if str(drug).startswith("unspecified_") or drug in ("tca", "tricyclic_antidepressant"):
+        if str(drug).startswith("unspecified_") or drug in UNSPECIFIED:
             continue
         cls = DRUG_CLASSES.get(str(drug))
         if cls is not None:
@@ -324,7 +323,9 @@ def _test(reported_a: int, n_a: int, reported_b: int, n_b: int) -> dict[str, obj
 
 
 def _hide_small_cells(findings: pd.DataFrame) -> pd.DataFrame:
-    """Hide what would give back a cell below 5: on a side, reporters or non-reporters (spec S11)."""
+    """Hide what would give back a cell below 5: on a side, reporters or non-reporters, and any
+    size below 5, which a `min_group_size` under 5 lets through (spec S11). The label stays: it
+    comes from the run's one correction."""
     out = findings.astype({"n_a": "Int64", "n_b": "Int64", "reported_a": "Int64", "reported_b": "Int64"})
     cells = pd.concat(
         [
@@ -338,6 +339,8 @@ def _hide_small_cells(findings: pd.DataFrame) -> pd.DataFrame:
     small = (cells < MIN_SHOWN).any(axis=1).to_numpy(dtype=bool)
     for column in CELL_COLUMNS:
         out[column] = out[column].mask(small)
+    for column in ("n_a", "n_b"):
+        out[column] = out[column].mask(out[column] < MIN_SHOWN)
     return out
 
 
