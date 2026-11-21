@@ -204,3 +204,13 @@ def test_the_real_export_runs_and_shows_no_case_or_small_count():
         for column in [c for c in table.columns if c.startswith(("n_", "reported_", "authors"))]:
             counts = table[column].dropna()
             assert not ((counts > 0) & (counts < 5)).any(), column
+
+
+@pytest.mark.parametrize("seed", range(3))
+def test_a_groups_trajectory_rows_are_hidden_together(tmp_path, seed):
+    # the four trajectories add up to the group's size: one hidden count comes back from the others
+    result = profile_drugs(self_reports(tmp_path, seed=seed, authors=150))
+    trajectory = result.findings[result.findings["comparison"] == PROFILE_TRAJECTORY]
+    hidden = trajectory["reported_a"].isna().groupby(trajectory["group_a"]).agg(["any", "all"])
+    assert hidden["any"].any()  # some group has a small trajectory cell here
+    assert (hidden["any"] == hidden["all"]).all()

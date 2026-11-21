@@ -185,7 +185,7 @@ def profile_drugs(
         groups.append(
             (CLASS, cls, OTHER_CLASSES, has_class, has_class["classes"].map(lambda c, x=cls: x in c))
         )
-    for drug in _single_drugs(has_drug, top_drugs):
+    for drug in single_drugs(has_drug, top_drugs):
         groups.append((DRUG, drug, OTHER_DRUGS, has_drug, has_drug["drugs"].map(lambda d, x=drug: x in d)))
 
     outcomes: list[tuple[str, str, str, pd.Series]] = []  # comparison, marker_id, name, yes/no or NA
@@ -271,6 +271,9 @@ def profile_drugs(
 
     table = pd.DataFrame(rows, columns=list(COLUMNS))
     findings = hide_small_cells(label_findings(table, settings, self_report=True))
+    # a group's trajectories add up to its size: hide them together
+    trajectory = findings["comparison"] == PROFILE_TRAJECTORY
+    findings = hide_together(findings, findings["level"] + ":" + findings["group_a"], trajectory)
     tested_groups = [str(g) for g in dict.fromkeys(findings["group_a"])]
     recorded = settings.record() | {"top_drugs": top_drugs}
     record = run_record(data, tested_groups, recorded) | {"analysis": ANALYSIS, "note": NOTE}
@@ -286,7 +289,7 @@ def profile_drugs(
     )
 
 
-def _single_drugs(has_drug: pd.DataFrame, top: int) -> list[str]:
+def single_drugs(has_drug: pd.DataFrame, top: int) -> list[str]:
     """The `top` most common named drugs (not `unspecified_...`), leaving out a drug taken by
     exactly the authors of its class, whose class row is the same test. Ties go alphabetically."""
     counts = has_drug["drugs"].explode().value_counts()
@@ -348,6 +351,20 @@ def hide_small_cells(findings: pd.DataFrame) -> pd.DataFrame:
         out[column] = out[column].mask(small)
     for column in ("n_a", "n_b"):
         out[column] = out[column].mask(out[column] < MIN_SHOWN)
+    return out
+
+
+def hide_together(findings: pd.DataFrame, family: pd.Series, where: pd.Series | None = None) -> pd.DataFrame:
+    """After `hide_small_cells`: when a row hides its cells, hide the cells of every row of its
+    `family` too, so the shown rows of a family cannot give the hidden count back by subtraction
+    (spec S11). `where` limits the families to those rows; other rows are left as they are."""
+    where = pd.Series(True, index=findings.index) if where is None else where
+    hidden = findings["reported_a"].isna() & where
+    spread = hidden.groupby(family.where(where)).transform("any").reindex(findings.index, fill_value=False)
+    spread = spread.fillna(False).to_numpy(dtype=bool) & where.to_numpy(dtype=bool)
+    out = findings.copy()
+    for column in CELL_COLUMNS:
+        out[column] = out[column].mask(spread)
     return out
 
 

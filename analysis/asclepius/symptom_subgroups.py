@@ -23,7 +23,8 @@ drug class, onset or trajectory:
    many symptoms from those who report few. Failing either test gives "no stable clusters" (S8).
 5. Each cluster is described by its most over-represented symptoms: the share of the cluster that
    reports it against the share of the other authors.
-6. Clusters are compared by drug class, onset during use and each trajectory with the drug
+6. Clusters are compared by drug class, the most common single causal drugs, onset during use and
+   each trajectory with the drug
    profile's Fisher test, odds ratio and intervals (`asclepius.profile.compare_shares`); every row
    is corrected together and labelled by `asclepius.run.label_findings` with `self_report=True`
    (spec S2, S5, S10). Symptoms are not tested: the clusters were made from them.
@@ -41,18 +42,22 @@ import pandas as pd
 
 from asclepius.cluster import MIN_SHOWN, NO_STABLE, TooFewPatients, choose_k, count_text, number_by_size
 from asclepius.profile import (
-    CELL_COLUMNS,
+    CLASS,
     CLASSES,
     COLUMNS,
+    DRUG,
     NOTE,
     ONSET_AFTER,
     ONSET_DURING,
     PROFILE_COLUMNS,
     REFUSED_COLUMNS,
+    TOP_DRUGS,
     TRAJECTORIES,
     author_profiles,
     compare_shares,
     hide_small_cells,
+    hide_together,
+    single_drugs,
 )
 from asclepius.ratios import STATUS
 from asclepius.record import run_record
@@ -62,9 +67,10 @@ from asclepius.selfreport import SelfReportDataset
 ANALYSIS = "symptom subgroups"  # the run record's `analysis`
 CATCH_ALL = frozenset({"other"})  # symptoms that name no symptom: not features
 SUBGROUP_CLASS = "symptom subgroup: drug class"  # the findings table's `comparison` column
+SUBGROUP_DRUG = "symptom subgroup: causal drug"
 SUBGROUP_ONSET = "symptom subgroup: onset"
 SUBGROUP_TRAJECTORY = "symptom subgroup: trajectory"
-LEVEL = "cluster"  # the `level` column
+LEVEL = "cluster"  # the `level` column of onset and trajectory rows; class and drug rows have their own
 SUMMARY_COLUMNS = ("cluster", "n_authors", "symptom", "symptom_name", "share_in", "share_out", "difference")
 
 
@@ -78,7 +84,8 @@ class SymptomClusterSettings:
     `subsample_share` of the authors) is at least `min_stability`, every cluster has at least
     `min_cluster_size` authors, and it is tighter than in all but `null_alpha` of `null_samples`
     swap-randomised datasets (`swap_rounds` rounds of pairing every author with another). Each
-    cluster is described by its `top_symptoms` most over-represented symptoms.
+    cluster is described by its `top_symptoms` most over-represented symptoms, and compared by the
+    `top_drugs` most common single drugs as well as by drug class.
     """
 
     min_authors: int = 30
@@ -94,6 +101,7 @@ class SymptomClusterSettings:
     restarts: int = 4
     swap_rounds: int = 20
     top_symptoms: int = 5
+    top_drugs: int = TOP_DRUGS
     seed: int = 0
     distance: str = "Jaccard"
     one_group_check: str = field(
@@ -108,6 +116,8 @@ class SymptomClusterSettings:
             )
         if self.min_symptoms < 1:
             raise ValueError("min_symptoms must be at least 1.")
+        if self.top_drugs < 0:
+            raise ValueError("top_drugs cannot be negative.")
         if self.k_max < 2:
             raise ValueError("k_max must be at least 2.")
         if not 0 < self.subsample_share < 1:
@@ -134,7 +144,7 @@ class SymptomSubgroups(RunResult):
 
     `clusters`: "2 stable clusters" (or 3, ...) or "no stable clusters", with `reason` saying why;
     `k` the number, None when there are none. `findings`: each cluster against the other(s) by drug
-    class, onset and trajectory (`asclepius.profile.COLUMNS`), with `q_value`, `label` and `caveat`;
+    class, single causal drug, onset and trajectory (`asclepius.profile.COLUMNS`), with `q_value`, `label` and `caveat`;
     `refused`: those not tested, with the `reason`. `summary`: each cluster's `top_symptoms` most
     over-represented symptoms (`SUMMARY_COLUMNS`). `sizes`: authors per cluster. `stability`: per k,
     as in `asclepius.cluster.choose_k`. `null_p`: the swap test's p-value. `symptoms`: the features
@@ -208,7 +218,7 @@ def cluster_symptoms(
     sizes = cluster.value_counts().sort_index().rename_axis("cluster").rename("n_authors").reset_index()
     sizes["n_authors"] = sizes["n_authors"].astype("Int64").mask(sizes["n_authors"] < MIN_SHOWN)
     clusters = f"{k} stable clusters"
-    findings, refused = _compare_clusters(authors, cluster, k, settings)
+    findings, refused = _compare_clusters(authors, cluster, k, settings, cs.top_drugs)
     said = statement(findings) if len(findings) else NOTHING_RELIABLE
     return SymptomSubgroups(
         clusters=clusters,
@@ -243,35 +253,42 @@ def _no_clusters(data: SelfReportDataset, reason: str, null_p: float | None, **b
 
 
 def _compare_clusters(
-    authors: pd.DataFrame, cluster: pd.Series, k: int, settings: Settings
+    authors: pd.DataFrame, cluster: pd.Series, k: int, settings: Settings, top_drugs: int
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Each cluster against the other(s) by drug class, onset during use and each trajectory, all
-    corrected together and labelled; outcomes or sides with fewer than `settings.min_group_size`
-    authors are refused (spec S4)."""
+    """Each cluster against the other(s) by drug class, the `top_drugs` most common single drugs
+    (`asclepius.profile.single_drugs`), onset during use and each trajectory, all corrected
+    together and labelled; outcomes or sides with fewer than `settings.min_group_size` authors are
+    refused (spec S4)."""
     minimum = settings.min_group_size
-    outcomes: list[tuple[str, str, str, pd.Series]] = []  # comparison, marker_id, name, yes/no or NA
+    outcomes: list[tuple[str, str, str, str, pd.Series]] = []  # comparison, level, id, name, yes/no or NA
     refused: list[dict[str, object]] = []
-    has_class = authors["classes"].map(bool)
-    for cls in CLASSES:
-        took = authors["classes"].map(lambda c, x=cls: x in c)
+    has_class, has_drug = authors["classes"].map(bool), authors["drugs"].map(bool)
+    groups = [(SUBGROUP_CLASS, CLASS, "class", cls, "classes", has_class) for cls in CLASSES]
+    groups += [
+        (SUBGROUP_DRUG, DRUG, "drug", drug, "drugs", has_drug)
+        for drug in single_drugs(authors[has_drug], top_drugs)
+    ]
+    for comparison, level, prefix, name, column, among in groups:
+        took = authors[column].map(lambda c, x=name: x in c)
         if int(took.sum()) < minimum:
             if took.any():
                 refused.append(
                     {
-                        "comparison": SUBGROUP_CLASS,
-                        "marker_id": f"class:{cls}",
-                        "marker_name": cls,
-                        "level": LEVEL,
+                        "comparison": comparison,
+                        "marker_id": f"{prefix}:{name}",
+                        "marker_name": name,
+                        "level": level,
                         "n_a": _shown(int(took.sum())),
                         "reason": f"fewer than {minimum} clustered authors took it (spec S4)",
                     }
                 )
             continue
-        outcomes.append((SUBGROUP_CLASS, f"class:{cls}", cls, took.astype(float).where(has_class)))
+        outcomes.append((comparison, level, f"{prefix}:{name}", name, took.astype(float).where(among)))
     onset = authors["onset"].astype(object)
     outcomes.append(
         (
             SUBGROUP_ONSET,
+            LEVEL,
             f"onset:{ONSET_DURING}",
             "onset during use",
             (onset == ONSET_DURING).astype(float).where(onset.isin([ONSET_DURING, ONSET_AFTER])),
@@ -280,11 +297,11 @@ def _compare_clusters(
     trajectory = authors["overall_trajectory"].astype(object)
     for value in TRAJECTORIES:
         yes = (trajectory == value).astype(float).where(trajectory.isin(TRAJECTORIES))
-        outcomes.append((SUBGROUP_TRAJECTORY, f"trajectory:{value}", value, yes))
+        outcomes.append((SUBGROUP_TRAJECTORY, LEVEL, f"trajectory:{value}", value, yes))
 
     sides = [(1, "cluster 2")] if k == 2 else [(c, "other clusters") for c in range(1, k + 1)]
     rows: list[dict[str, object]] = []
-    for comparison, marker_id, name, values in outcomes:
+    for comparison, level, marker_id, name, values in outcomes:
         for c, other in sides:
             in_a = cluster == c
             a, b = values[in_a].dropna(), values[~in_a].dropna()
@@ -292,7 +309,7 @@ def _compare_clusters(
                 "comparison": comparison,
                 "marker_id": marker_id,
                 "marker_name": name,
-                "level": LEVEL,
+                "level": level,
                 "group_a": f"cluster {c}",
                 "group_b": other,
             }
@@ -308,25 +325,17 @@ def _compare_clusters(
                 continue
             rows.append(head | {"sex": "all"} | compare_shares(int(a.sum()), len(a), int(b.sum()), len(b)))
     table = pd.DataFrame(rows, columns=list(COLUMNS))
-    findings = _hide_together(hide_small_cells(label_findings(table, settings, self_report=True)))
+    findings = hide_small_cells(label_findings(table, settings, self_report=True))
+    # with 3 or more clusters each row of an outcome shows its total and the other rows the rest;
+    # and the trajectories add up to a side's size: hide each outcome, and all trajectories, together
+    findings = hide_together(
+        findings,
+        findings["comparison"].where(findings["comparison"] == SUBGROUP_TRAJECTORY, findings["marker_id"]),
+    )
     refused_table = pd.DataFrame(refused, columns=list(REFUSED_COLUMNS)).astype(
         {"n_a": "Int64", "n_b": "Int64"}
     )
     return findings, refused_table
-
-
-def _hide_together(findings: pd.DataFrame) -> pd.DataFrame:
-    """Hide every row of a family when one of its rows hides its cells (spec S11). A family is one
-    outcome over all clusters, since with 3 or more each cluster's row shows the outcome's total and
-    the other clusters' rows the rest; and all trajectories, since they add up to the side's size."""
-    family = findings["comparison"].where(
-        findings["comparison"] == SUBGROUP_TRAJECTORY, findings["marker_id"]
-    )
-    hidden = findings["reported_a"].isna().groupby(family).transform("any").to_numpy(dtype=bool)
-    out = findings.copy()
-    for column in CELL_COLUMNS:
-        out[column] = out[column].mask(hidden)
-    return out
 
 
 def _record(data: SelfReportDataset, groups: list[str], settings: dict[str, object]) -> dict[str, object]:

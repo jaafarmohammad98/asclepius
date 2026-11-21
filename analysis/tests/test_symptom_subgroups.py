@@ -177,3 +177,37 @@ def test_a_hidden_count_cannot_be_rebuilt_from_the_other_clusters_rows(tmp_path,
         "group_a"
     ):
         assert rows["reported_a"].isna().all() or rows["reported_a"].notna().all()
+
+
+def test_clusters_are_compared_by_drug_class_and_the_most_common_single_drugs(tmp_path):
+    result = cluster_symptoms(self_reports(tmp_path, subgroups=planted()))
+    drugs = result.findings[result.findings["comparison"] == "symptom subgroup: causal drug"]
+    names = set(drugs["marker_name"])
+    assert {"sertraline", "escitalopram"} <= names
+    # a drug that alone makes up its class is tested once, as its class
+    assert not names & {"finasteride", "isotretinoin", "venlafaxine"}
+    assert set(drugs["level"]) == {"drug"}
+    classes = result.findings[result.findings["comparison"] == "symptom subgroup: drug class"]
+    assert set(classes["level"]) == {"class"}
+
+
+def heavy_reporters(tmp_path, seed):
+    # 30% of authors report every symptom at 6 times the odds: more symptoms, no other pattern
+    out = synthetic.write_self_reports(
+        tmp_path, authors=400, reporting=synthetic.PlantedReporting(share=0.3, odds_ratio=6.0), seed=seed
+    )
+    return load_self_reports(out.export)
+
+
+@pytest.mark.parametrize("seed", range(3))
+def test_authors_who_only_report_more_symptoms_are_no_subgroup(tmp_path, seed):
+    assert cluster_symptoms(heavy_reporters(tmp_path, seed)).k is None
+
+
+@pytest.mark.parametrize("seed", range(3))
+def test_the_swap_test_rejects_a_split_by_how_many_symptoms_authors_report(tmp_path, seed):
+    # with the stability check off, the swap test alone must reject the many-versus-few split
+    loose = SymptomClusterSettings(min_stability=0.0)
+    result = cluster_symptoms(heavy_reporters(tmp_path, seed), cluster_settings=loose)
+    assert result.k is None
+    assert "links between symptoms broken" in result.reason

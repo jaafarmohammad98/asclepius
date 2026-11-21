@@ -163,7 +163,8 @@ def test_a_self_report_run_says_which_analyses_are_not_built_yet(tmp_path):
     by_name = steps(status)
     assert by_name["Typed-in lab values within reference ranges"]["state"] == "done"
     assert by_name["Drug and symptom profile"]["state"] == "done"
-    assert [s["state"] for s in status["steps"]].count("not built yet") == 2
+    assert by_name["Symptom subgroups"]["state"] == "done"
+    assert [s["state"] for s in status["steps"]].count("not built yet") == 1
     assert status["label"] == "self-report, no controls"
 
 

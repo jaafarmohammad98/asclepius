@@ -347,3 +347,35 @@ def test_cluster_sizes_hide_a_sex_whose_count_the_cluster_total_gives_back():
     shown_sizes = {(r["cluster"], r["sex"]): r["n"] for r in cluster_sizes(sizes)}
     assert shown_sizes[(1, "male")] is None  # the cluster's total is shown with its links
     assert shown_sizes[(2, "female")] == 14
+
+
+def test_the_symptom_subgroups_section_shows_clusters_their_symptoms_and_links(tmp_path):
+    groups = [
+        synthetic.PlantedSubgroup(
+            0.5, ("genital_numbness", "erectile_dysfunction", "anorgasmia"), onset_during=0.5
+        ),
+        synthetic.PlantedSubgroup(0.5, ("anhedonia", "emotional_blunting", "brain_fog"), onset_during=0.15),
+    ]
+    workspace = Workspace(tmp_path / "work")
+    add_export(
+        workspace, synthetic.write_self_reports(tmp_path / "sr", authors=400, subgroups=groups, seed=1).export
+    )
+    workspace.load()
+    workspace.start_run(settings=FAST)
+    finished(workspace)
+    view = workspace.findings()
+
+    subgroups = section(view, "symptom subgroups")
+    assert subgroups["state"] == "done"
+    assert subgroups["clusters"]["statement"] == "2 stable clusters"
+    assert [c["n"] for c in subgroups["clusters"]["sizes"]] and all(
+        c["n"] >= 30 for c in subgroups["clusters"]["sizes"]
+    )
+    assert {r["symptom"] for r in subgroups["symptoms"] if r["cluster"] == 1}
+    assert "left out" in subgroups["note"]
+    onset = [f for f in subgroups["findings"] if f["marker_id"] == "onset:during_use"]
+    assert onset and onset[0]["label"] == "suggestive" and onset[0]["plot"]["type"] == "shares"
+    for finding in subgroups["findings"]:
+        assert finding["caveat"] == "self-report, no controls" and finding["label"] != "strong"
+    for key, count in counts_in(view):
+        assert count == 0 or count >= 5, key

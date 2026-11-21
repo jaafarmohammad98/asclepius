@@ -376,6 +376,7 @@ function findingSection(s) {
   if (s.note) box.append(el("p", s.note, { class: "muted" }));
   if (s.clusters) box.append(clusterInfo(s.clusters));
   if (s.summary && s.summary.length) box.append(syndromeSummary(s));
+  if (s.symptoms && s.symptoms.length) box.append(clusterSymptoms(s.symptoms));
   if (s.groups && s.groups.length) box.append(groupCounts(s.groups));
   if (s.findings.length) box.append(findingsTable(s));
   if (s.refused && s.refused.length) box.append(refusedList(s.refused));
@@ -386,7 +387,7 @@ function clusterInfo(c) {
   const wrap = el("div");
   wrap.append(el("p", `Clusters: ${c.statement}${c.reason ? ` (${c.reason})` : ""}.`));
   if (c.sizes.length) {
-    wrap.append(table(["Cluster", "Sex", "Patients"], c.sizes.map((r) => [`cluster ${r.cluster}`, r.sex, count(r.n)])));
+    wrap.append(table(["Cluster", "Sex", c.unit || "Patients"], c.sizes.map((r) => [`cluster ${r.cluster}`, r.sex, count(r.n)])));
   }
   return wrap;
 }
@@ -493,6 +494,14 @@ function legend(s) {
     box.append(". Dashed, and <5 in the table: counts of 1 to 4, which are never shown, and any count hidden with them so the total cannot give them back.");
   }
   return box;
+}
+
+function clusterSymptoms(rows) {
+  const wrap = el("div");
+  wrap.append(el("h3", "Most over-represented symptoms per cluster"));
+  wrap.append(table(["Cluster", "Symptom", "Share in the cluster", "Share in the others", "Difference"],
+    rows.map((r) => [`cluster ${r.cluster}`, r.symptom_name, pct(r.share_in), pct(r.share_out), num(r.difference)])));
+  return wrap;
 }
 
 function groupCounts(groups) {
