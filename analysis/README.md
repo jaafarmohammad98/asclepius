@@ -195,6 +195,10 @@ permutation p-value), with `comparison` set to `enzyme-activity ratio` and a `st
 `provisional, needs expert review` until the clinician review (M3-11). All eight ratios are
 computed for the three public sample reports. With 100 per group and androsterone halved in PSSD,
 androsterone / etiocholanolone is the top row in both sexes in 19 of 20 seeds.
+With androsterone ×0.8 and etiocholanolone ×1.25 (a small enzyme-like shift), the ratio's effect
+is larger than androsterone's alone in 39 of 40 sex-seed pairs, but not reliably larger than
+etiocholanolone's: synthetic markers are drawn independently, so the ratio carries both markers'
+noise, where real related metabolites rise and fall together.
 
 Ratios are tested in a call of their own, apart from the raw markers. When the false discovery
 rate correction comes (M3-06), it must run over the combined table, so markers and ratios count as

@@ -4,6 +4,7 @@ import pandas as pd
 import pytest
 
 from asclepius import ratios, synthetic
+from asclepius.compare import compare_groups
 from asclepius.dataset import LabDataset, load_lab_reports
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -131,3 +132,26 @@ def test_the_readme_table_is_generated_from_the_list():
     for r in ratios.RATIOS:
         assert r.name in table and r.proxy_for in table
     assert table in README.read_text(encoding="utf-8")
+
+
+def test_a_small_opposite_shift_shows_more_in_the_ratio_than_in_androsterone_alone(tmp_path):
+    # an enzyme shift: a little less androsterone and a little more etiocholanolone in PSSD.
+    # Synthetic markers are drawn independently, so the ratio carries both markers' noise and is
+    # not reliably stronger than etiocholanolone (the narrower one); it is than androsterone.
+    out = synthetic.write_lab_reports(
+        tmp_path,
+        groups={"PSSD": 100, "healthy control": 100},
+        planted=[
+            synthetic.PlantedDifference("androsterone", 0.8),
+            synthetic.PlantedDifference("etiocholanolone", 1.25),
+        ],
+        seed=3,
+    )
+    data = load_lab_reports([out.reports], metadata=out.metadata)
+    settings = {"permutations": 999, "bootstrap": 200}
+    markers = compare_groups(data, "PSSD", "healthy control", **settings).set_index(["marker_id", "sex"])
+    rows = ratios.compare_ratios(data, "PSSD", "healthy control", **settings).rows
+    ratio = rows[rows["marker_id"] == "androsterone/etiocholanolone"].set_index("sex")["effect_size"]
+    for sex in ("male", "female"):
+        assert ratio[sex] < 0
+        assert abs(ratio[sex]) > abs(markers.loc[("androsterone", sex), "effect_size"])
