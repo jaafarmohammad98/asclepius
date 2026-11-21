@@ -97,7 +97,9 @@ values of one marker by a fold (optionally in one sex only).
 
 **Self-reports** (`write_self_reports`) give the harvester's five tables and `truth.json`. A
 planted association raises the odds of one symptom for one causal drug; a planted outcome sets
-the share of authors who tried an intervention reporting improvement and worse. Some authors post
+the share of authors who tried an intervention reporting improvement and worse. A planted symptom
+subgroup (`PlantedSubgroup`, Python only) is a share of authors who report its symptoms often and
+the other subgroups' symptoms rarely, optionally with more onsets during use. Some authors post
 2 to 4 times, with their symptoms and interventions spread over the posts, so the planted
 answer only appears once posts are merged per author. A few posts come from deleted accounts,
 and a few fail the evidence check; the loader must leave out both (the second by default).
@@ -568,6 +570,64 @@ the symptom less than the rest, which includes finasteride. Each group is compar
 others, so one group's real difference shows, reversed, in the groups it is compared against:
 read a lower share in a large class alongside the small classes that make up its rest. On the r/PSSD export (Nov 2026): 798
 tests, 36 suggestive, none strong; under a second.
+
+## Symptom subgroups in self-reports
+
+The lab-value clustering waits for real reports, but symptom profiles from thousands of authors
+can already show whether PSSD splits into subtypes (spec A5).
+`asclepius.symptom_subgroups.cluster_symptoms(data, settings, cluster_settings)` takes a
+`SelfReportDataset`, clusters its authors by which symptoms they report, describes each cluster
+and tests whether the clusters differ by drug class, onset or trajectory.
+
+**Steps.**
+
+1. One row per author (`author_profiles`, S9) and one yes/no feature per symptom at least
+   `min_reporters` (10) authors report. The catch-all `other` is not a feature. Authors with fewer
+   than `min_symptoms` (2) of the features are left out; `left_out` says how many (692 on the
+   r/PSSD export).
+2. The distance between two authors is the Jaccard distance: of the symptoms either reports, the
+   share only one of them does. On yes/no data not reporting a symptom says less than reporting it,
+   so two authors are not alike for both leaving out the same 40 symptoms, as they would be under a
+   Euclidean distance.
+3. k-medoids on that distance (k-means++-style starts, best of `restarts`) splits the authors into
+   2 to `k_max` clusters. The number is chosen by the same subsample stability as the lab
+   clustering (`asclepius.cluster.choose_k`): mean adjusted Rand index at least `min_stability`
+   (0.8), every cluster at least `min_cluster_size` (30) authors.
+4. The clustering must also be tighter (total distance to the medoids, as a share of the distance
+   to one medoid of everyone) than in all but `null_alpha` (5%) of `null_samples` (49) copies of
+   the data with the links between symptoms broken. The copies come from swap randomisation
+   (curveball, Strona et al. 2014), which keeps how many symptoms each author reports and how many
+   authors report each symptom. It is a permutation test (S1), unlike the lab clustering's check
+   against normal data, and it rules out clusters that only split authors who report many symptoms
+   from those who report few. Failing step 3 or 4 gives `no stable clusters` (S8), with the
+   `reason`.
+5. `summary`: each cluster's `top_symptoms` (5) most over-represented symptoms: `share_in` the
+   cluster, `share_out` among the other authors, and the `difference`. A symptom with fewer than 5
+   reporters or non-reporters on either side is not listed (S11).
+6. `findings`: each cluster against the other (with 2 clusters, cluster 1 against cluster 2) or
+   against the other clusters (with more), on each drug class (of authors with a drug in some
+   class), onset during use, and each trajectory. The columns, tests, hiding of small cells and
+   labels are the drug profile's (`level` is `cluster`; `comparison` is `symptom subgroup: drug
+   class`, `symptom subgroup: onset` or `symptom subgroup: trajectory`). All rows are corrected
+   together, never strong, `self-report, no controls` (S2, S10). Symptoms are not tested: the
+   clusters were made from them. A class fewer than 10 clustered authors took, or a side with
+   fewer than 10, goes to `refused` (S4).
+
+Clustering is refused below `min_authors` (30) authors left (`TooFewAuthors`, S4). The result has
+`clusters`, `reason`, `k`, `sizes`, `summary`, `stability`, `null_p`, `symptoms`, `left_out`,
+`findings`, `refused`, `statement` (the clusters' statement, then the findings') and `record`
+(`analysis` `symptom subgroups`, with the clustering settings under `settings.clusters`).
+`export_run` writes it like any run. Thresholds are provisional, for review in M3-11.
+
+On synthetic data (`synthetic.PlantedSubgroup`), 400 authors, 20 seeds each:
+
+| Data | Result |
+|---|---|
+| two subgroups, sexual and emotional symptoms, onset during use 50% and 15% | 2 clusters, described by their planted symptoms, in 20 of 20; onset suggestive in 20 of 20, another suggestive row in 1 |
+| nothing planted | no stable clusters in 20 of 20 (stability about 0.2 to 0.3) |
+
+On the r/PSSD export (Nov 2026): 2,461 authors clustered on 51 symptoms; no stable clusters (the
+most stable split, 2 clusters, has stability 0.45); about 6 seconds.
 
 ## Web app
 

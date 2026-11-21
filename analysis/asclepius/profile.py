@@ -253,7 +253,7 @@ def profile_drugs(
                     }
                 )
                 continue
-            rows.append(what | {"sex": "all"} | _test(int(a.sum()), len(a), int(b.sum()), len(b)))
+            rows.append(what | {"sex": "all"} | compare_shares(int(a.sum()), len(a), int(b.sum()), len(b)))
 
     multi = int((profiles["classes"].map(len) > 1).sum())
     summary += [
@@ -263,7 +263,7 @@ def profile_drugs(
     ]
 
     table = pd.DataFrame(rows, columns=list(COLUMNS))
-    findings = _hide_small_cells(label_findings(table, settings, self_report=True))
+    findings = hide_small_cells(label_findings(table, settings, self_report=True))
     tested_groups = [str(g) for g in dict.fromkeys(findings["group_a"])]
     recorded = settings.record() | {"top_drugs": top_drugs}
     record = run_record(data, tested_groups, recorded) | {"analysis": ANALYSIS, "note": NOTE}
@@ -300,7 +300,7 @@ def _single_drugs(has_drug: pd.DataFrame, top: int) -> list[str]:
     return chosen
 
 
-def _test(reported_a: int, n_a: int, reported_b: int, n_b: int) -> dict[str, object]:
+def compare_shares(reported_a: int, n_a: int, reported_b: int, n_b: int) -> dict[str, object]:
     """One yes/no outcome compared between two sides of authors."""
     share_a, share_b = reported_a / n_a, reported_b / n_b
     low, high = newcombe_interval(reported_a, n_a, reported_b, n_b)
@@ -322,7 +322,7 @@ def _test(reported_a: int, n_a: int, reported_b: int, n_b: int) -> dict[str, obj
     }
 
 
-def _hide_small_cells(findings: pd.DataFrame) -> pd.DataFrame:
+def hide_small_cells(findings: pd.DataFrame) -> pd.DataFrame:
     """Hide what would give back a cell below 5: on a side, reporters or non-reporters, and any
     size below 5, which a `min_group_size` under 5 lets through (spec S11). The label stays: it
     comes from the run's one correction."""
