@@ -74,16 +74,16 @@ def test_a_drug_taken_by_one_cluster_is_found(tmp_path):
 
 
 def test_shares_below_5_are_hidden_and_rare_drugs_refused(tmp_path):
-    # PFS all took finasteride: its cluster has fewer than 5 who did not. 6 of PSSD's 50 patients
+    # PFS all took finasteride: its cluster has fewer than 5 who did not. About 6 of PSSD's 50
     # are on fluoxetine, fewer than the 10 a test needs (spec S4).
-    drugs = {"PSSD": ["sertraline"] * 22 + ["fluoxetine"] * 3, "PFS": ["finasteride"]}
+    # 14 or so PSSD took it too, so its cluster's share alone could be shown
+    drugs = {"PSSD": ["sertraline"] * 15 + ["fluoxetine"] * 3 + ["finasteride"] * 7, "PFS": ["finasteride"]}
     data, clusters = subgroups(tmp_path, drugs=drugs)
     links = link_subgroups(data, clusters, FAST)
     finasteride = row(links, "drug:finasteride")
-    assert (
-        finasteride["share_a"] != finasteride["share_a"] or finasteride["share_b"] != finasteride["share_b"]
-    )
-    assert abs(finasteride["effect_size"]) > 0.8
+    # both hidden: with one shown, the other is effect_size + share_b, and times n_a a count
+    assert np.isnan(finasteride["share_a"]) and np.isnan(finasteride["share_b"])
+    assert abs(finasteride["effect_size"]) > 0.5
     refused = links.refused.set_index("marker_id")
     assert "drug:fluoxetine" not in set(links.rows["marker_id"])
     assert refused.loc["drug:fluoxetine", "reason"] == "fewer than 10 patients took it (spec S4)"
@@ -172,3 +172,11 @@ def test_a_run_with_subgroups_reproduces_from_its_record(tmp_path):
     record = json.loads((export_run(result, tmp_path / "export") / "run_record.json").read_text())
     again = reproduce(record, [out.reports], metadata=out.metadata)
     assert again.findings.equals(result.findings) and again.refused.equals(result.refused)
+
+
+def test_a_run_says_when_there_were_no_subgroups_to_link(tmp_path):
+    out = synthetic.write_lab_reports(tmp_path, groups={"PSSD": 60, "healthy control": 40}, null=True)
+    data = load_lab_reports([out.reports], metadata=out.metadata)
+    links = link_subgroups(data, cluster_patients(data, groups=["PSSD"]), FAST)
+    result = run_analysis(data, "PSSD", "healthy control", FAST, subgroups=links)
+    assert result.statement.endswith("; subgroups: no stable clusters, so nothing to link")

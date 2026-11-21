@@ -157,7 +157,7 @@ def combine_findings(*tables: pd.DataFrame) -> pd.DataFrame:
     present = [t for t in tables if not t.empty]
     if not present:
         return pd.DataFrame(columns=columns)
-    return pd.concat(present, ignore_index=True)[columns]
+    return pd.concat(present, ignore_index=True).reindex(columns=columns)
 
 
 def self_report_range_findings(data: SelfReportDataset) -> RangeFindings:

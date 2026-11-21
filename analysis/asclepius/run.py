@@ -120,7 +120,8 @@ def run_analysis(
 
     `subgroups`, from `asclepius.subgroups.link_subgroups` on the same data and settings, adds the
     subgroup findings to the table, corrected and labelled with everything else; its refused tests
-    join `refused`, and the record gains `subgroups`, the clustering's statement and settings.
+    join `refused`, the statement ends with the clusters' statement (or that there was nothing to
+    link), and the record gains `subgroups`, the clustering's statement and settings.
     """
     settings = settings or Settings()
     if subgroups is not None:
@@ -156,7 +157,7 @@ def run_analysis(
         findings=findings,
         refused=refused,
         skipped=skipped,
-        statement=statement(findings),
+        statement=statement(findings) + ("" if subgroups is None else f"; subgroups: {subgroups.statement}"),
         settings=settings.record(),
         record=record,
     )

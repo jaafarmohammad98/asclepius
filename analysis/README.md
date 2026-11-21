@@ -366,9 +366,13 @@ each questionnaire symptom score (`score_<name>` in the metadata) and by drug ta
   clinician-confirmed patients? Tier A is not clustered again; whether the clusters themselves
   hold in Tier A is `cluster_patients(..., tiers=["A"])`.
 - A side with fewer than 10 values, or a drug fewer than 10 clustered patients took, is not tested
-  and goes to `refused` (S4). A share is hidden when fewer than 5 on that side took the drug or
-  fewer than 5 did not, and so are Tier A sizes and refused counts below 5 (S11).
-- With no stable clusters there is nothing to link, and the statement says so (S8).
+  and goes to `refused` (S4). Both shares are hidden when, on either side, fewer than 5 took the
+  drug or fewer than 5 did not: with one shown, the effect (their difference) would give the other
+  back, and with the side's size, the count. Tier A sizes and refused counts below 5 are hidden
+  too (S11). The effect and its interval are still shown, so an effect near ±1 with the sizes
+  still narrows a small count down; for review in M3-11.
+- With no stable clusters there is nothing to link, and the statement says so (S8); the run's
+  statement ends with it.
 
 The rows are not corrected or labelled on their own. Pass them to the run, which corrects them with
 every marker and ratio test and labels them like any other finding (S2, S5):

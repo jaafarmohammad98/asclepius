@@ -69,7 +69,7 @@ class SubgroupLinks:
     `rows`: findings-table rows (`COLUMNS`), one per score or drug and cluster, with the Tier A
     re-run beside each (`tier_a_*`, `tier_a_result`, `holds_in_tier_a`), not yet corrected or
     labelled. `median_a`, `median_b` are score medians; `share_a`, `share_b` the share of each side
-    that took the drug, hidden when fewer than 5 did or did not (spec S11). `refused`: tests not
+    that took the drug, both hidden when on either side fewer than 5 did or did not (spec S11). `refused`: tests not
     made, with the `reason`. `statement`: the clusters' statement, or that there is nothing to
     link. `fingerprint`, `settings`: the dataset and `Settings.record()` used, which
     `run_analysis` checks. `clusters`: the clustering's statement, reason and settings, for the
@@ -156,7 +156,7 @@ def link_subgroups(
             if kind == SUBGROUP_SCORE:
                 row |= {"median_a": float(a.median()), "median_b": float(b.median())}
             else:
-                row |= {"share_a": _share(a), "share_b": _share(b)}
+                row |= _shares(a, b)
             rows.append(row | full | {f"tier_a_{c}": v for c, v in rerun.items()})
 
     if rows:
@@ -218,10 +218,14 @@ def _compare(values: pd.Series, in_a: np.ndarray, settings: Settings, seed: list
     }
 
 
-def _share(took: pd.Series) -> float:
-    """Share of 1s, or NaN when fewer than 5 took it or fewer than 5 did not (spec S11)."""
-    yes = int(took.sum())
-    return float("nan") if min(yes, len(took) - yes) < MIN_SHOWN else yes / len(took)
+def _shares(a: pd.Series, b: pd.Series) -> dict[str, float]:
+    """Each side's share of 1s, both hidden (NaN) when on either side fewer than 5 took it or fewer
+    than 5 did not (spec S11). Both, because the effect is their difference: one share and the
+    effect would give the other back, and with its side's size, the count."""
+    small = any(min(int(x.sum()), len(x) - int(x.sum())) < MIN_SHOWN for x in (a, b))
+    if small:
+        return {"share_a": float("nan"), "share_b": float("nan")}
+    return {"share_a": float(a.mean()), "share_b": float(b.mean())}
 
 
 def _shown(count: int) -> int | None:
