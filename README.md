@@ -24,7 +24,9 @@ npm run extract -- path/to/report.pdf            # JSON
 npm run extract -- --csv a.pdf b.pdf > data.csv   # one row per marker
 ```
 
-It also runs in the browser. `npm run build` writes a static page to `extractor/dist/` (`npm run dev` serves it while developing). The page reads the PDF on the user's device: the pdf.js worker is bundled with it, and it makes no network request once it has loaded.
+It also runs in the browser. `npm run build` writes a static page to `extractor/dist/` (`npm run dev` serves it while developing). Drop in one or more report PDFs to see, per report, the header facts, every value read, the consistency checks and any warnings. A file with no readable tables, or one that is not a PDF, shows an error instead of an empty table. The page warns about duplicate reports and offers the batch as CSV or JSON, with record ids `r001`, `r002`… rather than file names. Reports are read on the user's device: the pdf.js worker is bundled with the page, it makes no network request once loaded, and a service worker keeps a copy so it opens with no connection after the first visit.
+
+On the command line, a file that cannot be opened is reported on stderr and the exit code is 1.
 
 **What it keeps:** sex, age in years, the month of collection, the month of the report, and every result row (marker, value, unit, reference range, the lab's verdict).
 

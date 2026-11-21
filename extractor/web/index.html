@@ -4,12 +4,39 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>DUTCH report extractor</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <h1>DUTCH report extractor</h1>
-    <p>Reports are read on this device. Nothing is uploaded.</p>
-    <input id="files" type="file" accept="application/pdf" multiple />
-    <pre id="out" data-state="idle"></pre>
+    <header>
+      <h1>DUTCH report extractor</h1>
+      <p class="privacy">
+        <strong>Your files never leave this device.</strong> Reports are read inside this browser tab. Nothing is
+        uploaded, and the page keeps working with the internet switched off.
+      </p>
+    </header>
+
+    <main>
+      <label id="drop" class="drop" for="files">
+        <span class="drop-title">Drop DUTCH report PDFs here</span>
+        <span class="drop-hint">or click to choose files. You can add several at once.</span>
+        <input id="files" type="file" accept="application/pdf,.pdf" multiple />
+      </label>
+
+      <section id="batch" hidden>
+        <div class="toolbar">
+          <p id="status" data-state="idle" role="status" aria-live="polite"></p>
+          <div class="actions">
+            <button id="download-csv" type="button">Download CSV</button>
+            <button id="download-json" type="button">Download JSON</button>
+            <button id="clear" type="button" class="quiet">Clear</button>
+          </div>
+        </div>
+        <div id="duplicates" class="banner warn" hidden></div>
+        <div id="reports"></div>
+      </section>
+    </main>
+
     <script type="module" src="./main.ts"></script>
   </body>
 </html>
