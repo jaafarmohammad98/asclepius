@@ -11,6 +11,7 @@ from asclepius.synthetic import (
     PlantedDifference,
     PlantedOutcome,
     PlantedScore,
+    PlantedSubgroup,
     write_lab_reports,
     write_self_reports,
 )
@@ -218,3 +219,41 @@ def test_unknown_drug_symptom_or_intervention_is_refused(tmp_path):
         write_self_reports(tmp_path, associations=[PlantedAssociation("sertraline", "hiccups", 2)])
     with pytest.raises(ValueError, match="add to at most 1"):
         write_self_reports(tmp_path, outcomes=[PlantedOutcome("tadalafil", 0.8, 0.4)])
+
+
+SEXUAL = ("genital_numbness", "erectile_dysfunction", "anorgasmia")
+EMOTIONAL = ("anhedonia", "emotional_blunting", "brain_fog")
+
+
+def test_planted_symptom_subgroups_report_their_own_symptoms(tmp_path):
+    planted = [
+        PlantedSubgroup(share=0.5, symptoms=SEXUAL, onset_during=0.6),
+        PlantedSubgroup(share=0.5, symptoms=EMOTIONAL),
+    ]
+    out = write_self_reports(tmp_path, authors=2000, subgroups=planted, seed=5)
+    data = load_self_reports(out.export)
+    reported = pd.crosstab(data.symptoms["author"], data.symptoms["symptom"]).gt(0)
+    reported = reported.reindex(data.authors["author"], fill_value=False)
+    sexual = reported[list(SEXUAL)].sum(axis=1) >= 2
+    emotional = reported[list(EMOTIONAL)].sum(axis=1) >= 2
+    assert sexual.mean() == pytest.approx(0.5, abs=0.06)  # about 0.9 of half, plus a few others
+    assert (sexual & emotional).mean() < 0.05  # the subgroups' symptoms rarely go together
+    # within a subgroup each listed symptom is common, the other subgroup's rare
+    assert reported.loc[sexual, "anorgasmia"].mean() > 0.7
+    assert reported.loc[sexual, "anhedonia"].mean() < 0.2
+    onset = data.authors.set_index("author")["onset"]
+    assert (onset[sexual.to_numpy()] == "during_use").mean() == pytest.approx(0.6, abs=0.08)
+    assert (onset[emotional.to_numpy()] == "during_use").mean() < 0.05
+    truth = json.loads(out.truth.read_text())
+    assert truth["null"] is False and len(truth["subgroups"]) == 2
+
+
+def test_symptom_subgroups_are_checked(tmp_path):
+    with pytest.raises(ValueError, match="Unknown symptom"):
+        write_self_reports(tmp_path, subgroups=[PlantedSubgroup(1.0, ("hiccups",))])
+    with pytest.raises(ValueError, match="add to at most 1"):
+        write_self_reports(
+            tmp_path, subgroups=[PlantedSubgroup(0.7, SEXUAL), PlantedSubgroup(0.7, EMOTIONAL)]
+        )
+    with pytest.raises(ValueError, match="Null mode"):
+        write_self_reports(tmp_path, null=True, subgroups=[PlantedSubgroup(0.5, SEXUAL)])

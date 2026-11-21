@@ -422,6 +422,9 @@ def _section_html(s: dict[str, Any]) -> str:
             parts.append(f'<p class="muted">{_e(clusters["reason"])}</p>')
         sizes = [{"cluster": c["cluster"], "sex": c["sex"], "n": c["n"]} for c in clusters.get("sizes", [])]
         parts.append(_generic_table(sizes))
+    if s.get("symptoms"):
+        parts.append("<h3>Most over-represented symptoms per cluster</h3>")
+        parts.append(_generic_table(s["symptoms"]))
     if s.get("groups"):
         parts.append("<h3>Authors per drug class and drug</h3>")
         parts.append(_generic_table(s["groups"]))

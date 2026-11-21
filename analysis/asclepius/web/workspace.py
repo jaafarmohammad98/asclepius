@@ -25,6 +25,7 @@ from asclepius.refrange import lab_range_findings, self_report_range_findings
 from asclepius.run import GroupTooSmall, Settings, run_analysis
 from asclepius.selfreport import SelfReportDataset, load_self_reports
 from asclepius.subgroups import SubgroupLinks, link_subgroups
+from asclepius.symptom_subgroups import cluster_symptoms
 from asclepius.syndromes import CONTROLS, REFERENCE_RANGE, SYNDROMES, compare_syndromes
 from asclepius.web import export, findings
 from asclepius.web.findings import (
@@ -330,10 +331,14 @@ def self_report_steps(data: SelfReportDataset, settings: Settings) -> list[Step]
         found = self_report_range_findings(data)
         return found, _placed(found, "author and test pairs")
 
+    def symptom_subgroups() -> tuple[Any, str]:
+        result = cluster_symptoms(data, settings)
+        return result, result.statement
+
     return [
         Step("Typed-in lab values within reference ranges", SELF_REPORT_RANGES, ranges),
         Step("Drug and symptom profile", PROFILE, profile),
-        Step("Symptom subgroups", SYMPTOM_SUBGROUPS, None, message="added by M3-13"),
+        Step("Symptom subgroups", SYMPTOM_SUBGROUPS, symptom_subgroups),
         Step("Intervention outcomes", INTERVENTIONS, None, message="added by M3-14"),
     ]
 

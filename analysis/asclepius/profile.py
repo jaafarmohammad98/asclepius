@@ -42,6 +42,12 @@ OTHER_CLASSES, OTHER_DRUGS = "other drug classes", "other causal drugs"
 TRAJECTORIES = ("recovered", "improving", "stable", "worsening")
 ONSET_DURING, ONSET_AFTER = "during_use", "after_stopping"
 TOP_DRUGS = 8
+PROFILE_COLUMNS = (
+    "onset",
+    "overall_trajectory",
+    "drugs",
+    "classes",
+)  # author_profiles' columns besides symptoms
 NOTE = "An author with drugs in several classes counts in each; see the summary for how many."
 COLUMNS = (
     "comparison",
@@ -138,7 +144,8 @@ def author_profiles(data: SelfReportDataset) -> pd.DataFrame:
     reported = pd.crosstab(data.symptoms["author"], data.symptoms["symptom"]).gt(0)
     reported = reported.reindex(authors.index, fill_value=False).astype(bool)
     reported.columns.name = None
-    return pd.concat([authors.assign(drugs=drugs, classes=classes), reported], axis=1)
+    out = pd.concat([authors.assign(drugs=drugs, classes=classes), reported], axis=1)
+    return out[[*PROFILE_COLUMNS, *reported.columns]]
 
 
 @dataclass(frozen=True)
@@ -168,7 +175,7 @@ def profile_drugs(
     if top_drugs < 0:
         raise ValueError("top_drugs cannot be negative.")
     profiles = author_profiles(data)
-    symptoms = [c for c in profiles.columns if c not in ("onset", "overall_trajectory", "drugs", "classes")]
+    symptoms = [c for c in profiles.columns if c not in PROFILE_COLUMNS]
     has_class = profiles[profiles["classes"].map(bool)]
     has_drug = profiles[profiles["drugs"].map(bool)]
     minimum = settings.min_group_size
@@ -178,7 +185,7 @@ def profile_drugs(
         groups.append(
             (CLASS, cls, OTHER_CLASSES, has_class, has_class["classes"].map(lambda c, x=cls: x in c))
         )
-    for drug in _single_drugs(has_drug, top_drugs):
+    for drug in single_drugs(has_drug, top_drugs):
         groups.append((DRUG, drug, OTHER_DRUGS, has_drug, has_drug["drugs"].map(lambda d, x=drug: x in d)))
 
     outcomes: list[tuple[str, str, str, pd.Series]] = []  # comparison, marker_id, name, yes/no or NA
@@ -253,7 +260,7 @@ def profile_drugs(
                     }
                 )
                 continue
-            rows.append(what | {"sex": "all"} | _test(int(a.sum()), len(a), int(b.sum()), len(b)))
+            rows.append(what | {"sex": "all"} | compare_shares(int(a.sum()), len(a), int(b.sum()), len(b)))
 
     multi = int((profiles["classes"].map(len) > 1).sum())
     summary += [
@@ -263,7 +270,10 @@ def profile_drugs(
     ]
 
     table = pd.DataFrame(rows, columns=list(COLUMNS))
-    findings = _hide_small_cells(label_findings(table, settings, self_report=True))
+    findings = hide_small_cells(label_findings(table, settings, self_report=True))
+    # a group's trajectories add up to its size: hide them together
+    trajectory = findings["comparison"] == PROFILE_TRAJECTORY
+    findings = hide_together(findings, findings["level"] + ":" + findings["group_a"], trajectory)
     tested_groups = [str(g) for g in dict.fromkeys(findings["group_a"])]
     recorded = settings.record() | {"top_drugs": top_drugs}
     record = run_record(data, tested_groups, recorded) | {"analysis": ANALYSIS, "note": NOTE}
@@ -279,7 +289,7 @@ def profile_drugs(
     )
 
 
-def _single_drugs(has_drug: pd.DataFrame, top: int) -> list[str]:
+def single_drugs(has_drug: pd.DataFrame, top: int) -> list[str]:
     """The `top` most common named drugs (not `unspecified_...`), leaving out a drug taken by
     exactly the authors of its class, whose class row is the same test. Ties go alphabetically."""
     counts = has_drug["drugs"].explode().value_counts()
@@ -300,7 +310,7 @@ def _single_drugs(has_drug: pd.DataFrame, top: int) -> list[str]:
     return chosen
 
 
-def _test(reported_a: int, n_a: int, reported_b: int, n_b: int) -> dict[str, object]:
+def compare_shares(reported_a: int, n_a: int, reported_b: int, n_b: int) -> dict[str, object]:
     """One yes/no outcome compared between two sides of authors."""
     share_a, share_b = reported_a / n_a, reported_b / n_b
     low, high = newcombe_interval(reported_a, n_a, reported_b, n_b)
@@ -322,7 +332,7 @@ def _test(reported_a: int, n_a: int, reported_b: int, n_b: int) -> dict[str, obj
     }
 
 
-def _hide_small_cells(findings: pd.DataFrame) -> pd.DataFrame:
+def hide_small_cells(findings: pd.DataFrame) -> pd.DataFrame:
     """Hide what would give back a cell below 5: on a side, reporters or non-reporters, and any
     size below 5, which a `min_group_size` under 5 lets through (spec S11). The label stays: it
     comes from the run's one correction."""
@@ -341,6 +351,20 @@ def _hide_small_cells(findings: pd.DataFrame) -> pd.DataFrame:
         out[column] = out[column].mask(small)
     for column in ("n_a", "n_b"):
         out[column] = out[column].mask(out[column] < MIN_SHOWN)
+    return out
+
+
+def hide_together(findings: pd.DataFrame, family: pd.Series, where: pd.Series | None = None) -> pd.DataFrame:
+    """After `hide_small_cells`: when a row hides its cells, hide the cells of every row of its
+    `family` too, so the shown rows of a family cannot give the hidden count back by subtraction
+    (spec S11). `where` limits the families to those rows; other rows are left as they are."""
+    where = pd.Series(True, index=findings.index) if where is None else where
+    hidden = findings["reported_a"].isna() & where
+    spread = hidden.groupby(family.where(where)).transform("any").reindex(findings.index, fill_value=False)
+    spread = spread.fillna(False).to_numpy(dtype=bool) & where.to_numpy(dtype=bool)
+    out = findings.copy()
+    for column in CELL_COLUMNS:
+        out[column] = out[column].mask(spread)
     return out
 
 

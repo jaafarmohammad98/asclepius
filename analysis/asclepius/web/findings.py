@@ -448,6 +448,44 @@ def profile_section(result: Any) -> dict[str, object]:
     }
 
 
+def symptom_subgroups_section(result: Any) -> dict[str, object]:
+    """Clusters of authors by the symptoms they report, each cluster's most over-represented
+    symptoms, and whether the clusters differ by drug class, single drug, onset or trajectory."""
+    rows = [finding_view(row, None, plot=outcome_shares(row)) for _, row in result.findings.iterrows()]
+    nothing = result.k is None or tested_statement(result.findings) == NOTHING_RELIABLE
+    left = shown(result.left_out)
+    minimum = result.settings["clusters"]["min_symptoms"]
+    return {
+        "statement": result.statement,
+        "nothing_reliable": nothing,
+        "labels": [SELF_REPORT_LABEL, f"thresholds {PROVISIONAL}"],
+        "note": (
+            f"{left if left is not None else FEW} authors reporting fewer than {minimum} of the "
+            f"{len(result.symptoms)} symptoms used were left out. {result.record.get('note', '')} "
+            "Effect: the share of the cluster with the outcome minus the share of the other side, "
+            "from -1 to 1, with the odds ratio beside it. Fisher's exact test."
+        ),
+        "clusters": {
+            "statement": result.clusters,
+            "reason": result.reason,
+            "unit": "Authors",
+            "sizes": [
+                {"cluster": int(r["cluster"]), "sex": "all", "n": shown(r["n_authors"])}
+                for _, r in result.sizes.iterrows()
+            ],
+        },
+        "symptoms": [
+            {
+                c: plain(r[c])
+                for c in ("cluster", "symptom", "symptom_name", "share_in", "share_out", "difference")
+            }
+            for _, r in result.summary.iterrows()
+        ],
+        "findings": ordered(rows),
+        "refused": refused_view(result.refused),
+    }
+
+
 def outcome_shares(row: pd.Series) -> dict[str, object]:
     """A drug profile row's plot: the share of each side with the outcome (hidden with a small cell)."""
     caption = (
@@ -504,6 +542,7 @@ BUILDERS: dict[str, Callable[[Any, dict[str, Any], Any, Values | None], dict[str
     RANGES: lambda result, *_: range_section(result),
     SELF_REPORT_RANGES: lambda result, *_: range_section(result, self_report=True),
     PROFILE: lambda result, *_: profile_section(result),
+    SYMPTOM_SUBGROUPS: lambda result, *_: symptom_subgroups_section(result),
 }
 
 

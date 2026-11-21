@@ -26,9 +26,10 @@ Thresholds were chosen without a clinician and are marked provisional until M3-1
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass, field
 from statistics import NormalDist
+from typing import Protocol
 
 import numpy as np
 import pandas as pd
@@ -185,37 +186,11 @@ def cluster_patients(
     x = scores.to_numpy()
     rng = np.random.default_rng(settings.seed)
 
-    rows, fits = [], {}
-    for k in range(2, settings.k_max + 1):
-        if k * settings.min_cluster_size > n:
-            break
-        labels = _kmeans(x, k, settings.restarts, rng)
-        fits[k] = labels
-        smallest = int(np.bincount(labels, minlength=k).min())
-        rows.append(
-            {
-                "k": k,
-                "stability": _stability(x, labels, k, settings, rng),
-                "smallest": smallest,
-                "eligible": smallest >= settings.min_cluster_size,
-            }
-        )
-    stability = pd.DataFrame(rows, columns=["k", "stability", "smallest", "eligible"])
-    base["stability"] = stability
-
-    eligible = stability[stability["eligible"]]
-    if eligible.empty:
-        return _no_clusters(
-            f"no split into clusters of at least {settings.min_cluster_size} patients", **base
-        )
-    best = eligible.loc[eligible["stability"].idxmax()]  # the first, so the smaller k, on a tie
-    k = int(best["k"])
-    if best["stability"] < settings.min_stability:
-        return _no_clusters(
-            f"the most stable split ({k} clusters) has stability {best['stability']:.2f}, "
-            f"below {settings.min_stability}",
-            **base,
-        )
+    choice = choose_k(n, lambda rows, k: _kmeans(x[rows], k, settings.restarts, rng), settings, rng)
+    base["stability"] = choice.stability
+    if choice.k is None:
+        return _no_clusters(choice.reason, **base)
+    k, fits = choice.k, choice.fits
     null_p = _null_p(x, sexes, k, _spread(x, fits[k]), settings, rng)
     if null_p > settings.null_alpha:
         return _no_clusters(
@@ -226,11 +201,7 @@ def cluster_patients(
         )
 
     # number clusters by size, largest first; ties by the first patient in each
-    labels = fits[k]
-    order = sorted(range(k), key=lambda c: (-np.sum(labels == c), int(np.argmax(labels == c))))
-    cluster = np.empty(k, dtype=int)
-    cluster[order] = np.arange(1, k + 1)
-    assignments = pd.DataFrame({"record": scores.index, "cluster": cluster[labels]})
+    assignments = pd.DataFrame({"record": scores.index, "cluster": number_by_size(fits[k], k)})
     sizes = (
         assignments.assign(sex=sexes).groupby(["cluster", "sex"]).size().rename("n_patients").reset_index()
     )
@@ -245,7 +216,7 @@ def cluster_patients(
     profile.insert(2, "marker_name", profile["marker_id"].map(names))
     return ClusterResult(
         statement=f"{k} stable clusters",
-        reason=f"stability {best['stability']:.2f}, tighter than one group (p = {null_p:.2f})",
+        reason=f"stability {choice.best:.2f}, tighter than one group (p = {null_p:.2f})",
         k=k,
         assignments=assignments,
         sizes=sizes,
@@ -253,6 +224,91 @@ def cluster_patients(
         null_p=null_p,
         **base,
     )
+
+
+class KSettings(Protocol):
+    """The settings `choose_k` reads: `ClusterSettings` and the self-report clustering's have them."""
+
+    @property
+    def k_max(self) -> int: ...
+    @property
+    def min_cluster_size(self) -> int: ...
+    @property
+    def min_stability(self) -> float: ...
+    @property
+    def subsamples(self) -> int: ...
+    @property
+    def subsample_share(self) -> float: ...
+
+
+Fit = Callable[[np.ndarray, int], np.ndarray]  # (row indices, k) -> labels 0..k-1 of those rows
+
+
+@dataclass(frozen=True)
+class KChoice:
+    """What `choose_k` found. `stability`: per `k`, its `stability`, `smallest` cluster and whether
+    it was `eligible`. `fits`: the full clustering per k. `k`: the chosen number of clusters, or None
+    with `reason` saying why. `best`: the chosen k's stability."""
+
+    stability: pd.DataFrame
+    fits: dict[int, np.ndarray]
+    k: int | None
+    reason: str
+    best: float | None
+
+
+def choose_k(
+    n: int, fit: Fit, settings: KSettings, rng: np.random.Generator, unit: str = "patients"
+) -> KChoice:
+    """Cluster all `n` rows into 2 to `settings.k_max` clusters with `fit`, and pick the most stable
+    k whose clusters all have at least `settings.min_cluster_size` rows; None when no k is eligible
+    or the best is below `settings.min_stability`. Stability is the mean adjusted Rand index between
+    the full clustering and `fit` on each of `settings.subsamples` subsamples of
+    `settings.subsample_share` of the rows. `settings` is a `ClusterSettings` or anything with those
+    fields; `unit` names the rows in the reason."""
+    everyone = np.arange(n)
+    size = round(settings.subsample_share * n)
+    rows, fits = [], {}
+    for k in range(2, settings.k_max + 1):
+        if k * settings.min_cluster_size > n:
+            break
+        labels = fit(everyone, k)
+        fits[k] = labels
+        smallest = int(np.bincount(labels, minlength=k).min())
+        agreement = []
+        for _ in range(settings.subsamples):
+            sample = rng.choice(n, size=size, replace=False)
+            agreement.append(adjusted_rand(labels[sample], fit(sample, k)))
+        rows.append(
+            {
+                "k": k,
+                "stability": float(np.mean(agreement)),
+                "smallest": smallest,
+                "eligible": smallest >= settings.min_cluster_size,
+            }
+        )
+    stability = pd.DataFrame(rows, columns=["k", "stability", "smallest", "eligible"])
+    eligible = stability[stability["eligible"]]
+    if eligible.empty:
+        reason = f"no split into clusters of at least {settings.min_cluster_size} {unit}"
+        return KChoice(stability, fits, None, reason, None)
+    best = eligible.loc[eligible["stability"].idxmax()]  # the first, so the smaller k, on a tie
+    k = int(best["k"])
+    if best["stability"] < settings.min_stability:
+        reason = (
+            f"the most stable split ({k} clusters) has stability {best['stability']:.2f}, "
+            f"below {settings.min_stability}"
+        )
+        return KChoice(stability, fits, None, reason, float(best["stability"]))
+    return KChoice(stability, fits, k, "", float(best["stability"]))
+
+
+def number_by_size(labels: np.ndarray, k: int) -> np.ndarray:
+    """Labels 0..k-1 renumbered 1..k by cluster size, largest first; ties by the first row in each."""
+    order = sorted(range(k), key=lambda c: (-np.sum(labels == c), int(np.argmax(labels == c))))
+    cluster = np.empty(k, dtype=int)
+    cluster[order] = np.arange(1, k + 1)
+    return cluster[labels]
 
 
 def _no_clusters(reason: str, null_p: float | None = None, **base) -> ClusterResult:
@@ -379,19 +435,6 @@ def _spread(x: np.ndarray, labels: np.ndarray) -> float:
     basis = np.linalg.svd(centres - centres.mean(axis=0), full_matrices=False)[2][: k - 1]
     z = (x - x.mean(axis=0)) @ basis.T
     return _within(z, labels, k) / float((z**2).sum())
-
-
-def _stability(
-    x: np.ndarray, labels: np.ndarray, k: int, settings: ClusterSettings, rng: np.random.Generator
-) -> float:
-    """Mean adjusted Rand index between the full clustering and each subsample's own clustering."""
-    size = round(settings.subsample_share * len(x))
-    agreement = []
-    for _ in range(settings.subsamples):
-        rows = rng.choice(len(x), size=size, replace=False)
-        sub = _kmeans(x[rows], k, settings.restarts, rng)
-        agreement.append(adjusted_rand(labels[rows], sub))
-    return float(np.mean(agreement))
 
 
 def _null_p(

@@ -374,6 +374,30 @@ class PlantedAssociation:
 
 
 @dataclass(frozen=True)
+class PlantedSubgroup:
+    """`share` of the authors form a symptom subgroup: each reports each of `symptoms` with
+    probability `present`, and each symptom another planted subgroup lists with probability
+    `absent`; other symptoms keep their usual share. `onset_during` of them have their onset during
+    use (everyone else's is after stopping). Authors in no subgroup report every symptom at its usual
+    share."""
+
+    share: float
+    symptoms: tuple[str, ...]
+    present: float = 0.85
+    absent: float = 0.05
+    onset_during: float = 0.0
+
+
+@dataclass(frozen=True)
+class PlantedReporting:
+    """`share` of the authors report every symptom at `odds_ratio` times its usual odds: they report
+    more symptoms, with no other pattern. A split by it is no symptom subgroup."""
+
+    share: float
+    odds_ratio: float
+
+
+@dataclass(frozen=True)
 class PlantedOutcome:
     """Of the authors who tried `intervention`, `improved` report improvement (a third of them
     major) and `worse` report it made them worse; the rest report no effect."""
@@ -406,6 +430,8 @@ def write_self_reports(
     authors: int = 300,
     associations: Sequence[PlantedAssociation] = (),
     outcomes: Sequence[PlantedOutcome] = (),
+    subgroups: Sequence[PlantedSubgroup] = (),
+    reporting: PlantedReporting | None = None,
     null: bool = False,
     repeat_share: float = 0.3,
     deleted_posts: int = 10,
@@ -418,18 +444,28 @@ def write_self_reports(
     the posts, so the truth only shows once the loader merges them per author. `deleted_posts`
     extra posts have no author (deleted accounts), which the loader must leave out, and
     `unverified_posts` extra posts, each from an author of its own, fail the evidence check, so
-    the loader leaves them out by default. `null` mode plants nothing: no drug differs in symptoms and every
+    the loader leaves them out by default. `subgroups` plants symptom subgroups (`PlantedSubgroup`), and `reporting` authors who only report more symptoms (`PlantedReporting`).
+    `null` mode plants nothing: no drug differs in symptoms and every
     intervention has the same outcome shares.
     """
     _check_self_report_settings(
-        authors, associations, outcomes, null, repeat_share, deleted_posts + unverified_posts
+        authors, associations, outcomes, subgroups, null, repeat_share, deleted_posts + unverified_posts
     )
+    if reporting is not None:
+        if null:
+            raise ValueError("Null mode plants nothing; leave `reporting` empty.")
+        if not (
+            0 <= reporting.share <= 1 and reporting.odds_ratio > 0 and math.isfinite(reporting.odds_ratio)
+        ):
+            raise ValueError("Reporting share must be between 0 and 1 and its odds ratio a positive number.")
     rng = np.random.default_rng(seed)
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     conditions = list(CONDITIONS)
     weights = np.array([CONDITIONS[c][0] for c in conditions])
     shares = {o.intervention: (o.improved, o.worse) for o in outcomes}
+    listed = {symptom for g in subgroups for symptom in g.symptoms}
+    edges = np.cumsum([g.share for g in subgroups])
 
     posts: list[_Post] = []
     keys: set[str] = set()
@@ -438,6 +474,16 @@ def write_self_reports(
         condition = conditions[int(rng.choice(len(conditions), p=weights))]
         drugs = CONDITIONS[condition][1]
         drug = drugs[int(rng.integers(len(drugs)))]
+        # drawn only when subgroups are planted, so other exports stay as they were
+        subgroup = None
+        onset = "after_stopping"
+        if subgroups:
+            index = int(np.searchsorted(edges, rng.random(), side="right"))
+            if index < len(subgroups):
+                subgroup = subgroups[index]
+                if rng.random() < subgroup.onset_during:
+                    onset = "during_use"
+        heavy = reporting is not None and rng.random() < reporting.share
         count = int(rng.integers(2, 5)) if rng.random() < repeat_share else 1
         years = sorted(int(y) for y in rng.choice(np.arange(2015, 2027), size=count, replace=False))
         mine = [_Post(case_id="", year=y) for y in years]
@@ -448,7 +494,7 @@ def write_self_reports(
                 "kind": "submission" if i == 0 else "comment",
                 "condition": condition,
                 "sex": sex if i == 0 or rng.random() < 0.5 else "",
-                "onset": "after_stopping" if i == 0 else "",
+                "onset": onset if i == 0 else "",
                 "evidence_ok": "True",
             }
             post.drugs.append([drug, float(rng.choice(DOSES[drug])) if i == 0 else "", ""])
@@ -460,7 +506,13 @@ def write_self_reports(
         )
 
         for symptom, base in SYMPTOMS.items():
+            if subgroup is not None and symptom in subgroup.symptoms:
+                base = subgroup.present
+            elif subgroup is not None and symptom in listed:
+                base = subgroup.absent
             odds = base / (1 - base)
+            if heavy and reporting is not None:
+                odds *= reporting.odds_ratio
             for a in associations:
                 if a.drug == drug and a.symptom == symptom:
                     odds *= a.odds_ratio
@@ -503,7 +555,7 @@ def write_self_reports(
         "kind": "self-report",
         "generator": f"asclepius.synthetic {version('asclepius')}",
         "seed": seed,
-        "null": not associations and not outcomes,
+        "null": not associations and not outcomes and not subgroups and reporting is None,
         "authors": authors,
         "repeat_share": repeat_share,
         "deleted_posts": deleted_posts,
@@ -512,6 +564,8 @@ def write_self_reports(
         "default_outcome_shares": {"improved": DEFAULT_IMPROVED, "worse": DEFAULT_WORSE},
         "associations": [asdict(a) for a in associations],
         "outcomes": [asdict(o) for o in outcomes],
+        "subgroups": [asdict(g) for g in subgroups],
+        "reporting": None if reporting is None else asdict(reporting),
     }
     _write_json(out / "truth.json", truth)
     return SelfReportOutput(export=out, truth=out / "truth.json")
@@ -521,6 +575,7 @@ def _check_self_report_settings(
     authors: int,
     associations: Sequence[PlantedAssociation],
     outcomes: Sequence[PlantedOutcome],
+    subgroups: Sequence[PlantedSubgroup],
     null: bool,
     repeat_share: float,
     extra_posts: int,
@@ -531,8 +586,20 @@ def _check_self_report_settings(
         raise ValueError("deleted_posts and unverified_posts cannot be negative.")
     if not 0 <= repeat_share <= 1:
         raise ValueError("repeat_share must be between 0 and 1.")
-    if null and (associations or outcomes):
-        raise ValueError("Null mode plants nothing; leave `associations` and `outcomes` empty.")
+    if null and (associations or outcomes or subgroups):
+        raise ValueError("Null mode plants nothing; leave `associations`, `outcomes` and `subgroups` empty.")
+    for g in subgroups:
+        for symptom in g.symptoms:
+            if symptom not in SYMPTOMS:
+                raise ValueError(f"Unknown symptom {symptom!r}; use one of {', '.join(SYMPTOMS)}.")
+        if not (
+            all(0 <= x <= 1 for x in (g.share, g.onset_during)) and 0 <= g.absent < 1 and 0 <= g.present < 1
+        ):
+            raise ValueError(
+                "A subgroup's share and onset_during must be between 0 and 1, and present and absent at least 0 and below 1."
+            )
+    if sum(g.share for g in subgroups) > 1 + 1e-9:
+        raise ValueError("Subgroup shares must add to at most 1.")
     for a in associations:
         if a.drug not in DRUGS:
             raise ValueError(f"Unknown drug {a.drug!r}; use one of {', '.join(DRUGS)}.")

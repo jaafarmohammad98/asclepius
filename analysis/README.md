@@ -97,7 +97,11 @@ values of one marker by a fold (optionally in one sex only).
 
 **Self-reports** (`write_self_reports`) give the harvester's five tables and `truth.json`. A
 planted association raises the odds of one symptom for one causal drug; a planted outcome sets
-the share of authors who tried an intervention reporting improvement and worse. Some authors post
+the share of authors who tried an intervention reporting improvement and worse. A planted symptom
+subgroup (`PlantedSubgroup`, Python only) is a share of authors who report its symptoms often and
+the other subgroups' symptoms rarely, optionally with more onsets during use. Planted reporting
+(`PlantedReporting`, Python only) is a share of authors who report every symptom at higher odds:
+more symptoms, and no subgroup. Some authors post
 2 to 4 times, with their symptoms and interventions spread over the posts, so the planted
 answer only appears once posts are merged per author. A few posts come from deleted accounts,
 and a few fail the evidence check; the loader must leave out both (the second by default).
@@ -548,7 +552,8 @@ hides its counts, shares, effect, odds ratio, p-value and q-value, since with th
 them gives the count back (the p-value with the total of reporters another row of the same
 outcome shows: on the r/PSSD export that recovered every such count before it was hidden); it keeps
 its sizes and label. A size below 5, which a `min_group_size` under 5 would let through, is hidden
-too. The label still says a small row's q-value is at most 0.10; for review in M3-11.
+too. A group's four trajectory rows add up to its size, so when one hides its cells, all four
+do. The label still says a small row's q-value is at most 0.10; for review in M3-11.
 
 The result has `findings`, `refused`, `summary`, `skipped` (empty), `note`, `statement` and
 `record` (with `analysis` `drug and symptom profile` and the settings, `top_drugs` included).
@@ -568,6 +573,78 @@ the symptom less than the rest, which includes finasteride. Each group is compar
 others, so one group's real difference shows, reversed, in the groups it is compared against:
 read a lower share in a large class alongside the small classes that make up its rest. On the r/PSSD export (Nov 2026): 798
 tests, 36 suggestive, none strong; under a second.
+
+## Symptom subgroups in self-reports
+
+The lab-value clustering waits for real reports, but symptom profiles from thousands of authors
+can already show whether PSSD splits into subtypes (spec A5).
+`asclepius.symptom_subgroups.cluster_symptoms(data, settings, cluster_settings)` takes a
+`SelfReportDataset`, clusters its authors by which symptoms they report, describes each cluster
+and tests whether the clusters differ by drug class, onset or trajectory.
+
+**Steps.**
+
+1. One row per author (`author_profiles`, S9) and one yes/no feature per symptom at least
+   `min_reporters` (10) authors report. The catch-all `other` is not a feature. Authors with fewer
+   than `min_symptoms` (2) of the features are left out; `left_out` says how many (692 on the
+   r/PSSD export).
+2. The distance between two authors is the Jaccard distance: of the symptoms either reports, the
+   share only one of them does. On yes/no data not reporting a symptom says less than reporting it,
+   so two authors are not alike for both leaving out the same 40 symptoms, as they would be under a
+   Euclidean distance.
+3. k-medoids on that distance (k-means++-style starts, best of `restarts`) splits the authors into
+   2 to `k_max` clusters. The number is chosen by the same subsample stability as the lab
+   clustering (`asclepius.cluster.choose_k`): mean adjusted Rand index at least `min_stability`
+   (0.8), every cluster at least `min_cluster_size` (30) authors.
+4. The clustering must also be tighter (total distance to the medoids, as a share of the distance
+   to one medoid of everyone) than in all but `null_alpha` (5%) of `null_samples` (49) copies of
+   the data with the links between symptoms broken. The copies come from swap randomisation
+   (curveball, Strona et al. 2014), which keeps how many symptoms each author reports and how many
+   authors report each symptom. It is a permutation test (S1), unlike the lab clustering's check
+   against normal data, and it rules out clusters that only split authors who report many symptoms
+   from those who report few. Failing step 3 or 4 gives `no stable clusters` (S8), with the
+   `reason`.
+5. `summary`: each cluster's `top_symptoms` (5) most over-represented symptoms: `share_in` the
+   cluster, `share_out` among the other authors, and the `difference`. A symptom with fewer than 5
+   reporters or non-reporters in any cluster is not listed for any (S11): with 3 or more clusters,
+   the other clusters' rows would give that count back.
+6. `findings`: each cluster against the other (with 2 clusters, cluster 1 against cluster 2) or
+   against the other clusters (with more), on each drug class (`level` `class`, of authors with a
+   drug in some class), each of the `top_drugs` (8) most common single causal drugs (`level`
+   `drug`, of authors with a causal drug, chosen as in the drug profile), onset during use, and
+   each trajectory. The columns, tests, hiding of small cells and
+   labels are the drug profile's (`level` is `cluster` for onset and trajectory; `comparison` is
+   `symptom subgroup: drug class`, `symptom subgroup: causal drug`, `symptom subgroup: onset` or
+   `symptom subgroup: trajectory`). All rows are corrected
+   together, never strong, `self-report, no controls` (S2, S10). Symptoms are not tested: the
+   clusters were made from them. A class fewer than 10 clustered authors took, or a side with
+   fewer than 10, goes to `refused` (S4). When one row hides its cells, every row of the same
+   outcome does, and every trajectory row when one does: with 3 or more clusters each row shows
+   the outcome's total and the other clusters' rows the rest, and the four trajectories add up to
+   the side's size. The record carries the profile's note that an author with drugs in several
+   classes counts in each.
+
+Clustering is refused below `min_authors` (30) authors left (`TooFewAuthors`, S4). The result has
+`clusters`, `reason`, `k`, `sizes`, `summary`, `stability`, `null_p`, `symptoms`, `left_out`,
+`findings`, `refused`, `statement` (the clusters' statement, then the findings') and `record`
+(`analysis` `symptom subgroups`, with the clustering settings under `settings.clusters`).
+`export_run` writes it like any run. Thresholds are provisional, for review in M3-11.
+
+`left_out` is hidden below 5, but when clusters are found and 1 to 4 authors are left out, the
+loader's author count minus the cluster sizes gives it back. It says only that a few authors
+reported fewer than 2 of the symptoms used, nothing about who; it is accepted for now and listed
+for the M3-11 review. (On the r/PSSD export it is 692.)
+
+On synthetic data (`synthetic.PlantedSubgroup`), 400 authors, 20 seeds each:
+
+| Data | Result |
+|---|---|
+| two subgroups, sexual and emotional symptoms, onset during use 50% and 15% | 2 clusters, described by their planted symptoms, in 20 of 20; onset suggestive in 20 of 20, another suggestive row in 2 |
+| nothing planted | no stable clusters in 20 of 20 (stability about 0.2 to 0.3) |
+| 30% of authors report every symptom at 6 times the odds (`PlantedReporting`): more symptoms, no pattern | no stable clusters in 20 of 20; with the stability check off, the swap test alone rejects the split in 20 of 20 (p 0.06 to 0.96) |
+
+On the r/PSSD export (Nov 2026): 2,461 authors clustered on 51 symptoms; no stable clusters (the
+most stable split, 2 clusters, has stability 0.45); about 6 seconds.
 
 ## Web app
 
@@ -595,7 +672,7 @@ into a temporary folder that is deleted when the app stops (Ctrl+C).
 |---|---|
 | Look for subgroups of the patient group picked, the first if both are (`cluster_patients`, `link_subgroups`); refused with two control groups | Typed-in lab values within reference ranges |
 | Compare the two groups (`run_analysis`, with the subgroup links in one correction) | Drug and symptom profile (`profile_drugs`) |
-| Compare PSSD, PFS and PAS (`compare_syndromes`; the reference is the control picked, else the reference ranges) | Symptom subgroups (not built yet: M3-13) |
+| Compare PSSD, PFS and PAS (`compare_syndromes`; the reference is the control picked, else the reference ranges) | Symptom subgroups (`cluster_symptoms`) |
 | Positions within reference ranges (`lab_range_findings`) | Intervention outcomes (not built yet: M3-14) |
 
 Each step's one-line statement is shown, and when the run finishes, its findings
@@ -609,8 +686,9 @@ Each step's one-line statement is shown, and when the run finishes, its findings
    **Nothing reliable yet** in a box above it (S8). Each finding has a plot:
    - group comparisons, ratios and subgroup symptom scores: each group's 10th, 25th, 50th, 75th
      and 90th percentiles as a box plot, for groups of 10 or more; no single value is drawn (S11);
-   - drug and symptom profile: the share of each side with the outcome (reports the symptom,
-     onset during use, a trajectory), hidden with the odds ratio and effect when a cell is below 5;
+   - drug and symptom profile and symptom subgroups: the share of each side with the outcome
+     (reports the symptom, took a drug or class, onset during use, a trajectory), hidden with the
+     odds ratio and effect when a cell is below 5;
    - subgroup drugs: the share of each cluster that took the drug (hidden when fewer than 5 on a
      side took it, or did not, and then the effect too: on yes/no values it is the difference of
      the shares, which with the sizes would give the count back; the Tier A effect of a drug link
@@ -628,8 +706,10 @@ Each step's one-line statement is shown, and when the run finishes, its findings
    the markers with a pattern (shared, same direction with a different size, differs, one
    syndrome only), then every test. Every self-report section carries "self-report, no
    controls"; the drug and symptom profile adds authors per drug class and drug, and that an
-   author counts in each of their classes; symptom subgroups and intervention outcomes show as
-   not built yet until M3-13 and M3-14 add them. Every count below 5 is hidden in the view (0, which
+   author counts in each of their classes. Symptom subgroups show the clusters and their sizes
+   (or "no stable clusters" and why), how many authors were left out, each cluster's most
+   over-represented symptoms, and the clusters compared by drug class, single drug, onset and
+   trajectory. Intervention outcomes show as not built yet until M3-14 adds them. Every count below 5 is hidden in the view (0, which
    is no one, is shown).
 
 5. **Export.** Once a run has finished, two downloads take it into a paper or to a colleague:
