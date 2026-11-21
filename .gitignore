@@ -14,3 +14,7 @@ dist/
 harvester/data/
 harvester/.venv/
 __pycache__/
+analysis/.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/

@@ -1,0 +1,9 @@
+case_id,symptom,severity
+c01,genital_numbness,mild
+c01,emotional_blunting,
+c02,genital_numbness,severe
+c03,low_libido,moderate
+c04,brain_fog,
+c05,anhedonia,
+c06,genital_numbness,
+c07,erectile_dysfunction,severe

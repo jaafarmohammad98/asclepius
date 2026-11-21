@@ -1,0 +1,142 @@
+record_id,sex,age_years,collection_month,report_month,marker_id,marker_name,category,comparator,value,unit,ref_low,ref_high,status
+r001,female,26,2016-10,2021-01,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,196,ng/mg,600,2000,Below luteal range
+r001,female,26,2016-10,2021-01,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,112,ng/mg,200,740,Below luteal range
+r001,female,26,2016-10,2021-01,estrone_e1,Estrone(E1),Estrogens and Metabolites,,28.2,ng/mg,12,26,Above luteal range
+r001,female,26,2016-10,2021-01,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,5.1,ng/mg,1.8,4.5,Above luteal range
+r001,female,26,2016-10,2021-01,estriol_e3,Estriol(E3),Estrogens and Metabolites,,22.5,ng/mg,5,18,Above luteal range
+r001,female,26,2016-10,2021-01,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,4.8,ng/mg,5.1,13.1,Below luteal range
+r001,female,26,2016-10,2021-01,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.8,ng/mg,0,1.8,Within luteal range
+r001,female,26,2016-10,2021-01,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,4.7,ng/mg,0.7,2.6,Above luteal range
+r001,female,26,2016-10,2021-01,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.8,ng/mg,2.5,6.5,Below luteal range
+r001,female,26,2016-10,2021-01,2_oh_e2,2-OH-E2,Estrogens and Metabolites,,0.19,ng/mg,0,1.2,Low end of luteal range
+r001,female,26,2016-10,2021-01,4_oh_e2,4-OH-E2,Estrogens and Metabolites,,0.2,ng/mg,0,0.5,Within luteal range
+r001,female,26,2016-10,2021-01,2_methoxy_e2,2-Methoxy-E2,Estrogens and Metabolites,,0.3,ng/mg,0,0.7,Within luteal range
+r001,female,26,2016-10,2021-01,total_estrogen,Total Estrogen,Estrogens and Metabolites,,67.59,ng/mg,35,70,High end of range
+r001,female,26,2016-10,2021-01,dhea_s,DHEA-S,Androgens and Metabolites,,26,ng/mg,20,750,Low end of range
+r001,female,26,2016-10,2021-01,androsterone,Androsterone,Androgens and Metabolites,,1810,ng/mg,200,1650,Above range
+r001,female,26,2016-10,2021-01,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,680,ng/mg,200,1000,Within range
+r001,female,26,2016-10,2021-01,testosterone,Testosterone,Androgens and Metabolites,,1.5,ng/mg,2.3,14,Below range
+r001,female,26,2016-10,2021-01,5a_dht,5a-DHT,Androgens and Metabolites,,7.2,ng/mg,0,6.6,Above range
+r001,female,26,2016-10,2021-01,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,42,ng/mg,12,30,Above range
+r001,female,26,2016-10,2021-01,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,32,ng/mg,20,75,Within range
+r001,female,26,2016-10,2021-01,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,8.8,ng/mg,2.3,14,Within range
+r001,female,26,2016-10,2021-01,creatinine_a_waking,Creatinine A (Waking),Creatinine,,0.4,mg/ml,0.2,2,Within range
+r001,female,26,2016-10,2021-01,creatinine_b_morning,Creatinine B (Morning),Creatinine,,0.51,mg/ml,0.2,2,Within range
+r001,female,26,2016-10,2021-01,creatinine_c_afternoon,Creatinine C (Afternoon),Creatinine,,0.92,mg/ml,0.2,2,Within range
+r001,female,26,2016-10,2021-01,creatinine_d_night,Creatinine D (Night),Creatinine,,1.01,mg/ml,0.2,2,Within range
+r001,female,26,2016-10,2021-01,cortisol_a_waking,Cortisol A (Waking),Daily Free Cortisol and Cortisone,,12,ng/mg,10,50,Low end of range
+r001,female,26,2016-10,2021-01,cortisol_b_morning,Cortisol B (Morning),Daily Free Cortisol and Cortisone,,28,ng/mg,30,130,Below range
+r001,female,26,2016-10,2021-01,cortisol_c_afternoon,Cortisol C (Afternoon),Daily Free Cortisol and Cortisone,,9.4,ng/mg,7,30,Low end of range
+r001,female,26,2016-10,2021-01,cortisol_d_night,Cortisol D (Night),Daily Free Cortisol and Cortisone,,2.6,ng/mg,0,14,Low end of range
+r001,female,26,2016-10,2021-01,cortisone_a_waking,Cortisone A (Waking),Daily Free Cortisol and Cortisone,,30.2,ng/mg,40,120,Below range
+r001,female,26,2016-10,2021-01,cortisone_b_morning,Cortisone B (Morning),Daily Free Cortisol and Cortisone,,61.2,ng/mg,90,230,Below range
+r001,female,26,2016-10,2021-01,cortisone_c_afternoon,Cortisone C (Afternoon),Daily Free Cortisol and Cortisone,,21.4,ng/mg,32,110,Below range
+r001,female,26,2016-10,2021-01,cortisone_d_night,Cortisone D (Night),Daily Free Cortisol and Cortisone,,16.2,ng/mg,0,55,Within range
+r001,female,26,2016-10,2021-01,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,52,ng/mg,65,200,Below range
+r001,female,26,2016-10,2021-01,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,129,ng/mg,220,450,Below range
+r001,female,26,2016-10,2021-01,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,400,ng/mg,75,370,Above range
+r001,female,26,2016-10,2021-01,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2500,ng/mg,1050,2500,Above range
+r001,female,26,2016-10,2021-01,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,3030,ng/mg,1550,3800,Within range
+r001,female,26,2016-10,2021-01,metabolized_cortisol_thf_the,Metabolized Cortisol (THF+THE),Cortisol Metabolites and DHEA-S,,5930,ng/mg,2750,6500,High end of range
+r001,female,26,2016-10,2021-01,methylmalonate_mma,Methylmalonate (MMA),Vitamin B12 Marker (may be deficient if high),,1.2,ug/mg,0,2.5,Within range
+r001,female,26,2016-10,2021-01,xanthurenate,Xanthurenate,Vitamin B6 Markers (may be deficient if high),,6.8,ug/mg,0.12,1.2,Above range
+r001,female,26,2016-10,2021-01,kynurenate,Kynurenate,Vitamin B6 Markers (may be deficient if high),,35.5,ug/mg,0.8,4.5,Above range
+r001,female,26,2016-10,2021-01,pyroglutamate,Pyroglutamate,Glutathione Marker (may be deficient if low or high),,23.2,ug/mg,28,58,Below range
+r001,female,26,2016-10,2021-01,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,5.6,ug/mg,3,11,Within range
+r001,female,26,2016-10,2021-01,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,4.8,ug/mg,2.2,5.5,Within range
+r001,female,26,2016-10,2021-01,melatonin_waking,Melatonin* (Waking),Melatonin (*measured as 6-OH-Melatonin-Sulfate),,18.2,ng/mg,10,85,Low end of range
+r001,female,26,2016-10,2021-01,8_ohdg_waking,8-OHdG (Waking),"Oxidative Stress / DNA Damage, measured as 8-Hydroxy-2-deoxyguanosine (8-OHdG)",,4.3,ng/mg,0,5.2,High end of range
+r002,male,50,2016-10,2019-01,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,107,ng/mg,75,400,Low end of range
+r002,male,50,2016-10,2019-01,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,40,ng/mg,20,130,Low end of range
+r002,male,50,2016-10,2019-01,estrone_e1,Estrone(E1),Estrogens and Metabolites,,8.5,ng/mg,4,16,Within range
+r002,male,50,2016-10,2019-01,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,0.94,ng/mg,0.5,2.2,Within range
+r002,male,50,2016-10,2019-01,estriol_e3,Estriol(E3),Estrogens and Metabolites,,2,ng/mg,2,8,Low end of range
+r002,male,50,2016-10,2019-01,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,4.74,ng/mg,0,5.9,High end of range
+r002,male,50,2016-10,2019-01,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.38,ng/mg,0,0.8,Within range
+r002,male,50,2016-10,2019-01,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.65,ng/mg,0,1.2,Within range
+r002,male,50,2016-10,2019-01,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,1.05,ng/mg,0,2.8,Within range
+r002,male,50,2016-10,2019-01,2_oh_e2,2-OH-E2,Estrogens and Metabolites,,0.28,ng/mg,0,0.6,Within range
+r002,male,50,2016-10,2019-01,4_oh_e2,4-OH-E2,Estrogens and Metabolites,,0.1,ng/mg,0,0.3,Within range
+r002,male,50,2016-10,2019-01,2_methoxy_e2,2-Methoxy-E2,Estrogens and Metabolites,,0.5,ng/mg,0,0.8,Within range
+r002,male,50,2016-10,2019-01,total_estrogen,Total Estrogen,Estrogens and Metabolites,,19.14,ng/mg,10,34,Within range
+r002,male,50,2016-10,2019-01,dhea_s,DHEA-S,Androgens and Metabolites,,1195,ng/mg,30,1500,Within range
+r002,male,50,2016-10,2019-01,androsterone,Androsterone,Androgens and Metabolites,,1461,ng/mg,500,3000,Within range
+r002,male,50,2016-10,2019-01,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,783,ng/mg,400,1500,Within range
+r002,male,50,2016-10,2019-01,testosterone,Testosterone,Androgens and Metabolites,,46.8,ng/mg,25,115,Within range
+r002,male,50,2016-10,2019-01,5a_dht,5a-DHT,Androgens and Metabolites,,7.9,ng/mg,5,25,Low end of range
+r002,male,50,2016-10,2019-01,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,35.4,ng/mg,30,250,Low end of range
+r002,male,50,2016-10,2019-01,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,57.7,ng/mg,40,250,Low end of range
+r002,male,50,2016-10,2019-01,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,35.6,ng/mg,25,115,Low end of range
+r002,male,50,2016-10,2019-01,creatinine_a_waking,Creatinine A (Waking),Creatinine,,1.1,mg/ml,0.3,3,Within range
+r002,male,50,2016-10,2019-01,creatinine_b_morning,Creatinine B (Morning),Creatinine,,0.93,mg/ml,0.3,3,Within range
+r002,male,50,2016-10,2019-01,creatinine_c_afternoon,Creatinine C (Afternoon),Creatinine,,0.9,mg/ml,0.3,3,Within range
+r002,male,50,2016-10,2019-01,creatinine_d_night,Creatinine D (Night),Creatinine,,1.13,mg/ml,0.3,3,Within range
+r002,male,50,2016-10,2019-01,cortisol_a_waking,Cortisol A (Waking),Daily Free Cortisol and Cortisone,,54.9,ng/mg,18,80,Within range
+r002,male,50,2016-10,2019-01,cortisol_b_morning,Cortisol B (Morning),Daily Free Cortisol and Cortisone,,68.7,ng/mg,50,200,Low end of range
+r002,male,50,2016-10,2019-01,cortisol_c_afternoon,Cortisol C (Afternoon),Daily Free Cortisol and Cortisone,,26.6,ng/mg,13,55,Within range
+r002,male,50,2016-10,2019-01,cortisol_d_night,Cortisol D (Night),Daily Free Cortisol and Cortisone,,21.1,ng/mg,0,25,High end of range
+r002,male,50,2016-10,2019-01,cortisone_a_waking,Cortisone A (Waking),Daily Free Cortisol and Cortisone,,162.6,ng/mg,50,140,Above range
+r002,male,50,2016-10,2019-01,cortisone_b_morning,Cortisone B (Morning),Daily Free Cortisol and Cortisone,,177.8,ng/mg,100,240,Within range
+r002,male,50,2016-10,2019-01,cortisone_c_afternoon,Cortisone C (Afternoon),Daily Free Cortisol and Cortisone,,149.3,ng/mg,40,115,Above range
+r002,male,50,2016-10,2019-01,cortisone_d_night,Cortisone D (Night),Daily Free Cortisol and Cortisone,,94.4,ng/mg,0,70,Above range
+r002,male,50,2016-10,2019-01,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,171.3,ng/mg,100,310,Within range
+r002,male,50,2016-10,2019-01,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,584.1,ng/mg,250,500,Above range
+r002,male,50,2016-10,2019-01,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,1961,ng/mg,1750,4000,Low end of range
+r002,male,50,2016-10,2019-01,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,419,ng/mg,175,700,Within range
+r002,male,50,2016-10,2019-01,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,2835,ng/mg,2350,5800,Low end of range
+r002,male,50,2016-10,2019-01,metabolized_cortisol_thf_the,Metabolized Cortisol (THF+THE),Cortisol Metabolites and DHEA-S,,5215,ng/mg,4550,10000,Low end of range
+r002,male,50,2016-10,2019-01,methylmalonate_mma,Methylmalonate (MMA),Vitamin B12 Marker (may be deficient if high),,1.4,ug/mg,0,3,Within range
+r002,male,50,2016-10,2019-01,xanthurenate,Xanthurenate,Vitamin B6 Markers (may be deficient if high),,0.8,ug/mg,0,2.1,Within range
+r002,male,50,2016-10,2019-01,kynurenate,Kynurenate,Vitamin B6 Markers (may be deficient if high),,3.5,ug/mg,0,9.3,Within range
+r002,male,50,2016-10,2019-01,pyroglutamate,Pyroglutamate,Glutathione Marker (may be deficient if low or high),,44.1,ug/mg,43,85,Low end of range
+r002,male,50,2016-10,2019-01,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,5.3,ug/mg,4.8,19,Low end of range
+r002,male,50,2016-10,2019-01,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,3.1,ug/mg,2.8,8,Low end of range
+r002,male,50,2016-10,2019-01,melatonin_waking,Melatonin* (Waking),Melatonin (*measured as 6-OH-Melatonin-Sulfate),,61.2,ng/mg,10,85,Within range
+r002,male,50,2016-10,2019-01,8_ohdg_waking,8-OHdG (Waking),"Oxidative Stress / DNA Damage, measured as 8-Hydroxy-2-deoxyguanosine (8-OHdG)",,2.8,ng/mg,0,8.8,Within range
+r004,female,37,2016-10,2018-03,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,196,ng/mg,600,2000,Below luteal range
+r004,female,37,2016-10,2018-03,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,112,ng/mg,200,740,Below luteal range
+r004,female,37,2016-10,2018-03,estrone_e1,Estrone(E1),Estrogens and Metabolites,,28.2,ng/mg,12,26,Above luteal range
+r004,female,37,2016-10,2018-03,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,5.1,ng/mg,1.8,4.5,Above luteal range
+r004,female,37,2016-10,2018-03,estriol_e3,Estriol(E3),Estrogens and Metabolites,,22.5,ng/mg,5,18,Above luteal range
+r004,female,37,2016-10,2018-03,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,4.8,ng/mg,5.1,13.1,Below luteal range
+r004,female,37,2016-10,2018-03,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.8,ng/mg,0,1.8,Within luteal range
+r004,female,37,2016-10,2018-03,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,4.7,ng/mg,0.7,2.6,Above luteal range
+r004,female,37,2016-10,2018-03,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.8,ng/mg,2.5,6.5,Below luteal range
+r004,female,37,2016-10,2018-03,2_oh_e2,2-OH-E2,Estrogens and Metabolites,,0.19,ng/mg,0,1.2,Low end of luteal range
+r004,female,37,2016-10,2018-03,4_oh_e2,4-OH-E2,Estrogens and Metabolites,,0.2,ng/mg,0.15,0.5,Low end of luteal range
+r004,female,37,2016-10,2018-03,2_methoxy_e2,2-Methoxy-E2,Estrogens and Metabolites,,0.3,ng/mg,0.3,0.7,Low end of luteal range
+r004,female,37,2016-10,2018-03,dhea_s,DHEA-S,Androgens and Metabolites,,26,ng/mg,20,750,Low end of range
+r004,female,37,2016-10,2018-03,androsterone,Androsterone,Androgens and Metabolites,,1810,ng/mg,200,1650,Above range
+r004,female,37,2016-10,2018-03,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,680,ng/mg,200,1000,Within range
+r004,female,37,2016-10,2018-03,testosterone,Testosterone,Androgens and Metabolites,,1.5,ng/mg,2.3,14,Below range
+r004,female,37,2016-10,2018-03,5a_dht,5a-DHT,Androgens and Metabolites,,7.2,ng/mg,0,6.6,Above range
+r004,female,37,2016-10,2018-03,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,42,ng/mg,12,30,Above range
+r004,female,37,2016-10,2018-03,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,32,ng/mg,20,75,Within range
+r004,female,37,2016-10,2018-03,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,8.8,ng/mg,2.3,14,Within range
+r004,female,37,2016-10,2018-03,creatinine_a_waking,Creatinine A (Waking),Creatinine,,0.4,mg/ml,0.2,2,Within range
+r004,female,37,2016-10,2018-03,creatinine_b_morning,Creatinine B (Morning),Creatinine,,0.51,mg/ml,0.2,2,Within range
+r004,female,37,2016-10,2018-03,creatinine_c_afternoon,Creatinine C (Afternoon),Creatinine,,0.92,mg/ml,0.2,2,Within range
+r004,female,37,2016-10,2018-03,creatinine_d_night,Creatinine D (Night),Creatinine,,1.01,mg/ml,0.2,2,Within range
+r004,female,37,2016-10,2018-03,cortisol_a_waking,Cortisol A (Waking),Daily Free Cortisol and Cortisone,,12,ng/mg,12,55,Low end of range
+r004,female,37,2016-10,2018-03,cortisol_b_morning,Cortisol B (Morning),Daily Free Cortisol and Cortisone,,28,ng/mg,38,155,Below range
+r004,female,37,2016-10,2018-03,cortisol_c_afternoon,Cortisol C (Afternoon),Daily Free Cortisol and Cortisone,,9.4,ng/mg,7.3,30,Low end of range
+r004,female,37,2016-10,2018-03,cortisol_d_night,Cortisol D (Night),Daily Free Cortisol and Cortisone,,2.6,ng/mg,0,14,Low end of range
+r004,female,37,2016-10,2018-03,cortisone_a_waking,Cortisone A (Waking),Daily Free Cortisol and Cortisone,,30.2,ng/mg,40,120,Below range
+r004,female,37,2016-10,2018-03,cortisone_b_morning,Cortisone B (Morning),Daily Free Cortisol and Cortisone,,61.2,ng/mg,90,230,Below range
+r004,female,37,2016-10,2018-03,cortisone_c_afternoon,Cortisone C (Afternoon),Daily Free Cortisol and Cortisone,,21.4,ng/mg,32,95,Below range
+r004,female,37,2016-10,2018-03,cortisone_d_night,Cortisone D (Night),Daily Free Cortisol and Cortisone,,16.2,ng/mg,0,55,Within range
+r004,female,37,2016-10,2018-03,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,52,ng/mg,80,230,Below range
+r004,female,37,2016-10,2018-03,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,129,ng/mg,220,450,Below range
+r004,female,37,2016-10,2018-03,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,400,ng/mg,75,370,Above range
+r004,female,37,2016-10,2018-03,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2500,ng/mg,1050,2500,Above range
+r004,female,37,2016-10,2018-03,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,3030,ng/mg,1550,3800,Within range
+r004,female,37,2016-10,2018-03,metabolized_cortisol_thf_the,Metabolized Cortisol (THF+THE),Cortisol Metabolites and DHEA-S,,5930,ng/mg,2750,6500,High end of range
+r004,female,37,2016-10,2018-03,methylmalonate_mma,Methylmalonate (MMA),Vitamin B12 Marker (may be deficient if high),,1.2,ug/mg,0,2.8,Within range
+r004,female,37,2016-10,2018-03,xanthurenate,Xanthurenate,Vitamin B6 Marker (may be deficient if high),,6.8,ug/mg,0,1.6,Above range
+r004,female,37,2016-10,2018-03,pyroglutamate,Pyroglutamate,Glutathione Marker (may be deficient if low or high),,23.2,ug/mg,37,70,Below range
+r004,female,37,2016-10,2018-03,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,5.6,ug/mg,4.5,13,Low end of range
+r004,female,37,2016-10,2018-03,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,4.8,ug/mg,2.7,6.4,Within range
+r004,female,37,2016-10,2018-03,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5HIAA),Serotonin Metabolite,,16,ug/mg,3,7.5,Above range
+r004,female,37,2016-10,2018-03,melatonin_waking,Melatonin* (Waking),Melatonin (*measured as 6-OH-Melatonin-Sulfate),,18.2,ng/mg,10,85,Low end of range
+r004,female,37,2016-10,2018-03,8_ohdg_waking,8-OHdG (Waking),"Oxidative Stress / DNA Damage, measured as 8-Hydroxy-2-deoxyguanosine (8-OHdG)",,4.3,ng/mg,0,5.2,High end of range
+
