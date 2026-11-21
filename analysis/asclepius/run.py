@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pandas as pd
 
+from asclepius.cluster import count_text
 from asclepius.compare import BOOTSTRAP, PERMUTATIONS, compare_groups
 from asclepius.dataset import LabDataset
 from asclepius.ratios import STATUS, compare_ratios
@@ -135,7 +136,7 @@ def run_analysis(
         n = int((data.records["group"] == group).sum())
         if 0 < n < settings.min_group_size:
             raise GroupTooSmall(
-                f"Refused: the group {group!r} has {n} reports, and a comparison needs at least "
+                f"Refused: the group {group!r} has {count_text(n)} reports, and a comparison needs at least "
                 f"{settings.min_group_size} in each group (spec S4, {settings.status})."
             )
     table, skipped = group_tests(data, group_a, group_b, settings)

@@ -84,7 +84,7 @@ def test_a_dataset_file_goes_to_a_finished_run(app, tmp_path):
             assert response.headers["Content-Disposition"].startswith("attachment; filename=")
             content = response.read().decode()
         if name == "findings.csv":
-            rows = read_findings_csv(content)
+            rows = [r for r in read_findings_csv(content) if r["row"] == "finding"]
             assert len(rows) == sum(len(s["findings"]) for s in findings["sections"])
         else:
             assert 'id="run-record"' in content

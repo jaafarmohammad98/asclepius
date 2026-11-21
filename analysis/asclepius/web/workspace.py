@@ -48,6 +48,7 @@ ROLES = ("reports", "metadata", "export")  # extractor CSVs, the metadata file, 
 WAITING, RUNNING = "waiting", "running"
 DONE, REFUSED, FAILED, NOT_BUILT = "done", "refused", "failed", "not built yet"
 IDLE, FINISHED = "idle", "finished"  # a run's state, with RUNNING
+FAILED_EXPORTED = "Unexpected error; the details are shown in the app only."
 
 
 class LoadError(ValueError):
@@ -221,31 +222,40 @@ class Workspace:
             results = dict(self.results)
         return findings_view(self.data, steps, results)
 
-    def run_record(self) -> dict[str, object]:
-        """The finished run's record (`asclepius.record.run_record`), with `steps`: each step's
-        name, state and message, and the record of the analysis it ran, if it has one. Raises
-        `RunError` until a run has finished."""
-        with self._lock:
-            if self.record is None or self.running():
-                raise RunError("Run the analysis, and let it finish, before exporting.")
-            steps = []
-            for step in self.steps:
-                entry: dict[str, object] = {"name": step.name, "state": step.state, "message": step.message}
-                made = step_record(self.results.get(step.name))
-                if made is not None:
-                    entry["record"] = made
-                steps.append(entry)
-            return {**self.record, "steps": steps}
+    def export_record(self) -> dict[str, object]:
+        """The finished run's record, as the exports carry it (`exported`)."""
+        return self._exported()[1]
 
     def export_csv(self) -> str:
         """The finished run's findings as CSV (`asclepius.web.export`)."""
-        record = self.run_record()
-        return export.findings_csv(self.findings(), record)
+        return export.findings_csv(*self._exported())
 
     def export_report(self) -> str:
         """The finished run's report as one HTML file (`asclepius.web.export`)."""
-        record = self.run_record()
-        return export.report_html(self.findings(), record)
+        return export.report_html(*self._exported())
+
+    def _exported(self) -> tuple[dict[str, object], dict[str, object]]:
+        """The finished run's findings view and record, taken together so both are of one run.
+
+        The record is the run's (`asclepius.record.run_record`) with `steps`: each step's name,
+        state and message, and the record of the analysis it ran, if it has one. A failed step's
+        message is the error's own text, which can name a file or a value, so the exports say only
+        that it failed. Raises `RunError` until a run has finished."""
+        with self._lock:
+            if self.record is None or self.running():
+                raise RunError("Run the analysis, and let it finish, before exporting.")
+            steps = [
+                replace(s, message=FAILED_EXPORTED) if s.state == FAILED else replace(s) for s in self.steps
+            ]
+            data, results, record = self.data, dict(self.results), self.record
+        entries = []
+        for step in steps:
+            entry: dict[str, object] = {"name": step.name, "state": step.state, "message": step.message}
+            made = step_record(results.get(step.name))
+            if made is not None:
+                entry["record"] = made
+            entries.append(entry)
+        return findings_view(data, steps, results), {**record, "steps": entries}
 
     def status(self) -> dict[str, object]:
         """The latest run: its state (`idle`, `running`, `finished`), and each step's state and message."""

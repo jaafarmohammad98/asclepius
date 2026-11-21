@@ -20,30 +20,25 @@ from typing import Any
 
 from asclepius.run import PROVISIONAL
 from asclepius.selfreport import LABEL as SELF_REPORT_LABEL
-from asclepius.web.findings import COUNTS, FEW, SHOWN_COLUMNS, ZONES
+from asclepius.web.findings import COUNTS, FEW, SHOWN_COLUMNS, STATISTICS, ZONES
 
 ZONE_COLUMNS = tuple(f"zone_{z}" for z in ZONES)
-CSV_COLUMNS = ("section", *SHOWN_COLUMNS, *ZONE_COLUMNS, "labels", "tool", "dataset_fingerprint")
-INTEGERS = frozenset((*COUNTS, *ZONE_COLUMNS))
-FLOATS = frozenset(
-    (
-        "median_a",
-        "median_b",
-        "share_a",
-        "share_b",
-        "share_above",
-        "share_below",
-        "median_position",
-        "effect_size",
-        "ci_low",
-        "ci_high",
-        "p_value",
-        "q_value",
-        "tier_a_effect_size",
-        "tier_a_ci_low",
-        "tier_a_ci_high",
-    )
+# `row` is `finding`, or `statement` for a section with no findings, so every step is in the file
+CSV_COLUMNS = (
+    "row",
+    "section",
+    "statement",
+    *SHOWN_COLUMNS,
+    *ZONE_COLUMNS,
+    "labels",
+    "tool",
+    "dataset_fingerprint",
+    "run_date",
+    "settings",
 )
+FINDING, STATEMENT = "finding", "statement"
+INTEGERS = frozenset((*COUNTS, *ZONE_COLUMNS))
+FLOATS = frozenset(STATISTICS)
 
 
 def labels_of(section: dict[str, Any], finding: dict[str, Any] | None = None) -> list[str]:
@@ -59,18 +54,28 @@ def labels_of(section: dict[str, Any], finding: dict[str, Any] | None = None) ->
 
 
 def findings_rows(view: dict[str, Any], record: dict[str, Any]) -> list[dict[str, object]]:
-    """One CSV row per finding of `view`, in the page's order, with the versions of `record`."""
+    """One CSV row per finding of `view`, in the page's order, each with its section's statement
+    ("nothing reliable yet" when it is, spec S8) and the versions and settings of `record` (S7). A
+    section with no findings, or that did not finish, has one `statement` row saying why."""
+    run = {
+        "tool": record["tool"],
+        "dataset_fingerprint": record["dataset"]["fingerprint"],
+        "run_date": record.get("date"),
+        "settings": json.dumps(record.get("settings", {}), sort_keys=True, allow_nan=False),
+    }
     rows = []
     for section in view["sections"]:
+        said = section.get("statement") if section["state"] == "done" else None
+        said = said or f"{section['state']}: {section.get('message') or 'no findings'}"
+        head = {"section": section["kind"], "statement": said}
         for finding in section["findings"]:
-            row: dict[str, object] = {"section": section["kind"]}
+            row: dict[str, object] = {"row": FINDING, **head}
             row |= {c: finding.get(c) for c in SHOWN_COLUMNS}
             zones = finding.get("zones") or {}
             row |= {f"zone_{z}": zones.get(z) for z in ZONES}
-            row["labels"] = "; ".join(labels_of(section, finding))
-            row["tool"] = record["tool"]
-            row["dataset_fingerprint"] = record["dataset"]["fingerprint"]
-            rows.append(row)
+            rows.append(row | {"labels": "; ".join(labels_of(section, finding)), **run})
+        if not section["findings"]:
+            rows.append({"row": STATEMENT, **head, "labels": "; ".join(labels_of(section)), **run})
     return rows
 
 
@@ -80,7 +85,7 @@ def findings_csv(view: dict[str, Any], record: dict[str, Any]) -> str:
     writer = csv.DictWriter(out, CSV_COLUMNS, lineterminator="\n")
     writer.writeheader()
     for row in findings_rows(view, record):
-        writer.writerow({k: _cell(k, v) for k, v in row.items()})
+        writer.writerow({k: _cell(k, row.get(k)) for k in CSV_COLUMNS})
     return out.getvalue()
 
 
@@ -165,6 +170,7 @@ def _pct(x: object) -> str:
 
 
 def _side_n(side: dict[str, Any]) -> str:
+    """A plot side's size; "<5" (fewer than 5) where the label is short, as on the page."""
     return "<5" if side.get("n") is None else str(side["n"])
 
 
@@ -354,8 +360,15 @@ def _generic_table(rows: list[dict[str, Any]]) -> str:
     if not rows:
         return ""
     head = list(rows[0])
-    cells = [[_e(_num(r[k]) if isinstance(r.get(k), float) else r.get(k)) for k in head] for r in rows]
+    cells = [[_e(_generic_cell(k, r.get(k))) for k in head] for r in rows]
     return _table([_e(h.replace("_", " ")) for h in head], cells, text_columns=1)
+
+
+def _generic_cell(key: str, value: object) -> object:
+    """A summary cell: a hidden count says "fewer than 5" (spec S11), another missing value "–"."""
+    if value is None:
+        return FEW if key == "n" or key.startswith("n_") else "–"
+    return _num(value) if isinstance(value, float) else value
 
 
 def _refused(refused: list[dict[str, Any]]) -> str:
@@ -399,10 +412,7 @@ def _section_html(s: dict[str, Any]) -> str:
         parts.append(f"<p>{_e(clusters.get('statement'))}</p>")
         if clusters.get("reason"):
             parts.append(f'<p class="muted">{_e(clusters["reason"])}</p>')
-        sizes = [
-            {"cluster": c["cluster"], "sex": c["sex"], "patients": _count(c["n"])}
-            for c in clusters.get("sizes", [])
-        ]
+        sizes = [{"cluster": c["cluster"], "sex": c["sex"], "n": c["n"]} for c in clusters.get("sizes", [])]
         parts.append(_generic_table(sizes))
     if s.get("summary"):
         parts.append(f"<h3>Pattern per marker (reference: {_e(s.get('reference'))})</h3>")

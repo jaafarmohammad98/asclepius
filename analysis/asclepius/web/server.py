@@ -37,9 +37,9 @@ from asclepius.web.workspace import ROLES, LoadError, RunError, Workspace
 PAGE = Path(__file__).parent / "index.html"
 DEFAULT_PORT = 8765
 LOCAL_HOSTS = ("127.0.0.1", "localhost")
-EXPORTS = {  # path -> file suffix and type
-    "/api/export/findings.csv": ("csv", "text/csv; charset=utf-8"),
-    "/api/export/report.html": ("html", "text/html; charset=utf-8"),
+EXPORTS = {  # path -> the file's suffix, its type and the workspace method that makes it
+    "/api/export/findings.csv": ("csv", "text/csv; charset=utf-8", Workspace.export_csv),
+    "/api/export/report.html": ("html", "text/html; charset=utf-8", Workspace.export_report),
 }
 
 
@@ -129,11 +129,11 @@ class Handler(BaseHTTPRequestHandler):
     def _export(self, path: str) -> None:
         """A finished run's export, as a file to save, named by the dataset's fingerprint."""
         workspace = self.server.workspace
-        suffix, content_type = EXPORTS[path]
+        suffix, content_type, make = EXPORTS[path]
         try:
             with self.server.lock:  # no load or clear between the export and its name
-                content = workspace.export_csv() if suffix == "csv" else workspace.export_report()
-                fingerprint = workspace.data.fingerprint[:12] if workspace.data is not None else "run"
+                content = make(workspace)
+                fingerprint = str(getattr(workspace.data, "fingerprint", ""))[:12]
         except RunError as error:
             self._json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
             return

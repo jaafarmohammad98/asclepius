@@ -548,12 +548,14 @@ Each step's one-line statement is shown, and when the run finishes, its findings
    is no one, is shown).
 
 5. **Export.** Once a run has finished, two downloads take it into a paper or to a colleague:
-   - **Findings (CSV)** (`GET /api/export/findings.csv`): one row per finding the page shows,
-     every section in run order (`section` names it), with the same columns and the same hidden
-     counts. Reference-range counts are `zone_below`, `zone_within`, `zone_above` and
-     `zone_unclear`. Every row names the `tool` version and the `dataset_fingerprint`, and its
-     `labels`: "provisional, needs expert review" always, "self-report, no controls" on
-     self-report rows. An empty cell is a hidden or missing value. Statistics are written exactly,
+   - **Findings (CSV)** (`GET /api/export/findings.csv`): one row per finding the page shows
+     (`row` is `finding`), every section in run order (`section` names it, `statement` gives its
+     statement, "nothing reliable yet" when it is), with the same columns and the same hidden
+     counts. A section with no findings, or that did not finish, has one `statement` row saying
+     why. Reference-range counts are `zone_below`, `zone_within`, `zone_above` and
+     `zone_unclear`. Every row names the `tool` version, the `dataset_fingerprint`, the
+     `run_date` and the run's `settings` (as JSON), and its `labels`: "provisional, needs expert
+     review" always, "self-report, no controls" on self-report rows. An empty cell is a hidden or missing value. Statistics are written exactly,
      so `asclepius.web.export.read_findings_csv` reads the file back to the values shown: counts as
      whole numbers, statistics as floats, empty cells as None.
    - **Report (HTML)** (`GET /api/export/report.html`): one self-contained file (no links to the
@@ -566,7 +568,10 @@ Each step's one-line statement is shown, and when the run finishes, its findings
      clustering's for subgroups; the reference-range positions, being descriptions, have none).
      Print it from the browser for a PDF.
 
-   Nothing can be exported before a run has finished.
+   Nothing can be exported before a run has finished. A failed step's error text can name a
+   file, so the exports say only "Unexpected error; the details are shown in the app only." The
+   refusal messages say "fewer than 5" for a group or patient count below 5 (S11), on the page and
+   in the exports.
 
 A run of 100 PSSD, 40 PFS and 100 controls takes about 7 seconds; the full
 r/PSSD export loads (3,153 authors) and runs in about 3. The logic is

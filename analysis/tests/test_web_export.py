@@ -8,6 +8,7 @@ from test_web import FAST, add_export, add_lab, finished, lab_files
 
 from asclepius import synthetic
 from asclepius.record import tool_version
+from asclepius.web import workspace as workspace_module
 from asclepius.web.export import read_findings_csv
 from asclepius.web.workspace import RunError, Workspace
 
@@ -44,7 +45,7 @@ def shown_findings(view):
 @pytest.mark.parametrize("run", ["lab_run", "self_report_run"])
 def test_the_csv_export_reloads_without_loss(run, request):
     workspace = request.getfixturevalue(run)
-    rows = read_findings_csv(workspace.export_csv())
+    rows = [r for r in read_findings_csv(workspace.export_csv()) if r["row"] == "finding"]
     expected = list(shown_findings(workspace.findings()))
     assert expected, "the run has findings to export"
     assert len(rows) == len(expected)
@@ -66,8 +67,25 @@ def test_every_csv_row_names_the_tool_and_dataset_versions_and_its_labels(run, r
         assert row["tool"] == tool_version()
         assert row["dataset_fingerprint"] == workspace.data.fingerprint
         assert "provisional, needs expert review" in row["labels"]
+        assert json.loads(row["settings"]) == workspace.export_record()["settings"]
+        assert row["run_date"] == workspace.export_record()["date"]
         is_self_report = run == "self_report_run"
         assert ("self-report, no controls" in row["labels"]) == is_self_report
+
+
+@pytest.mark.parametrize("run", ["lab_run", "self_report_run"])
+def test_every_step_is_in_the_csv_with_its_statement(run, request):
+    """A step with nothing reliable says so, and one with no findings, or not built, says why (S8)."""
+    workspace = request.getfixturevalue(run)
+    rows = read_findings_csv(workspace.export_csv())
+    for s in workspace.findings()["sections"]:
+        mine = [r for r in rows if r["section"] == s["kind"]]
+        assert mine, s["kind"]
+        if s["state"] == "done":
+            assert {r["statement"] for r in mine} == {s["statement"]}
+        else:
+            assert [r["row"] for r in mine] == ["statement"]
+            assert mine[0]["statement"] == f"{s['state']}: {s['message']}"
 
 
 def report_record(html):
@@ -83,7 +101,7 @@ def test_the_report_contains_the_run_record_versions_and_labels(run, request):
     workspace = request.getfixturevalue(run)
     html = workspace.export_report()
     record = report_record(html)
-    assert record == workspace.run_record()
+    assert record == workspace.export_record()
     assert record["tool"] == tool_version()
     assert record["dataset"]["fingerprint"] == workspace.data.fingerprint
     assert [s["name"] for s in record["steps"]] == [s.name for s in workspace.steps]
@@ -106,7 +124,7 @@ def test_the_lab_report_has_each_finding_and_its_plot(lab_run):
 
 
 def test_the_report_records_which_step_ran_which_analysis(lab_run):
-    steps = {s["name"]: s for s in lab_run.run_record()["steps"]}
+    steps = {s["name"]: s for s in lab_run.export_record()["steps"]}
     compare = steps["Compare PSSD with healthy control"]
     assert compare["state"] == "done"
     assert compare["record"]["groups"] == ["PSSD", "healthy control"]
@@ -122,3 +140,39 @@ def test_nothing_is_exported_before_a_run_has_finished(tmp_path):
         workspace.export_csv()
     with pytest.raises(RunError, match="before exporting"):
         workspace.export_report()
+
+
+def test_a_refused_step_does_not_export_a_count_below_5(tmp_path):
+    """A group of 3 refuses the subgroups (too few patients) and the comparison (too small); the
+    reasons say "fewer than 5", in the report and its record (spec S11)."""
+    workspace = Workspace(tmp_path / "work")
+    add_lab(workspace, lab_files(tmp_path, groups={"PSSD": 3, "healthy control": 40}))
+    workspace.load()
+    workspace.start_run("PSSD", "healthy control", settings=FAST)
+    finished(workspace)
+    html = workspace.export_report()
+    messages = [s["message"] for s in report_record(html)["steps"]]
+    assert any("Refused: fewer than 5 patients" in m for m in messages)
+    assert any("'PSSD' has fewer than 5 reports" in m for m in messages)
+    assert " 3 patients" not in html and "has 3 reports" not in html
+    assert " 3 patients" not in workspace.export_csv()
+
+
+def test_an_unexpected_error_is_not_exported_word_for_word(tmp_path, monkeypatch):
+    """An error's text can name a file or a value, so the exports say only that the step failed."""
+
+    def broken(data):
+        raise OSError("/Users/someone/patients/jane-doe.csv: unreadable")
+
+    monkeypatch.setattr(workspace_module, "lab_range_findings", broken)
+    workspace = Workspace(tmp_path / "work")
+    add_lab(workspace, lab_files(tmp_path))
+    workspace.load()
+    workspace.start_run("PSSD", "healthy control", settings=FAST)
+    status = finished(workspace)
+    assert "jane-doe" in status["steps"][-1]["message"]  # the page, on this computer, says why
+    html, csv_text = workspace.export_report(), workspace.export_csv()
+    assert "jane-doe" not in html and "jane-doe" not in csv_text
+    step = report_record(html)["steps"][-1]
+    assert step["state"] == "failed"
+    assert step["message"] == "Unexpected error; the details are shown in the app only."

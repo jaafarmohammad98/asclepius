@@ -160,9 +160,9 @@ def cluster_patients(
     records = records[has_sex]
     n, no_sex = len(records), int((~has_sex).sum())
     if n < settings.min_patients:
-        left_out = f" ({_count_text(no_sex)} more left out for having no sex)" if no_sex else ""
+        left_out = f" ({count_text(no_sex)} more left out for having no sex)" if no_sex else ""
         raise TooFewPatients(
-            f"Refused: {n} patients{left_out}, and clustering needs at least {settings.min_patients} "
+            f"Refused: {count_text(n)} patients{left_out}, and clustering needs at least {settings.min_patients} "
             f"(spec S4, {settings.status})."
         )
     scores, dropped, filled, names = _scores(data, records, settings)
@@ -274,7 +274,8 @@ def _shown(count: int) -> int | None:
     return count if count >= MIN_SHOWN else None
 
 
-def _count_text(count: int) -> str:
+def count_text(count: int) -> str:
+    """`count` in words for a message: the number, or "fewer than 5" below 5 (spec S11)."""
     return str(count) if count >= MIN_SHOWN else f"fewer than {MIN_SHOWN}"
 
 
