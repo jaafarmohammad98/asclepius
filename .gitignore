@@ -9,3 +9,8 @@ samples/private/
 *.pdf
 docs/
 dist/
+
+# harvested Reddit health posts + author salt: local only
+harvester/data/
+harvester/.venv/
+__pycache__/
