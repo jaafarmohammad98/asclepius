@@ -12,7 +12,8 @@ from asclepius.web.workspace import LoadError, RunError, Workspace
 def lab_files(tmp_path, **options):
     """A synthetic extractor CSV and its metadata file, as a researcher would pick them."""
     options.setdefault("groups", {"PSSD": 40, "healthy control": 40})
-    return synthetic.write_lab_reports(tmp_path / "lab", seed=1, **options)
+    options.setdefault("seed", 1)
+    return synthetic.write_lab_reports(tmp_path / "lab", **options)
 
 
 def add_lab(workspace, out):
@@ -34,7 +35,9 @@ def test_review_counts_lab_records_per_group_sex_and_tier(tmp_path):
     cells = {(c["group"], c["sex"], c["tier"]): c["records"] for c in review["records"]}
     assert set(cells) == set(expected.index)
     for key, n in expected.items():
-        assert cells[key] == (n if n >= 5 else None)  # no count below 5 is shown (spec S11)
+        assert cells[key] in (n, None)
+        if n < 5:
+            assert cells[key] is None  # no count below 5 is shown (spec S11)
     assert review["choices"] == ["PSSD", "healthy control"]
 
 
@@ -172,3 +175,64 @@ def test_a_run_needs_a_loaded_dataset_and_two_different_groups(tmp_path):
     with pytest.raises(RunError, match="two different groups"):
         workspace.start_run("PSSD", "PSSD")
     assert workspace.status()["state"] == "idle"
+
+
+def test_a_total_does_not_give_away_the_hidden_counts_beside_it(tmp_path):
+    """A total minus the counts shown would give back a hidden count below 5 (spec S11), so the
+    counts hidden beside a total add up to 0 or at least 5."""
+    out = lab_files(tmp_path, groups={"PSSD": 40, "healthy control": 40, "PFS": 12})
+    workspace = Workspace(tmp_path / "work")
+    add_lab(workspace, out)
+    review = workspace.load()
+
+    records = load_lab_reports([out.reports], metadata=out.metadata).records
+    true = records.groupby(["group", "sex", "tier"]).size()
+    extra = 0
+    for group, n in records["group"].value_counts().items():
+        assert {r["group"]: r["records"] for r in review["groups"]}[group] == n
+        cells = [c for c in review["records"] if c["group"] == group]
+        hidden = sum(int(true[(group, c["sex"], c["tier"])]) for c in cells if c["records"] is None)
+        assert hidden == 0 or hidden >= 5
+        extra += any(c["records"] is None and true[(group, c["sex"], c["tier"])] >= 5 for c in cells)
+    assert extra  # some count of 5 or more had to be hidden too
+
+
+def test_the_self_report_total_does_not_give_away_a_small_condition(tmp_path):
+    out = synthetic.write_self_reports(tmp_path / "sr", authors=300, seed=1)
+    workspace = Workspace(tmp_path / "work")
+    add_export(workspace, out.export)
+    review = workspace.load()
+
+    counts = load_self_reports(out.export).authors["condition"].value_counts()
+    assert review["authors"] == counts.sum()
+    hidden = sum(int(counts[c["condition"]]) for c in review["conditions"] if c["authors"] is None)
+    assert hidden == 0 or hidden >= 5
+
+
+def test_subgroups_are_looked_for_among_the_patient_group_picked(tmp_path):
+    workspace = Workspace(tmp_path / "work")
+    add_lab(workspace, lab_files(tmp_path))
+    workspace.load()
+    workspace.start_run("healthy control", "PSSD", settings=FAST)
+    assert "Look for subgroups of PSSD" in steps(finished(workspace))
+
+
+def test_with_no_patient_group_picked_there_are_no_subgroups_to_look_for(tmp_path):
+    workspace = Workspace(tmp_path / "work")
+    add_lab(workspace, lab_files(tmp_path, groups={"SSRI-exposed control": 40, "healthy control": 40}))
+    workspace.load()
+    workspace.start_run("SSRI-exposed control", "healthy control", settings=FAST)
+    step = steps(finished(workspace))["Look for subgroups"]
+    assert step["state"] == "refused" and "PSSD, PFS or PAS" in step["message"]
+
+
+def test_a_second_run_cannot_start_while_one_is_running(tmp_path):
+    workspace = Workspace(tmp_path / "work")
+    add_lab(workspace, lab_files(tmp_path))
+    workspace.load()
+    workspace.start_run("PSSD", "healthy control", settings=FAST)
+    with pytest.raises(RunError, match="already in progress"):
+        workspace.start_run("PSSD", "healthy control", settings=FAST)
+    with pytest.raises(LoadError, match="in progress"):
+        workspace.load()
+    finished(workspace)

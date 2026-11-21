@@ -102,6 +102,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(HTTPStatus.OK, review)
             elif path == "/api/run":
                 choice = json.loads(body or b"{}")
+                if not isinstance(choice, dict):
+                    raise RunError("The run request must name the groups as a JSON object.")
                 workspace.start_run(
                     choice.get("group_a"), choice.get("group_b"), settings=self.server.settings
                 )
@@ -127,8 +129,13 @@ class Handler(BaseHTTPRequestHandler):
         return True
 
     def _body(self) -> bytes:
-        length = int(self.headers.get("Content-Length") or 0)
-        return self.rfile.read(length) if length else b""
+        """The request body. A missing or malformed length reads as no body; the loader then
+        says the file is empty."""
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            return b""
+        return self.rfile.read(length) if length > 0 else b""
 
     def _json(self, status: HTTPStatus, payload: object) -> None:
         self._send(status, json.dumps(payload).encode(), "application/json")

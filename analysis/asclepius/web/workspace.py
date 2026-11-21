@@ -16,7 +16,7 @@ from typing import Any
 
 import pandas as pd
 
-from asclepius.cluster import TooFewPatients, cluster_patients
+from asclepius.cluster import MIN_SHOWN, TooFewPatients, cluster_patients
 from asclepius.dataset import DatasetError, LabDataset, load_lab_reports
 from asclepius.metadata import GROUPS
 from asclepius.refrange import lab_range_findings, self_report_range_findings
@@ -25,7 +25,7 @@ from asclepius.selfreport import SelfReportDataset, load_self_reports
 from asclepius.subgroups import link_subgroups
 from asclepius.syndromes import CONTROLS, REFERENCE_RANGE, SYNDROMES, compare_syndromes
 
-MIN_SHOWN = 5  # no count below this is shown (spec S11)
+FEW = f"fewer than {MIN_SHOWN}"  # in place of a count too small to show (spec S11)
 NO_SEX = "not given"
 ROLES = ("reports", "metadata", "export")  # extractor CSVs, the metadata file, a harvester export's tables
 
@@ -34,7 +34,6 @@ ROLES = ("reports", "metadata", "export")  # extractor CSVs, the metadata file, 
 WAITING, RUNNING = "waiting", "running"
 DONE, REFUSED, FAILED, NOT_BUILT = "done", "refused", "failed", "not built yet"
 IDLE, FINISHED = "idle", "finished"  # a run's state, with RUNNING
-REFUSALS = (GroupTooSmall, TooFewPatients)  # the analysis declining, by its rules (spec S4)
 
 
 class LoadError(ValueError):
@@ -43,6 +42,13 @@ class LoadError(ValueError):
 
 class RunError(ValueError):
     """A run cannot start. The message says why, in plain words."""
+
+
+class NoPatients(ValueError):
+    """Subgroups are looked for among patients, and neither group picked is a patient group."""
+
+
+REFUSALS = (GroupTooSmall, TooFewPatients, NoPatients)  # the analysis declining, by its rules (spec S4)
 
 
 @dataclass
@@ -61,6 +67,22 @@ def shown(count: int) -> int | None:
     return int(count) if count >= MIN_SHOWN else None
 
 
+def shown_parts(parts: pd.Series) -> pd.Series:
+    """`parts` of a total that is shown, with every count below 5 hidden (None), and then the next
+    smallest too until the hidden ones add up to 0 or at least 5: otherwise the total minus the
+    parts shown would give a hidden count back (spec S11)."""
+    hidden = parts < MIN_SHOWN
+    for label in parts.sort_values(kind="stable").index:
+        if hidden[label]:
+            continue
+        if not 0 < parts[hidden].sum() < MIN_SHOWN:
+            break
+        hidden[label] = True
+    return pd.Series(
+        [None if h else int(n) for n, h in zip(parts, hidden, strict=True)], index=parts.index, dtype=object
+    )
+
+
 class Workspace:
     """The files picked, the dataset loaded from them, and the latest run."""
 
@@ -76,11 +98,14 @@ class Workspace:
 
     def clear(self) -> None:
         """Forget the files picked and the dataset loaded from them."""
-        for role in ROLES:
-            shutil.rmtree(self.folder / role, ignore_errors=True)
-            self.files[role] = []
-        self.data = None
-        self.steps, self.results = [], {}
+        with self._lock:
+            if self.running():
+                raise LoadError("A run is in progress; wait for it to finish.")
+            for role in ROLES:
+                shutil.rmtree(self.folder / role, ignore_errors=True)
+                self.files[role] = []
+            self.data = None
+            self.steps, self.results = [], {}
 
     def add_file(self, role: str, name: str, content: bytes) -> None:
         """Keep one picked file under its own name (any folder part is dropped), so loading
@@ -103,17 +128,18 @@ class Workspace:
     def load(self) -> dict[str, object]:
         """Load the picked files and return the review: what is in the dataset. Raises
         `LoadError`, in plain words, when they cannot be loaded."""
-        if self.running():
-            raise LoadError("A run is in progress; wait for it to finish before loading other files.")
-        self.data = None
-        self.steps, self.results = [], {}
+        with self._lock:
+            if self.running():
+                raise LoadError("A run is in progress; wait for it to finish before loading other files.")
+            self.data = None
+            self.steps, self.results = [], {}
         reports, metadata, export = (self.files[role] for role in ROLES)
         if not (reports or metadata or export):
             raise LoadError("No files were picked. Pick the dataset files, or a harvester export folder.")
         if export and (reports or metadata):
             raise LoadError(
                 "Lab-report files and a self-report export folder were both picked. The two kinds "
-                "are never pooled (spec): load one kind at a time."
+                "are never pooled (spec, Input): load one kind at a time."
             )
         if metadata and not reports:
             raise LoadError("A metadata file was picked, but no dataset file for it to describe.")
@@ -137,23 +163,23 @@ class Workspace:
         """Start the full analysis of the loaded dataset in the background; `status()` follows it.
         A lab-report run compares `group_a` with `group_b` (self-report runs take no groups)."""
         settings = settings or Settings()
-        if self.data is None:
-            raise RunError("Load a dataset before running the analysis.")
-        if self.running():
-            raise RunError("A run is already in progress.")
-        if isinstance(self.data, SelfReportDataset):
-            steps = self_report_steps(self.data)
-        else:
-            choices = lab_groups(self.data)
-            if group_a is None or group_b is None or group_a not in choices or group_b not in choices:
-                raise RunError(f"Pick two groups from the dataset ({', '.join(choices)}).")
-            if group_a == group_b:
-                raise RunError("Pick two different groups to compare.")
-            steps = lab_steps(self.data, group_a, group_b, settings)
-        with self._lock:
+        with self._lock:  # checked and started at once, so two requests cannot both start a run
+            if self.data is None:
+                raise RunError("Load a dataset before running the analysis.")
+            if self.running():
+                raise RunError("A run is already in progress.")
+            if isinstance(self.data, SelfReportDataset):
+                steps = self_report_steps(self.data)
+            else:
+                choices = lab_groups(self.data)
+                if group_a not in choices or group_b not in choices:
+                    raise RunError(f"Pick two groups from the dataset ({', '.join(choices)}).")
+                if group_a == group_b:
+                    raise RunError("Pick two different groups to compare.")
+                steps = lab_steps(self.data, str(group_a), str(group_b), settings)
             self.steps, self.results = steps, {}
-        self._thread = threading.Thread(target=self._run, daemon=True)
-        self._thread.start()
+            self._thread = threading.Thread(target=self._run, daemon=True)
+            self._thread.start()
 
     def _run(self) -> None:
         for step in self.steps:
@@ -198,10 +224,17 @@ class Workspace:
 def lab_steps(data: LabDataset, group_a: str, group_b: str, settings: Settings) -> list[Step]:
     """Subgroups of `group_a`, the run comparing the two groups (with the subgroup links, so one
     correction covers both), the cross-syndrome comparison and the reference-range positions."""
-    links: list[Any] = [None]  # set by the subgroup step, read by the run
+    patients = [g for g in (group_a, group_b) if g in SYNDROMES]
+    # the subgroup step runs first, so the comparison can correct its links with everything else
+    links: list[Any] = [None]
 
     def subgroups() -> tuple[Any, str]:
-        clusters = cluster_patients(data, groups=[group_a])
+        if not patients:
+            raise NoPatients(
+                f"Subgroups are looked for among patients (PSSD, PFS or PAS), and neither "
+                f"{group_a} nor {group_b} is a patient group."
+            )
+        clusters = cluster_patients(data, groups=patients[:1])
         links[0] = link_subgroups(data, clusters, settings)
         return links[0], links[0].statement
 
@@ -221,7 +254,7 @@ def lab_steps(data: LabDataset, group_a: str, group_b: str, settings: Settings) 
         return found, _placed(found)
 
     return [
-        Step(f"Look for subgroups of {group_a}", subgroups),
+        Step(f"Look for subgroups of {patients[0]}" if patients else "Look for subgroups", subgroups),
         Step(f"Compare {group_a} with {group_b}", compare),
         Step(f"Compare {', '.join(SYNDROMES[:-1])} and {SYNDROMES[-1]}", syndromes),
         Step("Positions within reference ranges", ranges),
@@ -245,7 +278,7 @@ def self_report_steps(data: SelfReportDataset) -> list[Step]:
 
 def _placed(found: Any, what: str = "values") -> str:
     n = shown(len(found.patients))
-    return f"{n if n is not None else 'fewer than 5'} {what} placed in their own reference range"
+    return f"{n if n is not None else FEW} {what} placed in their own reference range"
 
 
 def review(data: LabDataset | SelfReportDataset) -> dict[str, object]:
@@ -264,7 +297,7 @@ def self_report_review(data: SelfReportDataset) -> dict[str, object]:
         "kind": data.kind,
         "label": data.label,
         "authors": shown(len(data.authors)),
-        "conditions": [{"condition": c, "authors": shown(n)} for c, n in counts.items()],
+        "conditions": [{"condition": c, "authors": n} for c, n in shown_parts(counts).items()],
         "excluded": {reason: shown(n) for reason, n in data.excluded.items()},
         "choices": [],
     }
@@ -275,12 +308,14 @@ def lab_review(data: LabDataset) -> dict[str, object]:
     records = data.records.assign(sex=data.records["sex"].fillna(NO_SEX))
     per_group = records["group"].value_counts()
     cells = records.groupby(["group", "sex", "tier"]).size()
+    cells_shown = cells.groupby(level="group", group_keys=False).apply(shown_parts)
     return {
         "kind": data.kind,
         "groups": [{"group": g, "records": shown(n)} for g, n in _in_order(per_group).items()],
-        "records": [{"group": g, "sex": s, "tier": t, "records": shown(n)} for (g, s, t), n in cells.items()],
+        "records": [{"group": g, "sex": s, "tier": t, "records": n} for (g, s, t), n in cells_shown.items()],
         "choices": lab_groups(data),
-        "unmatched": len(data.unmatched) and shown(len(data.unmatched)),  # 0 stays 0
+        # 0 stays 0: no metadata row was left out, and no person is counted
+        "unmatched": shown(len(data.unmatched)) if data.unmatched else 0,
     }
 
 

@@ -95,6 +95,7 @@
     <button id="run-button" type="button">Run the full analysis</button>
     <div id="run-error" class="error" role="alert" hidden></div>
     <div id="progress" hidden>
+      <p><span id="run-label" class="label" hidden></span></p>
       <p id="progress-text" class="muted" aria-live="polite"></p>
       <progress id="progress-bar" value="0" max="1"></progress>
       <ol id="steps" class="steps"></ol>
@@ -105,7 +106,7 @@
 "use strict";
 const $ = (id) => document.getElementById(id);
 const TABLES = ["cases", "causal_drugs", "symptoms", "interventions", "labs"];
-const FEW = "fewer than 5"; // counts below 5 are never shown (spec S11)
+const FEW = "fewer than 5"; // counts below 5 are never shown (spec S11); the server sends them as null
 
 function count(n) { return n === null || n === undefined ? FEW : n.toLocaleString("en"); }
 
@@ -255,6 +256,8 @@ async function follow() {
 
 function showStatus(status) {
   $("progress").hidden = false;
+  $("run-label").hidden = !status.label;
+  $("run-label").textContent = status.label || "";
   $("progress-bar").max = status.total || 1;
   $("progress-bar").value = status.done;
   $("progress-text").textContent = status.state === "finished"

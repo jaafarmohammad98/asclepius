@@ -501,7 +501,9 @@ into a temporary folder that is deleted when the app stops (Ctrl+C).
 2. **Review.** Lab reports: reports per group, and per group, sex and tier, and how many metadata
    rows named no loaded report. Self-reports: authors per condition, and the posts left out for
    failing the evidence check (`evidence_ok` false) or coming from deleted accounts. No count below 5
-   is shown (S11); the page says "fewer than 5".
+   is shown (S11); the page says "fewer than 5". Totals are shown, so when the counts hidden beside a
+   total add up to 1 to 4 (which the total minus the others would give back), the next smallest
+   counts are hidden too, until the hidden ones add up to 5 or more.
 3. **Run.** For lab reports, pick the two groups to compare (PSSD and a control by default). The
    run then goes through its steps with a progress bar, each ending `done`, `refused` (with
    the reason, such as a group under 10), `failed` (an unexpected error, shown on the page) or
@@ -509,7 +511,7 @@ into a temporary folder that is deleted when the app stops (Ctrl+C).
 
 | Lab reports | Self-reports |
 |---|---|
-| Look for subgroups of the first group (`cluster_patients`, `link_subgroups`) | Typed-in lab values within reference ranges |
+| Look for subgroups of the patient group picked, the first if both are (`cluster_patients`, `link_subgroups`); refused with two control groups | Typed-in lab values within reference ranges |
 | Compare the two groups (`run_analysis`, with the subgroup links in one correction) | Drug and symptom profile (not built yet: M3-12) |
 | Compare PSSD, PFS and PAS (`compare_syndromes`; the reference is the control picked, else the reference ranges) | Symptom subgroups (not built yet: M3-13) |
 | Positions within reference ranges (`lab_range_findings`) | Intervention outcomes (not built yet: M3-14) |

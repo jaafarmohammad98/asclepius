@@ -84,3 +84,13 @@ def test_requests_from_other_sites_are_refused(app):
     assert status == 403
     status, _ = call(app + "/api/clear", "POST", b"", {"Origin": "http://evil.example"})
     assert status == 403
+
+
+@pytest.mark.parametrize(
+    ("headers", "body"),
+    [({"Content-Type": "application/json"}, b"[]"), ({"Content-Type": "application/json"}, b"{")],
+)
+def test_a_malformed_run_request_is_answered_in_plain_words(app, headers, body):
+    status, content = call(app + "/api/run", "POST", body, headers)
+    assert status == 400
+    assert "error" in json.loads(content)
