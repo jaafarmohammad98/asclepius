@@ -6,6 +6,7 @@ import {
   batchToCsv,
   batchToJson,
   extractDutch,
+  NO_TABLES_WARNING,
   summariseBatch,
   type Batch,
   type BatchReport,
@@ -20,10 +21,20 @@ GlobalWorkerOptions.workerPort = new PdfWorker();
 // it loads with no connection. Registered unconditionally rather than behind
 // import.meta.env.PROD, which is false when Vite builds under NODE_ENV=test;
 // the dev server has no sw.js, so there the registration simply fails.
+// The page says when that copy is ready, so nobody unplugs too early.
+const offlineNote = document.querySelector<HTMLParagraphElement>("#offline")!;
 if ("serviceWorker" in navigator) {
+  offlineNote.textContent = "Saving a copy of this page for use without internet…";
   navigator.serviceWorker.register("./sw.js").catch(() => {
     // offline use is a convenience; the page works online without it
+    offlineNote.hidden = true;
   });
+  void navigator.serviceWorker.ready.then(() => {
+    offlineNote.dataset.state = "ready";
+    offlineNote.textContent = "Ready to use offline: this page will open and work with the internet switched off.";
+  });
+} else {
+  offlineNote.hidden = true;
 }
 
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
@@ -71,7 +82,9 @@ async function addFiles(files: File[]) {
 function setBusy(busy: boolean, message = "") {
   section.hidden = false;
   input.disabled = busy;
-  csvButton.disabled = jsonButton.disabled = busy || !batch.reports.some((r) => r.record);
+  // a CSV with no read report would be only a header; the JSON still carries the warnings
+  csvButton.disabled = busy || !batch.reports.some((r) => r.state === "read");
+  jsonButton.disabled = busy || !batch.reports.some((r) => r.record);
   if (busy) {
     status.dataset.state = "working";
     status.textContent = message;
@@ -92,12 +105,23 @@ function render() {
     h("ul", {}, ...batch.duplicates.map((group) => h("li", {}, group.join(", ")))),
   );
 
-  reportsBox.replaceChildren(...batch.reports.map((r, i) => renderReport(r, fileNames[i])));
+  reportsBox.replaceChildren(...batch.reports.map((r, i) => renderReport(r, fileNames[i], i)));
 }
 
-function renderReport(r: BatchReport, fileName: string): HTMLElement {
+function removeReport(index: number) {
+  results.splice(index, 1);
+  fileNames.splice(index, 1);
+  if (results.length === 0) return clear();
+  batch = summariseBatch(results);
+  render();
+  setBusy(false);
+}
+
+function renderReport(r: BatchReport, fileName: string, index: number): HTMLElement {
   const card = h("article", { class: "report", "data-state": r.state, "data-id": r.id });
-  card.append(h("h2", {}, `Report ${r.id}`), h("p", { class: "file" }, `File: ${fileName} (the file name is not included in downloads)`));
+  const remove = h("button", { type: "button", class: "quiet", "aria-label": `Remove report ${r.id}` }, "Remove");
+  remove.addEventListener("click", () => removeReport(index));
+  card.append(h("div", { class: "report-head" }, h("h2", {}, `Report ${r.id}`), remove), h("p", { class: "file" }, `File: ${fileName} (the file name is not included in downloads)`));
 
   if (r.state === "failed") {
     card.append(
@@ -128,7 +152,7 @@ function renderReport(r: BatchReport, fileName: string): HTMLElement {
   ];
   card.append(h("dl", { class: "facts" }, ...facts.map(([k, v]) => h("div", {}, h("dt", {}, k), h("dd", {}, v)))));
 
-  const warnings = r.state === "unreadable" ? rec.warnings.filter((w) => !w.startsWith("No result tables")) : rec.warnings;
+  const warnings = r.state === "unreadable" ? rec.warnings.filter((w) => w !== NO_TABLES_WARNING) : rec.warnings;
   if (warnings.length) {
     card.append(
       h("div", { class: "banner warn warnings" }, h("p", {}, h("strong", {}, `Check before trusting this report (${warnings.length})`)), h("ul", {}, ...warnings.map((w) => h("li", {}, w)))),
@@ -209,11 +233,12 @@ window.addEventListener("drop", (e) => e.preventDefault());
 
 csvButton.addEventListener("click", () => download("dutch-records.csv", "text/csv", batchToCsv(batch)));
 jsonButton.addEventListener("click", () => download("dutch-records.json", "application/json", batchToJson(batch)));
-$<HTMLButtonElement>("#clear").addEventListener("click", () => {
+function clear() {
   results = [];
   fileNames = [];
   batch = summariseBatch([]);
   reportsBox.replaceChildren();
   duplicatesBox.hidden = true;
   section.hidden = true;
-});
+}
+$<HTMLButtonElement>("#clear").addEventListener("click", clear);

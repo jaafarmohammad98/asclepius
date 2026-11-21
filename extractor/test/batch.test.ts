@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { batchToCsv, batchToJson, parseDutch, summariseBatch } from "../src/index.ts";
+import { batchToCsv, batchToJson, NO_TABLES_WARNING, parseDutch, summariseBatch } from "../src/index.ts";
 import type { TextLine } from "../src/pdfText.ts";
 
 /** Build a record from invented report text; "|" marks a column gap. */
@@ -52,9 +52,7 @@ describe("summariseBatch", () => {
     const batch = summariseBatch([new Error("x"), report(), unreadable]);
     const json = JSON.parse(batchToJson(batch));
     expect(json.map((r: { id: string }) => r.id)).toEqual(["r002", "r003"]);
-    expect(json[1].record.warnings).toContain(
-      "No result tables could be read. The report may be a scan, or use a layout this version does not support.",
-    );
+    expect(json[1].record.warnings).toContain(NO_TABLES_WARNING);
     expect(batchToCsv(batch).trim().split("\n").slice(1)).toEqual([
       "r002,female,44,2024-03,,testosterone,Testosterone,Androgens and Metabolites,,1.5,ng/mg,2.3,14,Below range",
     ]);

@@ -110,6 +110,9 @@ describe.skipIf(!haveSamples)("built static page", () => {
     await expect(failed.getAttribute("data-state")).resolves.toBe("failed");
     await expect(failed.locator(".banner.bad").textContent()).resolves.toContain("could not be opened");
     await expect(page.textContent("#status")).resolves.toContain("2 could not be read");
+    // nothing was read, so a CSV would be only a header; the JSON still carries the warnings
+    await expect(page.isDisabled("#download-csv")).resolves.toBe(true);
+    await expect(page.isDisabled("#download-json")).resolves.toBe(false);
     await context.close();
   }, 120_000);
 
@@ -120,15 +123,20 @@ describe.skipIf(!haveSamples)("built static page", () => {
     await addFiles(page, [male]); // added again later, in a second drop
     await expect(page.isVisible("#duplicates")).resolves.toBe(true);
     await expect(page.textContent("#duplicates li")).resolves.toBe("r001, r003");
+
+    await page.getByRole("button", { name: "Remove report r003" }).click();
+    await expect(page.locator("article.report").count()).resolves.toBe(2);
+    await expect(page.isHidden("#duplicates")).resolves.toBe(true);
+    const csv = await downloadText(page, "#download-csv");
+    expect(new Set(csv.trim().split("\n").slice(1).map((l) => l.split(",")[0]))).toEqual(new Set(["r001", "r002"]));
     await context.close();
   }, 120_000);
 
   it("opens and reads a report with the network disconnected, once it has been loaded", async (ctx) => {
     if (!browser) return ctx.skip("Google Chrome is not installed");
     const { context, page } = await openPage();
-    await page.evaluate(async () => {
-      await navigator.serviceWorker.ready;
-    });
+    await page.waitForSelector("#offline[data-state=ready]");
+    await expect(page.textContent("#offline")).resolves.toContain("Ready to use offline");
     await context.setOffline(true);
     await page.reload({ waitUntil: "load" });
     await addFiles(page, [male]);

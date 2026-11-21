@@ -237,3 +237,23 @@ tr.category td {
   padding-top: 14px;
   border-bottom: none;
 }
+
+.offline {
+  margin: -12px 0 20px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.offline[data-state="ready"] {
+  color: var(--ok);
+}
+.hint {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.report-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
