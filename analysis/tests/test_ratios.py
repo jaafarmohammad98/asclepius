@@ -35,7 +35,8 @@ def one_report(values: dict[str, float | str | None]) -> LabDataset:
     return LabDataset(markers=markers, fingerprint="x", records=records)
 
 
-def ratio_value(values, ratio_id):
+def one_ratio(values: dict[str, float | str | None], ratio_id: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """The row of `ratio_id` computed for `one_report(values)` (empty when skipped), and all skips."""
     computed = ratios.compute_ratios(one_report(values))
     row = computed.data.markers[computed.data.markers["marker_id"] == ratio_id]
     return row, computed.skipped
@@ -54,7 +55,6 @@ def test_the_list_is_the_spec_list_and_marked_provisional():
         ("2_oh_e1", "4_oh_e1"),
     }
     assert ratios.STATUS == "provisional, needs expert review"
-    assert all(r.status == ratios.STATUS for r in ratios.RATIOS)
     # the synthetic generator writes every component, so the ratios can be tested
     assert {m for r in ratios.RATIOS for m in (r.numerator, r.denominator)} <= set(synthetic.MARKER_IDS)
 
@@ -77,33 +77,31 @@ def test_a_ratio_is_skipped_and_reported_when_a_component_is_missing_or_zero():
     )
     assert computed.data.markers.empty
     skipped = computed.skipped.set_index("ratio_id")
-    assert skipped.loc["androsterone/etiocholanolone", "reason"] == "component missing"
-    assert skipped.loc["2_oh_e1/16_oh_e1", "reason"] == "component zero"
-    assert skipped.loc["2_methoxy_e1/2_oh_e1", "reason"] == "component zero"
-    assert skipped.loc["a_pregnanediol/b_pregnanediol", "reason"] == "component missing"
+    assert skipped.loc["androsterone/etiocholanolone", "reason"] == ratios.MISSING
+    assert skipped.loc["2_oh_e1/16_oh_e1", "reason"] == ratios.ZERO
+    assert skipped.loc["2_methoxy_e1/2_oh_e1", "reason"] == ratios.ZERO
+    assert skipped.loc["a_pregnanediol/b_pregnanediol", "reason"] == ratios.MISSING
     assert (skipped["n_reports"] == 1).all()
     # a blank value counts as missing
-    _, skipped = ratio_value({"androsterone": None, "etiocholanolone": 2}, "androsterone/etiocholanolone")
-    assert "component missing" in set(skipped["reason"])
+    _, skipped = one_ratio({"androsterone": None, "etiocholanolone": 2}, "androsterone/etiocholanolone")
+    assert ratios.MISSING in set(skipped["reason"])
 
 
 def test_a_limit_in_one_component_gives_a_limit_on_the_ratio():
     # below 10 over 2 is below 5; 10 over below 2 is above 5
-    row, _ = ratio_value({"androsterone": "<10", "etiocholanolone": 2}, "androsterone/etiocholanolone")
+    row, _ = one_ratio({"androsterone": "<10", "etiocholanolone": 2}, "androsterone/etiocholanolone")
     assert (row["comparator"].item(), row["value"].item()) == ("<", 5)
-    row, _ = ratio_value({"androsterone": 10, "etiocholanolone": "<2"}, "androsterone/etiocholanolone")
+    row, _ = one_ratio({"androsterone": 10, "etiocholanolone": "<2"}, "androsterone/etiocholanolone")
     assert (row["comparator"].item(), row["value"].item()) == (">", 5)
-    row, _ = ratio_value({"androsterone": "<10", "etiocholanolone": ">2"}, "androsterone/etiocholanolone")
+    row, _ = one_ratio({"androsterone": "<10", "etiocholanolone": ">2"}, "androsterone/etiocholanolone")
     assert (row["comparator"].item(), row["value"].item()) == ("<", 5)
 
 
 def test_two_limits_the_same_way_give_no_ratio():
-    row, skipped = ratio_value(
-        {"androsterone": "<10", "etiocholanolone": "<2"}, "androsterone/etiocholanolone"
-    )
+    row, skipped = one_ratio({"androsterone": "<10", "etiocholanolone": "<2"}, "androsterone/etiocholanolone")
     assert row.empty
     reason = skipped.loc[skipped["ratio_id"] == "androsterone/etiocholanolone", "reason"]
-    assert reason.item() == "both components limits"
+    assert reason.item() == ratios.BOTH_LIMITS
 
 
 def test_ratios_go_through_the_group_comparison(tmp_path):
@@ -114,7 +112,9 @@ def test_ratios_go_through_the_group_comparison(tmp_path):
         seed=3,
     )
     data = load_lab_reports([out.reports], metadata=out.metadata)
-    table = ratios.compare_ratios(data, "PSSD", "healthy control", permutations=999, bootstrap=200)
+    findings = ratios.compare_ratios(data, "PSSD", "healthy control", permutations=999, bootstrap=200)
+    table = findings.rows
+    assert findings.skipped.empty
     assert set(table["comparison"]) == {ratios.KIND}
     assert set(table["status"]) == {ratios.STATUS}
     assert set(table["marker_id"]) == {r.id for r in ratios.RATIOS}

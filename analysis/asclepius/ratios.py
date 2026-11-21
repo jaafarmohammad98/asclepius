@@ -20,8 +20,7 @@ from asclepius.compare import BOOTSTRAP, PERMUTATIONS, compare_groups
 from asclepius.dataset import LabDataset
 
 STATUS = "provisional, needs expert review"
-KIND = "enzyme-activity ratio"  # the findings table's `comparison` column
-CATEGORY = "Enzyme-activity ratio"
+KIND = "enzyme-activity ratio"  # the findings table's `comparison` column, and each ratio's `category`
 MISSING, ZERO, BOTH_LIMITS = "component missing", "component zero", "both components limits"
 
 
@@ -33,7 +32,6 @@ class Ratio:
     numerator: str
     denominator: str
     proxy_for: str
-    status: str = STATUS
 
     @property
     def id(self) -> str:
@@ -83,6 +81,14 @@ class RatioValues:
     skipped: pd.DataFrame
 
 
+@dataclass(frozen=True)
+class RatioFindings:
+    """`rows`: findings-table rows, one per ratio and sex. `skipped`: as in `RatioValues`."""
+
+    rows: pd.DataFrame
+    skipped: pd.DataFrame
+
+
 def compute_ratios(data: LabDataset) -> RatioValues:
     """Every ratio in `RATIOS` for every report in `data`, skipping and counting those that cannot be made.
 
@@ -91,7 +97,7 @@ def compute_ratios(data: LabDataset) -> RatioValues:
     a limit on the ratio. Ratios have no reference range; `unit` is "ratio".
     """
     records = data.records["record"]
-    markers = data.markers.drop_duplicates(["record", "marker_id"])  # the loader allows one row each
+    markers = data.markers  # the loader allows one row per report and marker
     value = markers.pivot(index="record", columns="marker_id", values="value").reindex(records)
     comparator = (
         markers.assign(comparator=markers["comparator"].fillna(""))
@@ -100,18 +106,14 @@ def compute_ratios(data: LabDataset) -> RatioValues:
     )
     rows, skipped = [], []
     for ratio in RATIOS:
-        top, bottom = (_column(value, m) for m in (ratio.numerator, ratio.denominator))
-        limits = pd.Series(
+        numerator, denominator = (_column(value, m) for m in (ratio.numerator, ratio.denominator))
+        limit = pd.Series(
             list(
                 zip(_column(comparator, ratio.numerator), _column(comparator, ratio.denominator), strict=True)
             ),
             index=value.index,
-        )
-        limit = limits.map(_LIMIT)
-        reason = pd.Series(None, index=value.index, dtype=object)
-        reason = reason.mask(limit.isna(), BOTH_LIMITS)
-        reason = reason.mask((top == 0) | (bottom == 0), ZERO)
-        reason = reason.mask(top.isna() | bottom.isna(), MISSING)
+        ).map(_LIMIT)
+        reason = _skip_reasons(numerator, denominator, limit)
         for why, count in reason.value_counts(sort=False).items():
             skipped.append(
                 {"ratio_id": ratio.id, "ratio_name": ratio.name, "reason": why, "n_reports": count}
@@ -123,19 +125,19 @@ def compute_ratios(data: LabDataset) -> RatioValues:
                     "record": value.index[made],
                     "marker_id": ratio.id,
                     "marker_name": ratio.name,
-                    "category": CATEGORY,
+                    "category": KIND,
                     "comparator": limit[made].replace("", None).to_numpy(),
-                    "value": (top[made] / bottom[made]).to_numpy(dtype="float64"),
+                    "value": (numerator[made] / denominator[made]).to_numpy(dtype="float64"),
                     "unit": "ratio",
                     "ref_low": np.nan,
                     "ref_high": np.nan,
-                    "status": ratio.status,
+                    "status": STATUS,
                 }
             )
         )
     reports = data.records.set_index("record")
-    passed = [c for c in data.markers.columns if c in reports.columns and c != "record"]
-    ratio_markers = pd.concat(rows, ignore_index=True).join(reports[passed], on="record")
+    report_columns = [c for c in data.markers.columns if c in reports.columns and c != "record"]
+    ratio_markers = pd.concat(rows, ignore_index=True).join(reports[report_columns], on="record")
     skipped_table = pd.DataFrame(skipped, columns=["ratio_id", "ratio_name", "reason", "n_reports"])
     ratio_data = LabDataset(
         markers=ratio_markers,
@@ -145,6 +147,15 @@ def compute_ratios(data: LabDataset) -> RatioValues:
         kind=data.kind,
     )
     return RatioValues(data=ratio_data, skipped=skipped_table)
+
+
+def _skip_reasons(numerator: pd.Series, denominator: pd.Series, limit: pd.Series) -> pd.Series:
+    """Why each report has no value for a ratio, or missing when it has one. A missing component
+    outranks a zero, which outranks two limits the same way (`limit` missing)."""
+    reason = pd.Series(None, index=numerator.index, dtype=object)
+    reason = reason.mask(limit.isna(), BOTH_LIMITS)
+    reason = reason.mask((numerator == 0) | (denominator == 0), ZERO)
+    return reason.mask(numerator.isna() | denominator.isna(), MISSING)
 
 
 def _column(table: pd.DataFrame, marker: str) -> pd.Series:
@@ -160,18 +171,18 @@ def compare_ratios(
     permutations: int = PERMUTATIONS,
     bootstrap: int = BOOTSTRAP,
     seed: int = 0,
-) -> pd.DataFrame:
+) -> RatioFindings:
     """Compare every ratio between two groups, within sex, exactly as `compare_groups` compares markers.
 
-    The rows have `compare_groups`'s columns, with `comparison` set to "enzyme-activity ratio",
-    plus `status`, "provisional, needs expert review" until M3-11.
+    `rows` has `compare_groups`'s columns, with `comparison` set to "enzyme-activity ratio", plus
+    `status`, "provisional, needs expert review" until M3-11. `skipped` is `compute_ratios`'s, over
+    every loaded report.
     """
     computed = compute_ratios(data)
     table = compare_groups(
         computed.data, group_a, group_b, permutations=permutations, bootstrap=bootstrap, seed=seed
     )
-    by_id = {r.id: r.status for r in RATIOS}
-    return table.assign(comparison=KIND, status=table["marker_id"].map(by_id))
+    return RatioFindings(rows=table.assign(comparison=KIND, status=STATUS), skipped=computed.skipped)
 
 
 def documentation_table() -> str:

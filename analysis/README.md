@@ -157,8 +157,8 @@ conditions. On the r/PSSD export (Nov 2026): 346 author-test pairs placed, 1,360
 for having no range.
 
 `combine_findings(compare_groups(...), lab_range_findings(...).rows, ...)` stacks them into one
-findings table; the `comparison` column (`group comparison`, `enzyme-activity ratio`, `reference range`,
-`reference range, self-report`) tells them apart, and columns one kind lacks are left empty. The
+findings table; the `comparison` column (`group comparison`, `enzyme-activity ratio`, `reference
+range`, `reference range, self-report`) tells them apart, and columns one kind lacks are left empty. The
 count limits (S4, S11) and the labels (S5, S10, including "self-report, no controls") are not
 applied yet (M3-06), so most self-report rows, with fewer than 5 authors, must not be shown as they
 are.
@@ -189,9 +189,13 @@ blank (`component missing`), when either is zero (`component zero`), or when bot
 same way, as `<10` over `<2` could be anything (`both components limits`). One limit gives a limit
 on the ratio: `<10` over 2 is `<5`, 10 over `<2` is `>5`.
 
-`compare_ratios(data, "PSSD", "healthy control")` runs them through `compare_groups`, so the rows
-have its columns and rules (within sex, Cliff's delta, permutation p-value), with `comparison` set
-to `enzyme-activity ratio` and a `status` column, `provisional, needs expert review` until the
-clinician review (M3-11). All eight ratios are computed for the three public sample reports. With
-100 per group and androsterone halved in PSSD, androsterone / etiocholanolone is the top row in both
-sexes in 19 of 20 seeds.
+`compare_ratios(data, "PSSD", "healthy control")` runs them through `compare_groups` and returns
+`rows` and the same `skipped`. The rows have its columns and rules (within sex, Cliff's delta,
+permutation p-value), with `comparison` set to `enzyme-activity ratio` and a `status` column,
+`provisional, needs expert review` until the clinician review (M3-11). All eight ratios are
+computed for the three public sample reports. With 100 per group and androsterone halved in PSSD,
+androsterone / etiocholanolone is the top row in both sexes in 19 of 20 seeds.
+
+Ratios are tested in a call of their own, apart from the raw markers. When the false discovery
+rate correction comes (M3-06), it must run over the combined table, so markers and ratios count as
+one run (S2).
