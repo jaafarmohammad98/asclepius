@@ -152,9 +152,39 @@ def _read_file(path: Path) -> pd.DataFrame:
     if len(bad):
         fail(bad[0], "ref_low", "the reference range's low end is above its high end.")
 
+    # every value is readable; now check the rows of each report agree
+    _check_one_row_per_marker(frame, lines, fail)
+    for column in ("sex", "age_years"):
+        _check_one_per_report(frame, column, lines, fail)
+
     for column in ("sex", "collection_month", "report_month", "category", "comparator", "status"):
         out[column] = frame[column].replace("", pd.NA)
-    return out
+    return out[~frame.duplicated()]  # an identical repeated row counts once
+
+
+def _check_one_row_per_marker(frame: pd.DataFrame, lines: pd.Index, fail) -> None:
+    """A report may repeat a row exactly, but not give one marker two different rows."""
+    seen: dict[tuple[str, str], int] = {}
+    for row in frame.index:
+        key = (frame.at[row, "record_id"], frame.at[row, "marker_id"])
+        first = seen.setdefault(key, row)
+        if first == row:
+            continue
+        differs = [c for c in COLUMNS if frame.at[row, c] != frame.at[first, c]]
+        if differs:
+            fail(row, differs[0], f"{key[0]} already has a row for {key[1]} (line {lines[first]}).")
+
+
+def _check_one_per_report(frame: pd.DataFrame, column: str, lines: pd.Index, fail) -> None:
+    """Every row of a report gives the same `column`, or leaves it blank."""
+    given = frame[frame[column] != ""]
+    first = given.groupby("record_id", sort=False)[column].transform("first")
+    bad = given.index[given[column] != first]
+    if len(bad):
+        row = bad[0]
+        record = frame.at[row, "record_id"]
+        earlier = given.index[(given["record_id"] == record)][0]
+        fail(row, column, f"{record} is {frame.at[earlier, column]} on line {lines[earlier]}.")
 
 
 def _check_allowed(frame: pd.DataFrame, column: str, allowed: frozenset[str], fail) -> None:

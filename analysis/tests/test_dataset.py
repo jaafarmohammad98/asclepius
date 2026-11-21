@@ -93,3 +93,28 @@ def test_mixed_units_for_one_marker_are_rejected(tmp_path):
 def test_any_unit_the_extractor_reads_is_accepted(tmp_path):
     path = write(tmp_path, "a.csv", GOOD_ROW.replace("ng/mg", "µg/mg"), GOOD_ROW.replace("cortisol", "dhea"))
     assert list(load_lab_reports([path]).markers["unit"]) == ["µg/mg", "ng/mg"]
+
+
+def test_a_repeated_identical_row_is_kept_once(tmp_path):
+    path = write(tmp_path, "a.csv", GOOD_ROW, GOOD_ROW)
+    assert len(load_lab_reports([path]).markers) == 1
+
+
+def test_two_different_rows_for_one_marker_in_one_report_are_rejected(tmp_path):
+    other = GOOD_ROW.replace(",12.5,", ",30,")
+    path = write(tmp_path, "a.csv", GOOD_ROW, other)
+    with pytest.raises(
+        DatasetError, match=r"a.csv, line 3, column value: r001 already has a row for cortisol \(line 2\)"
+    ):
+        load_lab_reports([path])
+
+
+def test_one_report_must_give_one_sex_and_age(tmp_path):
+    second = GOOD_ROW.replace("cortisol,Cortisol", "cortisone,Cortisone")
+    with pytest.raises(DatasetError, match=r"a.csv, line 3, column sex: r001 is male on line 2"):
+        load_lab_reports([write(tmp_path, "a.csv", GOOD_ROW, second.replace(",male,", ",female,"))])
+    with pytest.raises(DatasetError, match=r"b.csv, line 3, column age_years: r001 is 30 on line 2"):
+        load_lab_reports([write(tmp_path, "b.csv", GOOD_ROW, second.replace(",30,", ",31,"))])
+    # a blank cell is "not given", not a disagreement
+    blank = second.replace(",male,", ",,").replace(",30,", ",,")
+    assert len(load_lab_reports([write(tmp_path, "c.csv", GOOD_ROW, blank)]).markers) == 2
