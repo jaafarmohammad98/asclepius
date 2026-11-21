@@ -501,8 +501,10 @@ function interventionTables(s) {
   const wrap = el("div");
   const head = ["Rank", "Intervention", "Authors (clear)", "Major", "Partial", "No effect", "Worse", "Unclear", "Share improved", "Share worse"];
   const share = (v, low, high) => (v === null ? "hidden" : `${pct(v)} (${pct(low)} to ${pct(high)})`);
-  const rows = (list) => list.map((r) => [r.rank === null ? "–" : String(r.rank), r.intervention, count(r.n_clear),
-    count(r.major_improvement), count(r.partial_improvement), count(r.no_effect), count(r.worse), count(r.unclear),
+  // a hidden count may be 5 or more, hidden beside one below 5: say "hidden", not "fewer than 5"
+  const hid = (n) => (n === null || n === undefined ? "hidden" : n.toLocaleString("en"));
+  const rows = (list) => list.map((r) => [r.rank === null ? `not ranked (${r.not_ranked})` : String(r.rank), r.intervention, hid(r.n_clear),
+    hid(r.major_improvement), hid(r.partial_improvement), hid(r.no_effect), hid(r.worse), hid(r.unclear),
     share(r.share_improved, r.improved_low, r.improved_high), share(r.share_worse, r.worse_low, r.worse_high)]);
   wrap.append(el("h3", "Reported outcomes, ranked by the share improved"));
   wrap.append(el("p", "Reported outcome, not evidence that it works.", { class: "muted" }));

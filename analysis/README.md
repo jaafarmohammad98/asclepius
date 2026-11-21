@@ -654,17 +654,22 @@ which interventions are worth a proper study; it does not tell anyone what works
 `SelfReportDataset` and counts, per intervention, the authors reporting each outcome.
 
 - **One author, one outcome.** The loader merges posts per author (S9): an author who reported
-  the same intervention twice counts once, with their latest clear outcome.
+  the same intervention twice counts once, with their latest clear outcome. "Latest" is by year;
+  posts of the same year that disagree give `unclear`, and a newer `unclear` does not replace an
+  older clear outcome.
 - **Unclear apart.** `unclear` outcomes are left out of the shares and counted in `unclear`;
   `n_clear` is the authors with a clear outcome, `n_authors` all of them.
 - **Shares.** `share_improved` (major plus partial improvement) and `share_worse`, of `n_clear`,
   each with its 95% Wilson interval (`improved_low`, `improved_high`, `worse_low`, `worse_high`,
   S3). An intervention with fewer than `min_group_size` (10) authors with a clear outcome goes to
-  `refused` (S4).
+  `refused` (S4). The refused list names only interventions at least 5 authors reported; the
+  rarer ones are counted in one row (`fewer than 5 authors`), since a rare name could point at one
+  author's case (S11).
 - **Ranking.** `rank` 1 has the highest lower bound of the share improved. `safety` lists,
   separately, the interventions whose share worse has a lower bound of at least `worse_signal`
   (20%, provisional, for review in M3-11), highest first; `safety_signal` marks them in
-  `findings`.
+  `findings`. The flag is judged on the true share worse even when that share is hidden (below), so
+  the cases most reported as worse are not dropped; a yes/no flag gives no count back.
 - **Wording.** Every table has a `caveat` column: "reported outcome, not evidence that it works;
   self-report, no controls", and so does the statement. Nothing is worded as advice (overview
   rule 5); a test checks every text for "recommend", "effective" and the like.
@@ -674,7 +679,9 @@ which interventions are worth a proper study; it does not tell anyone what works
   effect count must be too, or only the share improved is shown. The outcome counts are then
   hidden within the groups the shown shares leave unknown (the major/partial split, for one), as
   the reference-range zones are: each count from 1 to 4, and the next smallest until the hidden
-  ones add up to 0 or 5 or more. A row whose share improved is hidden is not ranked. `n_authors`
+  ones add up to 0 or 5 or more. A row whose share improved is hidden is not ranked, and
+  `not_ranked` says why; the page and the HTML report write a hidden count as "hidden", since it
+  may be 5 or more, hidden beside one that is not. `n_authors`
   and `unclear` are shown only when `unclear` is 0 or at least 5.
 
 The result has `findings` (ranked), `safety`, `refused`, `skipped` (empty), `statement` and
@@ -685,7 +692,9 @@ On synthetic data (`synthetic.PlantedOutcome`), 1,000 authors: tadalafil planted
 5% worse, and cyproheptadine at 10% and 45%. Over 60 seeds each planted share lies inside its
 interval in 90% to 97% of runs (95% nominal); tadalafil ranks first and cyproheptadine is a safety
 signal. On the r/PSSD export (Nov 2026): 75 interventions ranked (29 more with a hidden share),
-7 safety signals, 1,813 refused for fewer than 10 authors with a clear outcome; under a second.
+11 safety signals (4 with their share hidden), 168 refused and named for fewer than 10 authors
+with a clear outcome, and 1,645 reported by fewer than 5 authors counted, not named; under a
+second.
 
 ## Web app
 

@@ -24,9 +24,9 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from asclepius.cluster import MIN_SHOWN, ClusterResult, shown_parts
+from asclepius.cluster import MIN_SHOWN, ClusterResult, count_text, shown_parts
 from asclepius.dataset import LabDataset
-from asclepius.interventions import CLEAR, REPORTED
+from asclepius.interventions import CLEAR, RARE, REPORTED, SHARES
 from asclepius.profile import PROFILE_SYMPTOM
 from asclepius.ratios import KIND as RATIO
 from asclepius.ratios import compute_ratios
@@ -475,14 +475,6 @@ def symptom_subgroups_section(result: Any) -> dict[str, object]:
 
 
 INTERVENTION_COUNTS = ("n_authors", "n_clear", *CLEAR, "unclear")
-INTERVENTION_SHARES = (
-    "share_improved",
-    "improved_low",
-    "improved_high",
-    "share_worse",
-    "worse_low",
-    "worse_high",
-)
 
 
 def intervention_section(result: Any) -> dict[str, object]:
@@ -493,9 +485,11 @@ def intervention_section(result: Any) -> dict[str, object]:
     def view(row: pd.Series) -> dict[str, object]:
         out: dict[str, object] = {"rank": plain(row["rank"]), "intervention": plain(row["marker_name"])}
         out |= {c: plain(row[c]) for c in INTERVENTION_COUNTS}
-        return out | {c: plain(row[c]) for c in INTERVENTION_SHARES}
+        out |= {c: plain(row[c]) for c in SHARES}
+        return out | {"safety_signal": bool(row["safety_signal"]), "not_ranked": plain(row["not_ranked"])}
 
-    refused = len(result.refused)
+    named = result.refused[result.refused["marker_name"] != RARE]
+    rare = result.refused.loc[result.refused["marker_name"] == RARE, "reason"]
     signal = result.settings["worse_signal"]
     return {
         "statement": result.statement,
@@ -505,9 +499,11 @@ def intervention_section(result: Any) -> dict[str, object]:
             "Improved: major or partial improvement, as a share of the authors with a clear outcome "
             "(unclear outcomes are counted apart), with its 95% Wilson interval. Ranked by the lower "
             f"end of that interval. Safety signal: the lower end of the share reporting worse is at "
-            f"least {signal:.0%}. {shown(refused) if shown(refused) is not None else FEW} interventions "
-            f"with fewer than {result.settings['min_group_size']} authors with a clear outcome are "
-            "not ranked; the export lists them."
+            f"least {signal:.0%}, judged even where that share is hidden. A hidden count reads "
+            '"hidden": it may be below 5, or hidden beside one that is. '
+            f"{count_text(len(named))} interventions with fewer than {result.settings['min_group_size']} "
+            "authors with a clear outcome are not ranked; the export lists them."
+            + (f" {rare.iloc[0]}." if len(rare) else "")
         ),
         "ranking": [view(r) for _, r in result.findings.iterrows()],
         "safety": [view(r) for _, r in result.safety.iterrows()],

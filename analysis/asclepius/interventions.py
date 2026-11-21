@@ -19,7 +19,10 @@ No count below 5 is shown (spec S11), and 0, which is no one, is. A share with i
 its counts back, so a share is shown only when every count it implies is 0 or at least 5, and the
 outcome counts are then hidden where those shown shares leave them unknown, as
 `asclepius.cluster.shown_parts` hides parts of a total. A row whose share improved is hidden is not
-ranked. `n_authors` (with unclear) and `unclear` are shown only when `unclear` is 0 or 5 or more.
+ranked, and says why in `not_ranked`. The safety flag is judged on the true share worse, even when
+that share is hidden. `n_authors` (with unclear) and `unclear` are shown only when `unclear` is 0
+or 5 or more. The refused list names only interventions at least 5 authors reported; the rarer
+ones are counted in one row, since a rare name could point at one author's case.
 """
 
 from __future__ import annotations
@@ -35,6 +38,8 @@ from asclepius.run import RunResult, Settings
 from asclepius.selfreport import LABEL as SELF_REPORT_LABEL
 from asclepius.selfreport import SelfReportDataset
 
+RARE = "fewer than 5 authors"  # the refused row that counts the interventions too rare to name
+NOT_RANKED = "share improved hidden: fewer than 5 authors improved, or fewer than 5 did not (spec S11)"
 ANALYSIS = "intervention outcomes"  # the run record's `analysis`
 COMPARISON = "intervention outcome"  # the findings table's `comparison` column
 REPORTED = "reported outcome, not evidence that it works"
@@ -58,8 +63,10 @@ COLUMNS = (
     "worse_low",
     "worse_high",
     "safety_signal",
+    "not_ranked",
     "caveat",
 )
+SHARES = ("share_improved", "improved_low", "improved_high", "share_worse", "worse_low", "worse_high")
 REFUSED_COLUMNS = ("comparison", "marker_id", "marker_name", "n_clear", "reason", "caveat")
 
 
@@ -91,25 +98,42 @@ def rank_interventions(
     counts = counts.reindex(columns=[*CLEAR, "unclear"], fill_value=0)
     rows: list[dict[str, object]] = []
     refused: list[dict[str, object]] = []
-    for intervention, c in counts.iterrows():
+    rare = 0  # refused interventions fewer than 5 authors reported: counted, not named
+    for intervention, outcomes in counts.iterrows():
         head: dict[str, object] = {
             "comparison": COMPARISON,
             "marker_id": f"intervention:{intervention}",
             "marker_name": str(intervention).replace("_", " "),
         }
-        clear = int(c[list(CLEAR)].sum())
+        clear = int(outcomes[list(CLEAR)].sum())
         if clear < settings.min_group_size:
+            if int(outcomes.sum()) < MIN_SHOWN:
+                rare += 1
+                continue
             refused.append(
                 head
                 | {
-                    "n_clear": _count(clear),
+                    "n_clear": _shown(clear),
                     "reason": f"fewer than {settings.min_group_size} authors with a clear outcome (spec S4)",
                 }
             )
             continue
-        rows.append(head | _row({k: int(c[k]) for k in (*CLEAR, "unclear")}, worse_signal))
+        rows.append(head | _row({k: int(outcomes[k]) for k in (*CLEAR, "unclear")}, worse_signal))
+    if rare:
+        refused.append(
+            {
+                "comparison": COMPARISON,
+                "marker_id": f"intervention:{RARE}",
+                "marker_name": RARE,
+                "n_clear": None,
+                "reason": (
+                    f"{count_text(rare)} interventions reported by fewer than {MIN_SHOWN} authors each: "
+                    "not named, since a rare name could point at one author's case (spec S11)"
+                ),
+            }
+        )
 
-    findings = pd.DataFrame(rows, columns=[c for c in COLUMNS if c not in ("rank", "caveat")])
+    findings = pd.DataFrame(rows, columns=[c for c in COLUMNS if c not in ("rank", "not_ranked", "caveat")])
     ranked = findings["improved_low"].notna()
     order = findings.assign(_ranked=ranked).sort_values(
         ["_ranked", "improved_low", "share_improved", "marker_name"],
@@ -117,6 +141,9 @@ def rank_interventions(
         kind="stable",
     )
     findings = order.drop(columns="_ranked").reset_index(drop=True)
+    findings["not_ranked"] = (
+        findings["improved_low"].isna().map({True: NOT_RANKED, False: None}).astype(object)
+    )
     findings.insert(
         3,
         "rank",
@@ -128,7 +155,7 @@ def rank_interventions(
     findings = findings.astype({c: "Int64" for c in ("n_authors", "n_clear", *CLEAR, "unclear")})
     safety = (
         findings[findings["safety_signal"]]
-        .sort_values(["worse_low", "marker_name"], ascending=[False, True], kind="stable")
+        .sort_values(["worse_low", "marker_name"], ascending=[False, True], kind="stable", na_position="last")
         .reset_index(drop=True)
     )
     refused_table = pd.DataFrame(refused, columns=[c for c in REFUSED_COLUMNS if c != "caveat"])
@@ -152,7 +179,10 @@ def rank_interventions(
 
 
 def _row(c: dict[str, int], worse_signal: float) -> dict[str, object]:
-    """One intervention's counts, shares and intervals, hidden as the module docstring says."""
+    """One intervention's counts, shares and intervals (`c`: authors per outcome), hidden as the
+    module docstring says. `safety_signal` is judged on the share worse even when that share is
+    hidden: a yes/no flag gives no count back, and hiding it would drop the cases most reported as
+    worse."""
     improved = c["major_improvement"] + c["partial_improvement"]
     clear = improved + c["no_effect"] + c["worse"]
     show_improved = _ok(improved) and _ok(clear - improved)
@@ -168,10 +198,10 @@ def _row(c: dict[str, int], worse_signal: float) -> dict[str, object]:
         groups = [[*IMPROVED, "no_effect"], ["worse"]]
     else:
         groups = [list(CLEAR)]
-    shown: dict[str, int | None] = {}
+    parts: dict[str, int | None] = {}
     for group in groups:
-        shown |= shown_parts({k: c[k] for k in group})
-    out: dict[str, object] = {"n_clear": clear, **shown}
+        parts |= shown_parts({k: c[k] for k in group})
+    out: dict[str, object] = {"n_clear": clear, **parts}
     unclear_ok = _ok(c["unclear"])
     out["unclear"] = c["unclear"] if unclear_ok else None
     out["n_authors"] = clear + c["unclear"] if unclear_ok else None
@@ -182,9 +212,9 @@ def _row(c: dict[str, int], worse_signal: float) -> dict[str, object]:
         out |= {"share_improved": nan, "improved_low": nan, "improved_high": nan}
     low, high = wilson_interval(c["worse"], clear)
     out |= {"share_worse": c["worse"] / clear, "worse_low": low, "worse_high": high}
+    out["safety_signal"] = bool(low >= worse_signal)
     if not show_worse:
         out |= {"share_worse": nan, "worse_low": nan, "worse_high": nan}
-    out["safety_signal"] = bool(show_worse and low >= worse_signal)
     return out
 
 
@@ -193,5 +223,6 @@ def _ok(count: int) -> bool:
     return count == 0 or count >= MIN_SHOWN
 
 
-def _count(count: int) -> int | None:
+def _shown(count: int) -> int | None:
+    """`count`, or None when it is from 1 to 4 (spec S11)."""
     return count if _ok(count) else None

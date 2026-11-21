@@ -200,3 +200,34 @@ def test_the_real_export_gives_a_ranked_table_with_its_labels_and_no_small_count
     assert_no_count_below_5(result)
     for text in all_text(result):
         assert not any(word in text.lower() for word in ADVICE), text
+
+
+def test_a_high_share_worse_is_flagged_even_when_its_share_must_be_hidden(tmp_path):
+    # 2 authors not worse: the share worse would give that 2 back, so it is hidden, but still flagged
+    rows = [(i, "sauna", "worse") for i in range(12)] + [
+        (i, "sauna", "partial_improvement") for i in range(12, 14)
+    ]
+    export, _ = with_extra_reports(tmp_path, rows)
+    result = rank_interventions(load_self_reports(export))
+    sauna = row(result, "sauna")
+    assert pd.isna(sauna["share_worse"]) and sauna["safety_signal"]
+    assert "sauna" in set(result.safety["marker_name"])
+
+
+def test_an_unranked_row_says_why(tmp_path):
+    rows = [(i, "sauna", "major_improvement") for i in range(12)] + [(12, "sauna", "no_effect")]
+    export, _ = with_extra_reports(tmp_path, rows)
+    sauna = row(rank_interventions(load_self_reports(export)), "sauna")
+    assert pd.isna(sauna["rank"]) and "fewer than 5" in sauna["not_ranked"]
+    ranked = rank_interventions(load_self_reports(export)).findings.dropna(subset=["rank"])
+    assert ranked["not_ranked"].isna().all()
+
+
+def test_the_refused_list_names_no_intervention_fewer_than_5_authors_reported(tmp_path):
+    rows = [(i, "acupuncture", "partial_improvement") for i in range(7)] + [(0, "hypnosis", "worse")]
+    export, _ = with_extra_reports(tmp_path, rows)
+    refused = rank_interventions(load_self_reports(export)).refused
+    assert "acupuncture" in set(refused["marker_name"])
+    assert "hypnosis" not in set(refused["marker_name"])
+    rare = refused[refused["marker_id"] == "intervention:fewer than 5 authors"]
+    assert len(rare) == 1 and "not named" in rare.iloc[0]["reason"]
