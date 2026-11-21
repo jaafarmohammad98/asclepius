@@ -6,6 +6,9 @@ license = "AGPL-3.0-or-later"
 requires-python = ">=3.12"
 dependencies = ["numpy>=1.26", "pandas>=2.2"]
 
+[project.scripts]
+asclepius-app = "asclepius.web.server:main"
+
 [dependency-groups]
 dev = [
     "mypy>=2.4.1",

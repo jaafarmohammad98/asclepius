@@ -4,11 +4,13 @@ The analysis engine (milestone 3). So far it loads and checks data, writes synth
 with a known answer for testing the statistics, compares markers between two groups, places
 values within their own report's reference range, compares enzyme-activity ratios, corrects
 and labels a whole run of tests, re-runs each finding on Tier A records, records and exports
-each run so it can be reproduced, and looks for subgroups of patients.
+each run so it can be reproduced, looks for subgroups of patients, and has a local web app so
+researchers need no command line after start-up.
 
 ```sh
 cd analysis
 uv sync
+uv run asclepius-app     # the web app: opens http://127.0.0.1:8765/ in the browser
 uv run pytest            # tests
 uv run ruff check . && uv run ruff format --check . && uv run mypy
 ```
@@ -484,3 +486,35 @@ shifts: halving androsterone moves too few women's values out of range. With 40 
 shared shift in women is mostly missed. The chance findings on other markers are what a 10% false
 discovery rate allows once real findings exist: one false finding in ten is expected among the
 suggestive ones.
+
+## Web app
+
+`uv run asclepius-app` starts the app and opens its page (`--port` picks another port,
+`--no-browser` skips opening it). It runs on this computer only: the server listens on
+127.0.0.1 and refuses requests that name another host or come from another site's page, so no
+other web page open in the browser can read the data or start a run. Files picked are copied
+into a temporary folder that is deleted when the app stops (Ctrl+C).
+
+1. **Load.** Pick the extractor CSV files and, optionally, the metadata file; or the harvester's
+   `data/export` folder. The two kinds are never loaded together. A loading problem is shown
+   as the loader's message, naming the file, line and column.
+2. **Review.** Lab reports: reports per group, and per group, sex and tier, and how many metadata
+   rows named no loaded report. Self-reports: authors per condition, and the posts left out for
+   failing the evidence check (`evidence_ok` false) or coming from deleted accounts. No count below 5
+   is shown (S11); the page says "fewer than 5".
+3. **Run.** For lab reports, pick the two groups to compare (PSSD and a control by default). The
+   run then goes through its steps with a progress bar, each ending `done`, `refused` (with
+   the reason, such as a group under 10), `failed` (an unexpected error, shown on the page) or
+   `not built yet`:
+
+| Lab reports | Self-reports |
+|---|---|
+| Look for subgroups of the first group (`cluster_patients`, `link_subgroups`) | Typed-in lab values within reference ranges |
+| Compare the two groups (`run_analysis`, with the subgroup links in one correction) | Drug and symptom profile (not built yet: M3-12) |
+| Compare PSSD, PFS and PAS (`compare_syndromes`; the reference is the control picked, else the reference ranges) | Symptom subgroups (not built yet: M3-13) |
+| Positions within reference ranges (`lab_range_findings`) | Intervention outcomes (not built yet: M3-14) |
+
+Each step's one-line statement is shown; the findings table and plots are M3-10b, the export
+M3-10c. A run of 100 PSSD, 40 PFS and 100 controls takes about 7 seconds; the full r/PSSD export
+loads (3,153 authors) and runs in about 3. The logic is `asclepius.web.workspace.Workspace`
+(files, review, run); `asclepius.web.server` only serves it.
