@@ -1,0 +1,10 @@
+case_id,author_key,year,kind,condition,sex,age,onset,months_since_stopping,overall_trajectory,evidence_ok
+c01,aaaaaaaaaaaaaaaa,2022,submission,PSSD,male,24,after_stopping,6,worsening,True
+c02,aaaaaaaaaaaaaaaa,2024,comment,PSSD,,26,,30,improving,True
+c03,bbbbbbbbbbbbbbbb,2023,submission,PSA,female,,during_use,,unclear,True
+c04,cccccccccccccccc,2023,comment,PFS,male,,,,,False
+c05,,2021,comment,PSSD,male,,,,,True
+c06,dddddddddddddddd,2020,submission,PSSD,,,,,stable,True
+c07,dddddddddddddddd,2021,comment,PFS,,,,,,True
+c08,eeeeeeeeeeeeeeee,2025,comment,unclear,,,,,,True
+c09,ffffffffffffffff,2025,comment,none,male,40,,,recovered,True

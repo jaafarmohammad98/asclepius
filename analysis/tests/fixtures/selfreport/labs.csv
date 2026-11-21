@@ -1,0 +1,4 @@
+case_id,test,value,unit,ref_low,ref_high,flag,panel
+c01,total testosterone,450.0,ng/dL,264.0,916.0,normal,blood
+c02,prolactin,22.0,ng/mL,,15.0,high,
+c04,dht,30.0,pg/mL,,,low,
