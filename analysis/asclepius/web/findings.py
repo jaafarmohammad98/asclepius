@@ -4,7 +4,8 @@ Every finding carries its sample sizes, its label and its Tier A result, and a p
 
 - `distribution`: per side, its size and the 10th, 25th, 50th, 75th and 90th percentiles of its
   values. Percentiles only, never single values (spec S11); a side with fewer than 5 values has none.
-- `shares`: per side, its size and the share of it that took a drug (subgroup links).
+- `shares`: per side, its size and a share, named by `caption`: of a cluster, the share that took
+  a drug (subgroup links); of a drug group, the share that reports a symptom (drug profile).
 - `zones`: per group, how many values fall below, within and above the reference range, or are
   unclear. Counts only, with every count from 1 to 4 hidden, and the next smallest too when the
   hidden ones would add up to 1 to 4 beside the total shown (spec S11). 0 is no one, so it shows.
@@ -25,6 +26,7 @@ import pandas as pd
 
 from asclepius.cluster import MIN_SHOWN, ClusterResult
 from asclepius.dataset import LabDataset
+from asclepius.profile import PROFILE_SYMPTOM
 from asclepius.ratios import KIND as RATIO
 from asclepius.ratios import compute_ratios
 from asclepius.refrange import SIDES
@@ -54,6 +56,9 @@ STATISTICS = (
     "effect_size",
     "ci_low",
     "ci_high",
+    "odds_ratio",
+    "odds_ratio_low",
+    "odds_ratio_high",
     "p_value",
     "q_value",
     *TIER_A_STATS,
@@ -78,6 +83,9 @@ SHOWN_COLUMNS = (
     "effect_size",
     "ci_low",
     "ci_high",
+    "odds_ratio",
+    "odds_ratio_low",
+    "odds_ratio_high",
     "p_value",
     "q_value",
     "label",
@@ -384,6 +392,7 @@ def drug_shares(row: pd.Series) -> dict[str, object]:
     """A drug link's plot: the share of each side that took it (hidden as `subgroups` hides it)."""
     return {
         "type": "shares",
+        "caption": "share who took the drug",
         "sides": [
             {"group": row["group_a"], "n": shown(row["n_a"]), "share": plain(row["share_a"])},
             {"group": row["group_b"], "n": shown(row["n_b"]), "share": plain(row["share_b"])},
@@ -406,6 +415,46 @@ def score_plot(row: pd.Series, clusters: ClusterResult, data: LabDataset) -> dic
     return {
         "type": "distribution",
         "sides": [distribution(sides[0], score[in_a].dropna()), distribution(sides[1], score[in_b].dropna())],
+    }
+
+
+# ---------------------------------------------------------------------------------- self-reports
+
+
+def profile_section(result: Any) -> dict[str, object]:
+    """Symptoms, onset and trajectory compared between drug classes and single drugs. The rows hide
+    their shares, odds ratio and effect when a cell is below 5 (`asclepius.profile`)."""
+    rows = [finding_view(row, None, plot=outcome_shares(row)) for _, row in result.findings.iterrows()]
+    said = tested_statement(result.findings)
+    return {
+        "statement": result.statement,
+        "nothing_reliable": said == NOTHING_RELIABLE,
+        "labels": [SELF_REPORT_LABEL, f"thresholds {PROVISIONAL}"],
+        "note": (
+            f"{result.note} Effect: the share of the first group with the outcome minus the share "
+            "of the other, from -1 to 1, with the odds ratio beside it. Fisher's exact test."
+        ),
+        "groups": [
+            {c: shown(v) if c == "authors" else plain(v) for c, v in r.items()}
+            for _, r in result.summary.iterrows()
+        ],
+        "findings": ordered(rows),
+        "refused": refused_view(result.refused),
+    }
+
+
+def outcome_shares(row: pd.Series) -> dict[str, object]:
+    """A drug profile row's plot: the share of each side with the outcome (hidden with a small cell)."""
+    caption = (
+        "share who report it" if row["comparison"] == PROFILE_SYMPTOM else f"share: {row['marker_name']}"
+    )
+    return {
+        "type": "shares",
+        "caption": caption,
+        "sides": [
+            {"group": row["group_a"], "n": shown(row["n_a"]), "share": plain(row["share_a"])},
+            {"group": row["group_b"], "n": shown(row["n_b"]), "share": plain(row["share_b"])},
+        ],
     }
 
 
@@ -452,6 +501,7 @@ BUILDERS: dict[str, Callable[[Any, dict[str, Any], Any, Values | None], dict[str
     SYNDROMES: lambda result, _, __, values: syndrome_section(result, values),
     RANGES: lambda result, *_: range_section(result),
     SELF_REPORT_RANGES: lambda result, *_: range_section(result, self_report=True),
+    PROFILE: lambda result, *_: profile_section(result),
 }
 
 

@@ -4,7 +4,8 @@ The analysis engine (milestone 3). So far it loads and checks data, writes synth
 with a known answer for testing the statistics, compares markers between two groups, places
 values within their own report's reference range, compares enzyme-activity ratios, corrects
 and labels a whole run of tests, re-runs each finding on Tier A records, records and exports
-each run so it can be reproduced, looks for subgroups of patients, and has a local web app so
+each run so it can be reproduced, looks for subgroups of patients, compares symptoms between the
+drugs self-reporting authors took, and has a local web app so
 researchers need no command line after start-up.
 
 ```sh
@@ -487,6 +488,85 @@ shared shift in women is mostly missed. The chance findings on other markers are
 discovery rate allows once real findings exist: one false finding in ten is expected among the
 suggestive ones.
 
+## Drug and symptom profile
+
+Different drugs may leave different symptom patterns, which would point at mechanisms worth
+testing (spec A6). `asclepius.profile.profile_drugs(data, settings, top_drugs=8)` takes a
+`SelfReportDataset` and compares, for every symptom, how often authors report it between drug
+classes and between the most common single drugs, and the same for onset and trajectory.
+`author_profiles(data)` is its working data: one row per author with their `drugs`, `classes`,
+`onset`, `overall_trajectory` and one True/False column per symptom; it is one row per person, so
+never shown or exported (S11).
+
+**Drug classes.** `DRUG_CLASSES` maps each causal drug, as the harvester names it, to one of six
+classes. A drug not listed is in no class and only appears in the single-drug comparisons;
+`unspecified_antidepressant` is not listed, since it could be any class. Brand names and
+misspellings seen in the r/PSSD export are listed where the generic is clear. Provisional, for the
+clinician review (M3-11).
+
+| Class | Drugs |
+|---|---|
+| SSRI | sertraline, escitalopram, fluoxetine, paroxetine, citalopram, fluvoxamine, dapoxetine, `unspecified_ssri` |
+| SNRI | venlafaxine, desvenlafaxine, duloxetine, milnacipran, levomilnacipran, `unspecified_snri` |
+| tricyclic | clomipramine, amitriptyline, nortriptyline, imipramine, desipramine, doxepin, dosulepin, melitracen, unspecified tricyclics |
+| other antidepressant | bupropion, vortioxetine, vilazodone, mirtazapine, trazodone, nefazodone, mianserin, agomelatine, moclobemide, phenelzine, tianeptine |
+| finasteride | finasteride |
+| isotretinoin | isotretinoin |
+
+**An author with drugs in several classes counts in each.** The result's `note` and the run
+record say so, and `summary` gives how many authors that is (352 on the r/PSSD export), how many
+took only drugs in no class, and how many recorded no causal drug.
+
+**What is compared.** Every row is one yes/no outcome per author, compared between two sides:
+
+| Level | Side a | Side b |
+|---|---|---|
+| `class` | authors with a drug in the class | the other authors with a drug in some class |
+| `drug` | authors who took the drug | the other authors with a causal drug |
+
+The single drugs are the `top_drugs` most common named ones (no `unspecified_...`), leaving out a
+drug taken by exactly the authors of its class (finasteride, isotretinoin, a lone SNRI), whose class
+row is the same test. The outcomes are each symptom reported by at least 10 authors (absence of a
+report counts as not reporting it), onset during use (of authors whose onset is during use or after
+stopping), and each trajectory: recovered, improving, stable, worsening (of authors with a clear one).
+
+| Column | Meaning |
+|---|---|
+| `comparison`, `marker_id`, `marker_name` | `drug profile: symptom` (`symptom:<name>`), `drug profile: onset` (`onset:during_use`) or `drug profile: trajectory` (`trajectory:<value>`) |
+| `level`, `group_a`, `group_b` | as above; `group_b` is `other drug classes` or `other causal drugs`; `sex` is `all` |
+| `n_a`, `n_b` | authors on each side with a value for this outcome (S3) |
+| `reported_a`, `reported_b`, `share_a`, `share_b` | how many, and what share, of each side have the outcome |
+| `effect_size`, `ci_low`, `ci_high` | share a minus share b, with Newcombe's 95% interval (from each share's Wilson interval); on yes/no values this is Cliff's delta |
+| `odds_ratio`, `odds_ratio_low`, `odds_ratio_high` | the odds ratio and its 95% Woolf interval; with an empty cell, 0.5 is added to every cell |
+| `p_value` | two-sided Fisher's exact test (S1) |
+| `q_value`, `label`, `caveat` | from `label_findings(..., self_report=True)`, over every row of the run together (S2): never strong, at most suggestive, `self-report, no controls` (S10) |
+
+A group, or a side of one outcome, with fewer than 10 authors is refused (S4), as is a symptom
+fewer than 10 authors report; both go to `refused`. No count below 5 is shown (S11): sizes below 5
+are hidden, and a row where a side has fewer than 5 with the outcome, or fewer than 5 without it,
+hides its counts, shares, effect and odds ratio, since with the sizes any of them gives the count
+back; it keeps its sizes, p-value and label. As for subgroup links, the p-value with the sizes
+still narrows a small count down; for review in M3-11.
+
+The result has `findings`, `refused`, `summary`, `skipped` (empty), `note`, `statement` and
+`record` (with `analysis` `drug and symptom profile` and the settings, `top_drugs` included).
+`export_run` writes it like any run, `summary.csv` included.
+
+On synthetic data, 20 seeds each:
+
+| Data | Planted row found (suggestive) | Runs with another suggestive row |
+|---|---|---|
+| 1,000 authors, finasteride × erectile dysfunction at odds ratio 3 | 20 of 20, never strong | 12 of 20; 10 of them the mirror below |
+| 500 authors, the same at odds ratio 4 (about 60 on finasteride) | 17 of 20 | 7 of 20, all the mirror |
+| nothing planted, 500 authors | | 1 of 40 seeds (seed 1) |
+| nothing planted, 1,000 authors | | 1 of 40 seeds |
+
+Most other suggestive rows are the planted one's mirror: SSRI authors (and sertraline's) report
+the symptom less than the rest, which includes finasteride. Each group is compared with the
+others, so one group's real difference shows, reversed, in the groups it is compared against:
+read a lower share in a large class alongside the small classes that make up its rest. On the r/PSSD export (Nov 2026): 798
+tests, 36 suggestive, none strong; under a second.
+
 ## Web app
 
 `uv run asclepius-app` starts the app and opens its page (`--port` picks another port,
@@ -512,7 +592,7 @@ into a temporary folder that is deleted when the app stops (Ctrl+C).
 | Lab reports | Self-reports |
 |---|---|
 | Look for subgroups of the patient group picked, the first if both are (`cluster_patients`, `link_subgroups`); refused with two control groups | Typed-in lab values within reference ranges |
-| Compare the two groups (`run_analysis`, with the subgroup links in one correction) | Drug and symptom profile (not built yet: M3-12) |
+| Compare the two groups (`run_analysis`, with the subgroup links in one correction) | Drug and symptom profile (`profile_drugs`) |
 | Compare PSSD, PFS and PAS (`compare_syndromes`; the reference is the control picked, else the reference ranges) | Symptom subgroups (not built yet: M3-13) |
 | Positions within reference ranges (`lab_range_findings`) | Intervention outcomes (not built yet: M3-14) |
 
@@ -527,6 +607,8 @@ Each step's one-line statement is shown, and when the run finishes, its findings
    **Nothing reliable yet** in a box above it (S8). Each finding has a plot:
    - group comparisons, ratios and subgroup symptom scores: each group's 10th, 25th, 50th, 75th
      and 90th percentiles as a box plot, for groups of 10 or more; no single value is drawn (S11);
+   - drug and symptom profile: the share of each side with the outcome (reports the symptom,
+     onset during use, a trajectory), hidden with the odds ratio and effect when a cell is below 5;
    - subgroup drugs: the share of each cluster that took the drug (hidden when fewer than 5 on a
      side took it, or did not, and then the effect too: on yes/no values it is the difference of
      the shares, which with the sizes would give the count back; the Tier A effect of a drug link
@@ -543,8 +625,9 @@ Each step's one-line statement is shown, and when the run finishes, its findings
    have no label and are not shown. The cross-syndrome section adds a summary of
    the markers with a pattern (shared, same direction with a different size, differs, one
    syndrome only), then every test. Every self-report section carries "self-report, no
-   controls"; the drug and symptom profile, symptom subgroups and intervention outcomes show as
-   not built yet until M3-12 to M3-14 add them. Every count below 5 is hidden in the view (0, which
+   controls"; the drug and symptom profile adds authors per drug class and drug, and that an
+   author counts in each of their classes; symptom subgroups and intervention outcomes show as
+   not built yet until M3-13 and M3-14 add them. Every count below 5 is hidden in the view (0, which
    is no one, is shown).
 
 5. **Export.** Once a run has finished, two downloads take it into a paper or to a colleague:
