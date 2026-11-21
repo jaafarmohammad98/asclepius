@@ -66,7 +66,7 @@ def test_the_profile_shows_what_sets_a_cluster_apart(tmp_path):
 def test_no_subgroups_gives_no_stable_clusters(tmp_path, seed):
     # 0 of 20 seeds give clusters, at 60 or 100 patients
     data = lab_dataset(tmp_path, groups={"PSSD": 60}, null=True, seed=seed)
-    result = cluster_patients(data)
+    result = cluster_patients(data, groups=["PSSD"])
     assert result.statement == NO_STABLE == "no stable clusters"
     assert result.k is None and result.assignments.empty and result.sizes.empty
     assert result.reason
@@ -82,7 +82,7 @@ def test_one_stretched_group_is_not_subgroups(tmp_path, seed):
     factor = np.exp(np.random.default_rng(seed).normal(0, 0.6, len(data.records)))
     factor = data.markers["record"].map(dict(zip(data.records["record"], factor, strict=True)))
     data = dataclasses.replace(data, markers=data.markers.assign(value=data.markers["value"] * factor))
-    result = cluster_patients(data)
+    result = cluster_patients(data, groups=["PSSD"])
     assert result.statement == NO_STABLE
     assert "stable but no tighter than in one group" in result.reason
 
@@ -90,7 +90,7 @@ def test_one_stretched_group_is_not_subgroups(tmp_path, seed):
 def test_the_same_settings_give_the_same_result(tmp_path):
     data = two_subgroups(tmp_path)
     settings = ClusterSettings(seed=3)
-    first, second = (cluster_patients(data, settings=settings) for _ in range(2))
+    first, second = (cluster_patients(data, ["PSSD", "PFS"], settings) for _ in range(2))
     assert first.assignments.equals(second.assignments)
     assert first.stability.equals(second.stability) and first.null_p == second.null_p
     assert first.settings["status"] == "provisional, needs expert review"
@@ -101,7 +101,7 @@ def test_reports_with_no_sex_are_left_out(tmp_path):
     records = data.records.assign(sex=[None] * 6 + list(data.records["sex"][6:]))
     data = dataclasses.replace(data, records=records)
     with pytest.raises(TooFewPatients, match="29 patients \\(6 more left out for having no sex\\)"):
-        cluster_patients(data)
+        cluster_patients(data, groups=["PSSD"])
 
 
 def test_30_per_subgroup_is_found_in_most_seeds(tmp_path):
@@ -121,13 +121,13 @@ def test_tiers_limit_who_is_clustered(tmp_path):
     tier_a = data.records.loc[data.records["tier"] == "A", "record"]
     assert result.k == 2 and set(result.assignments["record"]) == set(tier_a)
     with pytest.raises(TooFewPatients):
-        cluster_patients(two_subgroups(tmp_path / "small", size=40), tiers=["A"])
+        cluster_patients(two_subgroups(tmp_path / "small", size=40), ["PSSD", "PFS"], tiers=["A"])
 
 
 def test_too_few_usable_markers_says_no_stable_clusters(tmp_path):
     data = lab_dataset(tmp_path, groups={"PSSD": 40}, null=True)
     kept = data.markers[data.markers["marker_id"] == "testosterone"]
-    result = cluster_patients(dataclasses.replace(data, markers=kept))
+    result = cluster_patients(dataclasses.replace(data, markers=kept), groups=["PSSD"])
     assert result.statement == NO_STABLE
     assert "two markers" in result.reason and result.features == ("testosterone",)
 
@@ -136,7 +136,7 @@ def test_counts_below_5_are_not_shown(tmp_path):
     # 10% women: each cluster has fewer than 5 of them (spec S11)
     planted = [synthetic.PlantedDifference(m, 0.4, group="PFS") for m in FIVE_ALPHA]
     data = lab_dataset(tmp_path, groups={"PSSD": 40, "PFS": 40}, planted=planted, female_share=0.1, seed=0)
-    result = cluster_patients(data)
+    result = cluster_patients(data, groups=["PSSD", "PFS"])
     women = result.sizes[result.sizes["sex"] == "female"]["n_patients"]
     assert women.isna().all() and result.sizes["n_patients"].dropna().ge(5).all()
 
@@ -148,7 +148,7 @@ def test_small_counts_of_missing_values_are_not_shown(tmp_path):
         gone = (data.markers["marker_id"] == marker) & data.markers["record"].isin(
             data.records["record"][:reports]
         )
-        return cluster_patients(dataclasses.replace(data, markers=data.markers[~gone]))
+        return cluster_patients(dataclasses.replace(data, markers=data.markers[~gone]), groups=["PSSD"])
 
     assert without("dhea_s", 3).filled is None  # 3 values filled: fewer than 5 (spec S11)
     assert without("dhea_s", 6).filled == 6
@@ -162,3 +162,17 @@ def test_the_result_carries_a_run_record(tmp_path):
     assert record["dataset"]["fingerprint"] == data.fingerprint
     assert record["tool"] and record["groups"] == ["PFS", "PSSD"]
     assert record["settings"]["min_patients"] == 30 and record["settings"]["tiers"] is None
+
+
+def test_the_groups_to_cluster_must_be_named(tmp_path):
+    data = lab_dataset(tmp_path, groups={"PSSD": 40}, null=True)
+    with pytest.raises(TypeError):
+        cluster_patients(data)  # no default: patients and controls together mostly find the groups
+    with pytest.raises(ValueError, match="Name at least one group"):
+        cluster_patients(data, groups=[])
+    with pytest.raises(ValueError, match="Unknown group 'pssd '; use one of PSSD, "):
+        cluster_patients(data, groups=["pssd "])
+
+
+def test_the_settings_say_the_one_group_check_assumes_normal_data():
+    assert "normal" in ClusterSettings().record()["one_group_check"]

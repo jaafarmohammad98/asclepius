@@ -14,6 +14,13 @@ PSSD may be several conditions, so `cluster_patients` looks for subgroups among 
    from one normal distribution with the patients' own covariance (the idea of SigClust, Liu et al.
    2008). Failing either test gives "no stable clusters" (spec S8).
 
+The one-group check is an exception to spec S1 (no test that assumes normal distributions): its
+reference data are drawn from a normal distribution. Each feature is already a normal score, so
+what it assumes is that features relate to each other in straight lines. No permutation does the
+job: shuffling each feature alone removes the shared factor the check exists to catch, and
+shuffling along the data's main directions keeps the gap between real subgroups. It is recorded
+in the settings and listed for the clinician review (M3-11).
+
 Thresholds were chosen without a clinician and are marked provisional until M3-11.
 """
 
@@ -27,6 +34,7 @@ import numpy as np
 import pandas as pd
 
 from asclepius.dataset import LabDataset
+from asclepius.metadata import GROUPS
 from asclepius.ratios import STATUS, compute_ratios
 from asclepius.record import run_record
 
@@ -58,6 +66,9 @@ class ClusterSettings:
     restarts: int = 10
     max_missing_share: float = 0.2
     seed: int = 0
+    one_group_check: str = field(
+        default="against normal data with the patients' covariance: an exception to spec S1, for review in M3-11"
+    )
     status: str = field(default=STATUS)
 
     def __post_init__(self) -> None:
@@ -120,22 +131,29 @@ class ClusterResult:
 
 def cluster_patients(
     data: LabDataset,
-    groups: Sequence[str] | None = None,
+    groups: Sequence[str],
     settings: ClusterSettings | None = None,
     *,
     tiers: Sequence[str] | None = None,
 ) -> ClusterResult:
-    """Cluster the reports of `groups` (every report when None) by their markers and ratios.
+    """Cluster the reports of `groups` by their markers and ratios; the group itself is not used.
     `tiers` limits them to those tiers, as `["A"]` for a Tier A re-run (spec S6).
+
+    `groups` has no default: clustering patients with controls mostly finds the groups, not
+    subgroups. Naming both is allowed, as a deliberate check.
 
     Reports with no sex are left out, since scores are made within sex. Refuses, with
     `TooFewPatients`, when fewer than `settings.min_patients` remain (spec S4). The same settings
     give the same result.
     """
+    groups = list(groups)
+    if not groups:
+        raise ValueError("Name at least one group to cluster.")
+    for group in groups:
+        if group not in GROUPS:
+            raise ValueError(f"Unknown group {group!r}; use one of {', '.join(GROUPS)}.")
     settings = settings or ClusterSettings()
-    records = data.records
-    if groups is not None:
-        records = records[records["group"].isin(list(groups))]
+    records = data.records[data.records["group"].isin(groups)]
     if tiers is not None:
         records = records[records["tier"].isin(list(tiers))]
     has_sex = records["sex"].notna()

@@ -288,8 +288,10 @@ controls`.
 ## Subgroups
 
 PSSD may be several conditions (spec A3). `asclepius.cluster.cluster_patients(data, groups=["PSSD"])`
-looks for subgroups among the reports of the groups named (every report when `groups` is None);
-the groups themselves are not used. `tiers=["A"]` limits it to Tier A reports, for a Tier A re-run
+looks for subgroups among the reports of the groups named; the groups themselves are not used.
+`groups` is required: clustering patients with controls mostly finds the patient/control split,
+not subgroups, though naming both is allowed as a deliberate check. An empty list or an unknown
+group name is refused. `tiers=["A"]` limits it to Tier A reports, for a Tier A re-run
 (S6). Fewer than 30 patients is refused with `TooFewPatients` (S4); reports with no sex are left
 out and counted in the message.
 
@@ -311,6 +313,13 @@ out and counted in the message.
    normal distribution with the patients' own covariance and scored within sex the same way (the
    idea of SigClust, Liu et al. 2008). Without that within-sex scoring the test gave clusters in 5 of 20
    one-factor datasets, because evenly spaced scores split more cleanly than a normal sample.
+
+   **An exception to S1.** This check compares against normal data, which S1 rules out. Each
+   feature is already a normal score, so what it assumes is that features relate to each other in
+   straight lines. No permutation does the job: shuffling each feature alone removes the shared
+   factor the check is there to catch, and shuffling along the data's main directions keeps the
+   gap between real subgroups, so the check would never find them. The settings record it
+   (`one_group_check`), and it is listed for the clinician review (M3-11).
 
 `ClusterSettings` holds every threshold above (provisional, needs expert review). The result:
 
