@@ -24,8 +24,9 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from asclepius.cluster import MIN_SHOWN, ClusterResult
+from asclepius.cluster import MIN_SHOWN, ClusterResult, shown_parts
 from asclepius.dataset import LabDataset
+from asclepius.interventions import CLEAR, REPORTED
 from asclepius.profile import PROFILE_SYMPTOM
 from asclepius.ratios import KIND as RATIO
 from asclepius.ratios import compute_ratios
@@ -148,19 +149,6 @@ def shown(count: object) -> int | None:
     if count is None or pd.isna(count):  # type: ignore[arg-type]
         return None
     return int(count) if int(count) >= MIN_SHOWN else None  # type: ignore[call-overload]
-
-
-def shown_parts(parts: dict[str, int]) -> dict[str, int | None]:
-    """`parts` of a total that is shown, each from 1 to 4 hidden, and then the next smallest too until
-    the hidden ones add up to 0 or at least 5, so the total cannot give one back (spec S11)."""
-    hidden = {k: 0 < n < MIN_SHOWN for k, n in parts.items()}  # 0 is no one, so it is shown
-    for key in sorted(parts, key=parts.__getitem__):
-        if hidden[key] or parts[key] == 0:  # hiding a 0 would hide no one
-            continue
-        if not 0 < sum(n for k, n in parts.items() if hidden[k]) < MIN_SHOWN:
-            break
-        hidden[key] = True
-    return {k: None if hidden[k] else n for k, n in parts.items()}
 
 
 def plain(value: object) -> object:
@@ -486,6 +474,48 @@ def symptom_subgroups_section(result: Any) -> dict[str, object]:
     }
 
 
+INTERVENTION_COUNTS = ("n_authors", "n_clear", *CLEAR, "unclear")
+INTERVENTION_SHARES = (
+    "share_improved",
+    "improved_low",
+    "improved_high",
+    "share_worse",
+    "worse_low",
+    "worse_high",
+)
+
+
+def intervention_section(result: Any) -> dict[str, object]:
+    """Interventions ranked by the share of authors reporting improvement, and the safety signals:
+    reported outcomes, counted, never advice (overview rule 5). The counts and shares are hidden as
+    `asclepius.interventions` hides them; the refused interventions are only counted here."""
+
+    def view(row: pd.Series) -> dict[str, object]:
+        out: dict[str, object] = {"rank": plain(row["rank"]), "intervention": plain(row["marker_name"])}
+        out |= {c: plain(row[c]) for c in INTERVENTION_COUNTS}
+        return out | {c: plain(row[c]) for c in INTERVENTION_SHARES}
+
+    refused = len(result.refused)
+    signal = result.settings["worse_signal"]
+    return {
+        "statement": result.statement,
+        "nothing_reliable": None,  # counts of reported outcomes, not tests
+        "labels": [REPORTED, SELF_REPORT_LABEL, f"thresholds {PROVISIONAL}"],
+        "note": (
+            "Improved: major or partial improvement, as a share of the authors with a clear outcome "
+            "(unclear outcomes are counted apart), with its 95% Wilson interval. Ranked by the lower "
+            f"end of that interval. Safety signal: the lower end of the share reporting worse is at "
+            f"least {signal:.0%}. {shown(refused) if shown(refused) is not None else FEW} interventions "
+            f"with fewer than {result.settings['min_group_size']} authors with a clear outcome are "
+            "not ranked; the export lists them."
+        ),
+        "ranking": [view(r) for _, r in result.findings.iterrows()],
+        "safety": [view(r) for _, r in result.safety.iterrows()],
+        "findings": [],
+        "refused": [],
+    }
+
+
 def outcome_shares(row: pd.Series) -> dict[str, object]:
     """A drug profile row's plot: the share of each side with the outcome (hidden with a small cell)."""
     caption = (
@@ -543,6 +573,7 @@ BUILDERS: dict[str, Callable[[Any, dict[str, Any], Any, Values | None], dict[str
     SELF_REPORT_RANGES: lambda result, *_: range_section(result, self_report=True),
     PROFILE: lambda result, *_: profile_section(result),
     SYMPTOM_SUBGROUPS: lambda result, *_: symptom_subgroups_section(result),
+    INTERVENTIONS: lambda result, *_: intervention_section(result),
 }
 
 

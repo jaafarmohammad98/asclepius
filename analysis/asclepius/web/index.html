@@ -377,6 +377,7 @@ function findingSection(s) {
   if (s.clusters) box.append(clusterInfo(s.clusters));
   if (s.summary && s.summary.length) box.append(syndromeSummary(s));
   if (s.symptoms && s.symptoms.length) box.append(clusterSymptoms(s.symptoms));
+  if (s.ranking) box.append(interventionTables(s));
   if (s.groups && s.groups.length) box.append(groupCounts(s.groups));
   if (s.findings.length) box.append(findingsTable(s));
   if (s.refused && s.refused.length) box.append(refusedList(s.refused));
@@ -494,6 +495,21 @@ function legend(s) {
     box.append(". Dashed, and <5 in the table: counts of 1 to 4, which are never shown, and any count hidden with them so the total cannot give them back.");
   }
   return box;
+}
+
+function interventionTables(s) {
+  const wrap = el("div");
+  const head = ["Rank", "Intervention", "Authors (clear)", "Major", "Partial", "No effect", "Worse", "Unclear", "Share improved", "Share worse"];
+  const share = (v, low, high) => (v === null ? "hidden" : `${pct(v)} (${pct(low)} to ${pct(high)})`);
+  const rows = (list) => list.map((r) => [r.rank === null ? "–" : String(r.rank), r.intervention, count(r.n_clear),
+    count(r.major_improvement), count(r.partial_improvement), count(r.no_effect), count(r.worse), count(r.unclear),
+    share(r.share_improved, r.improved_low, r.improved_high), share(r.share_worse, r.worse_low, r.worse_high)]);
+  wrap.append(el("h3", "Reported outcomes, ranked by the share improved"));
+  wrap.append(el("p", "Reported outcome, not evidence that it works.", { class: "muted" }));
+  wrap.append(table(head, rows(s.ranking)));
+  wrap.append(el("h3", "Safety signals: a high share reporting worse"));
+  wrap.append(s.safety.length ? table(head, rows(s.safety)) : el("p", "None.", { class: "muted" }));
+  return wrap;
 }
 
 function clusterSymptoms(rows) {

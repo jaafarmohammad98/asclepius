@@ -18,6 +18,7 @@ import pandas as pd
 
 from asclepius.cluster import ClusterResult, TooFewPatients, cluster_patients
 from asclepius.dataset import DatasetError, LabDataset, load_lab_reports
+from asclepius.interventions import rank_interventions
 from asclepius.metadata import GROUPS
 from asclepius.profile import profile_drugs
 from asclepius.record import run_record
@@ -321,7 +322,7 @@ def lab_steps(data: LabDataset, group_a: str, group_b: str, settings: Settings) 
 
 
 def self_report_steps(data: SelfReportDataset, settings: Settings) -> list[Step]:
-    """The self-report analyses: the ones built so far, and the ones still to come."""
+    """The self-report analyses."""
 
     def profile() -> tuple[Any, str]:
         result = profile_drugs(data, settings)
@@ -331,6 +332,10 @@ def self_report_steps(data: SelfReportDataset, settings: Settings) -> list[Step]
         found = self_report_range_findings(data)
         return found, _placed(found, "author and test pairs")
 
+    def interventions() -> tuple[Any, str]:
+        result = rank_interventions(data, settings)
+        return result, result.statement
+
     def symptom_subgroups() -> tuple[Any, str]:
         result = cluster_symptoms(data, settings)
         return result, result.statement
@@ -339,7 +344,7 @@ def self_report_steps(data: SelfReportDataset, settings: Settings) -> list[Step]
         Step("Typed-in lab values within reference ranges", SELF_REPORT_RANGES, ranges),
         Step("Drug and symptom profile", PROFILE, profile),
         Step("Symptom subgroups", SYMPTOM_SUBGROUPS, symptom_subgroups),
-        Step("Intervention outcomes", INTERVENTIONS, None, message="added by M3-14"),
+        Step("Intervention outcomes", INTERVENTIONS, interventions),
     ]
 
 

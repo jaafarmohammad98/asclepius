@@ -75,7 +75,8 @@ def run_record(
 
 def export_run(result: RunResult, out_dir: str | PathLike[str]) -> Path:
     """Write a run's `findings.csv`, `refused.csv` and `skipped.csv` with its record, `run_record.json`.
-    A cross-syndrome run (`asclepius.syndromes.SyndromeResult`) adds `summary.csv`.
+    A run with a `summary` (cross-syndrome, drug profile, symptom subgroups) adds `summary.csv`, and
+    an intervention ranking (`asclepius.interventions`) adds `safety.csv`.
 
     The written record is `result.record` plus `outputs`, the SHA-256 of each CSV file, so every
     exported file can be matched to the record it came with. `out_dir` must not exist yet or be
@@ -87,9 +88,10 @@ def export_run(result: RunResult, out_dir: str | PathLike[str]) -> Path:
     out.mkdir(parents=True, exist_ok=True)
     outputs = {}
     tables = [("findings", result.findings), ("refused", result.refused), ("skipped", result.skipped)]
-    summary = getattr(result, "summary", None)  # a cross-syndrome run's
-    if summary is not None:
-        tables.append(("summary", summary))
+    for extra in ("summary", "safety"):  # a cross-syndrome or profile run's summary; interventions' safety
+        table = getattr(result, extra, None)
+        if table is not None:
+            tables.append((extra, table))
     for name, table in tables:
         path = out / f"{name}.csv"
         table.to_csv(path, index=False, lineterminator="\n")
