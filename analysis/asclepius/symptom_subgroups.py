@@ -41,10 +41,13 @@ import pandas as pd
 
 from asclepius.cluster import MIN_SHOWN, NO_STABLE, TooFewPatients, choose_k, count_text, number_by_size
 from asclepius.profile import (
+    CELL_COLUMNS,
     CLASSES,
     COLUMNS,
+    NOTE,
     ONSET_AFTER,
     ONSET_DURING,
+    PROFILE_COLUMNS,
     REFUSED_COLUMNS,
     TRAJECTORIES,
     author_profiles,
@@ -58,7 +61,6 @@ from asclepius.selfreport import SelfReportDataset
 
 ANALYSIS = "symptom subgroups"  # the run record's `analysis`
 CATCH_ALL = frozenset({"other"})  # symptoms that name no symptom: not features
-PROFILE_COLUMNS = ("onset", "overall_trajectory", "drugs", "classes")  # author_profiles' non-symptoms
 SUBGROUP_CLASS = "symptom subgroup: drug class"  # the findings table's `comparison` column
 SUBGROUP_ONSET = "symptom subgroup: onset"
 SUBGROUP_TRAJECTORY = "symptom subgroup: trajectory"
@@ -122,7 +124,8 @@ class SymptomClusterSettings:
 
 
 class TooFewAuthors(TooFewPatients):
-    """Clustering was refused: fewer authors than `SymptomClusterSettings.min_authors` (spec S4)."""
+    """Clustering was refused: fewer authors than `SymptomClusterSettings.min_authors` (spec S4).
+    A `TooFewPatients`, so a caller catching the lab refusal catches this one too."""
 
 
 @dataclass(frozen=True)
@@ -191,7 +194,7 @@ def cluster_symptoms(
     )
     base["stability"] = choice.stability
     if choice.k is None:
-        return _none(data, choice.reason, None, **base)
+        return _no_clusters(data, choice.reason, None, **base)
     k = choice.k
     null_p = _null_p(x, k, spread(d, choice.fits[k]), cs, rng)
     if null_p > cs.null_alpha:
@@ -199,13 +202,13 @@ def cluster_symptoms(
             f"{k} clusters are stable but no tighter than with the links between symptoms broken "
             f"(p = {null_p:.2f})"
         )
-        return _none(data, reason, null_p, **base)
+        return _no_clusters(data, reason, null_p, **base)
 
     cluster = pd.Series(number_by_size(choice.fits[k], k), index=authors.index)
     sizes = cluster.value_counts().sort_index().rename_axis("cluster").rename("n_authors").reset_index()
     sizes["n_authors"] = sizes["n_authors"].astype("Int64").mask(sizes["n_authors"] < MIN_SHOWN)
     clusters = f"{k} stable clusters"
-    findings, refused = _link(authors, cluster, k, settings)
+    findings, refused = _compare_clusters(authors, cluster, k, settings)
     said = statement(findings) if len(findings) else NOTHING_RELIABLE
     return SymptomSubgroups(
         clusters=clusters,
@@ -222,7 +225,7 @@ def cluster_symptoms(
     )
 
 
-def _none(data: SelfReportDataset, reason: str, null_p: float | None, **base) -> SymptomSubgroups:
+def _no_clusters(data: SelfReportDataset, reason: str, null_p: float | None, **base) -> SymptomSubgroups:
     """The "no stable clusters" result: nothing to describe or test (spec S8)."""
     return SymptomSubgroups(
         clusters=NO_STABLE,
@@ -239,7 +242,7 @@ def _none(data: SelfReportDataset, reason: str, null_p: float | None, **base) ->
     )
 
 
-def _link(
+def _compare_clusters(
     authors: pd.DataFrame, cluster: pd.Series, k: int, settings: Settings
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Each cluster against the other(s) by drug class, onset during use and each trajectory, all
@@ -305,21 +308,40 @@ def _link(
                 continue
             rows.append(head | {"sex": "all"} | compare_shares(int(a.sum()), len(a), int(b.sum()), len(b)))
     table = pd.DataFrame(rows, columns=list(COLUMNS))
-    findings = hide_small_cells(label_findings(table, settings, self_report=True))
+    findings = _hide_together(hide_small_cells(label_findings(table, settings, self_report=True)))
     refused_table = pd.DataFrame(refused, columns=list(REFUSED_COLUMNS)).astype(
         {"n_a": "Int64", "n_b": "Int64"}
     )
     return findings, refused_table
 
 
+def _hide_together(findings: pd.DataFrame) -> pd.DataFrame:
+    """Hide every row of a family when one of its rows hides its cells (spec S11). A family is one
+    outcome over all clusters, since with 3 or more each cluster's row shows the outcome's total and
+    the other clusters' rows the rest; and all trajectories, since they add up to the side's size."""
+    family = findings["comparison"].where(
+        findings["comparison"] == SUBGROUP_TRAJECTORY, findings["marker_id"]
+    )
+    hidden = findings["reported_a"].isna().groupby(family).transform("any").to_numpy(dtype=bool)
+    out = findings.copy()
+    for column in CELL_COLUMNS:
+        out[column] = out[column].mask(hidden)
+    return out
+
+
 def _record(data: SelfReportDataset, groups: list[str], settings: dict[str, object]) -> dict[str, object]:
-    return run_record(data, groups, settings) | {"analysis": ANALYSIS}
+    return run_record(data, groups, settings) | {"analysis": ANALYSIS, "note": NOTE}
 
 
 def _describe(reported: pd.DataFrame, cluster: pd.Series, top: int) -> pd.DataFrame:
     """Each cluster's `top` symptoms with the largest share in it minus the share in the other
-    authors, over-represented ones only. A symptom with a count below 5 on either side (reporting
-    or not) is not listed, since its shares and the sizes would give the count back (spec S11)."""
+    authors, over-represented ones only. A symptom with fewer than 5 reporters or non-reporters in
+    any cluster is not listed for any, since the shares and sizes would give that count back, with
+    3 or more clusters through the other clusters' rows (spec S11)."""
+    counts = reported.groupby(cluster.to_numpy()).agg(["sum", "count"])
+    yes, size = counts.xs("sum", axis=1, level=1), counts.xs("count", axis=1, level=1)
+    describable = [s for s in reported.columns if min(yes[s].min(), (size[s] - yes[s]).min()) >= MIN_SHOWN]
+    reported = reported[describable]
     rows = []
     for c in sorted(cluster.unique()):
         inside = (cluster == c).to_numpy()
@@ -327,8 +349,6 @@ def _describe(reported: pd.DataFrame, cluster: pd.Series, top: int) -> pd.DataFr
         listed = []
         for symptom in reported.columns:
             yes_in, yes_out = int(reported[symptom][inside].sum()), int(reported[symptom][~inside].sum())
-            if min(yes_in, n_in - yes_in, yes_out, n_out - yes_out) < MIN_SHOWN:
-                continue
             share_in, share_out = yes_in / n_in, yes_out / n_out
             if share_in > share_out:
                 listed.append((share_in - share_out, symptom, share_in, share_out))

@@ -42,6 +42,12 @@ OTHER_CLASSES, OTHER_DRUGS = "other drug classes", "other causal drugs"
 TRAJECTORIES = ("recovered", "improving", "stable", "worsening")
 ONSET_DURING, ONSET_AFTER = "during_use", "after_stopping"
 TOP_DRUGS = 8
+PROFILE_COLUMNS = (
+    "onset",
+    "overall_trajectory",
+    "drugs",
+    "classes",
+)  # author_profiles' columns besides symptoms
 NOTE = "An author with drugs in several classes counts in each; see the summary for how many."
 COLUMNS = (
     "comparison",
@@ -138,7 +144,8 @@ def author_profiles(data: SelfReportDataset) -> pd.DataFrame:
     reported = pd.crosstab(data.symptoms["author"], data.symptoms["symptom"]).gt(0)
     reported = reported.reindex(authors.index, fill_value=False).astype(bool)
     reported.columns.name = None
-    return pd.concat([authors.assign(drugs=drugs, classes=classes), reported], axis=1)
+    out = pd.concat([authors.assign(drugs=drugs, classes=classes), reported], axis=1)
+    return out[[*PROFILE_COLUMNS, *reported.columns]]
 
 
 @dataclass(frozen=True)
@@ -168,7 +175,7 @@ def profile_drugs(
     if top_drugs < 0:
         raise ValueError("top_drugs cannot be negative.")
     profiles = author_profiles(data)
-    symptoms = [c for c in profiles.columns if c not in ("onset", "overall_trajectory", "drugs", "classes")]
+    symptoms = [c for c in profiles.columns if c not in PROFILE_COLUMNS]
     has_class = profiles[profiles["classes"].map(bool)]
     has_drug = profiles[profiles["drugs"].map(bool)]
     minimum = settings.min_group_size

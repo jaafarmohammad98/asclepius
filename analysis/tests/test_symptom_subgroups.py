@@ -158,3 +158,22 @@ def test_the_real_export_runs_and_every_cluster_has_at_least_30_authors():
     assert STRONG not in set(result.findings["label"])
     for table in (result.findings, result.refused, result.summary, result.sizes):
         assert not {"author", "author_key", "case_id"} & set(table.columns)
+
+
+@pytest.mark.parametrize("seed", range(2))
+def test_a_hidden_count_cannot_be_rebuilt_from_the_other_clusters_rows(tmp_path, seed):
+    # one of three clusters has no onset during use: its cells are below 5
+    groups = [
+        synthetic.PlantedSubgroup(1 / 3, ("genital_numbness", "erectile_dysfunction", "anorgasmia")),
+        synthetic.PlantedSubgroup(1 / 3, ("anhedonia", "emotional_blunting", "depression"), onset_during=0.5),
+        synthetic.PlantedSubgroup(1 / 3, ("brain_fog", "fatigue", "insomnia"), onset_during=0.5),
+    ]
+    result = cluster_symptoms(self_reports(tmp_path, seed=seed, authors=600, subgroups=groups))
+    assert result.k == 3
+    onset = result.findings[result.findings["marker_id"] == "onset:during_use"]
+    assert len(onset) == 3 and onset["reported_a"].isna().all()  # hidden together, or the rest give it back
+    # trajectories share one total: one hidden value would come back from the other three
+    for _, rows in result.findings[result.findings["comparison"] == "symptom subgroup: trajectory"].groupby(
+        "group_a"
+    ):
+        assert rows["reported_a"].isna().all() or rows["reported_a"].notna().all()

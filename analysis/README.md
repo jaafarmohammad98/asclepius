@@ -603,7 +603,8 @@ and tests whether the clusters differ by drug class, onset or trajectory.
    `reason`.
 5. `summary`: each cluster's `top_symptoms` (5) most over-represented symptoms: `share_in` the
    cluster, `share_out` among the other authors, and the `difference`. A symptom with fewer than 5
-   reporters or non-reporters on either side is not listed (S11).
+   reporters or non-reporters in any cluster is not listed for any (S11): with 3 or more clusters,
+   the other clusters' rows would give that count back.
 6. `findings`: each cluster against the other (with 2 clusters, cluster 1 against cluster 2) or
    against the other clusters (with more), on each drug class (of authors with a drug in some
    class), onset during use, and each trajectory. The columns, tests, hiding of small cells and
@@ -611,7 +612,11 @@ and tests whether the clusters differ by drug class, onset or trajectory.
    class`, `symptom subgroup: onset` or `symptom subgroup: trajectory`). All rows are corrected
    together, never strong, `self-report, no controls` (S2, S10). Symptoms are not tested: the
    clusters were made from them. A class fewer than 10 clustered authors took, or a side with
-   fewer than 10, goes to `refused` (S4).
+   fewer than 10, goes to `refused` (S4). When one row hides its cells, every row of the same
+   outcome does, and every trajectory row when one does: with 3 or more clusters each row shows
+   the outcome's total and the other clusters' rows the rest, and the four trajectories add up to
+   the side's size. The record carries the profile's note that an author with drugs in several
+   classes counts in each.
 
 Clustering is refused below `min_authors` (30) authors left (`TooFewAuthors`, S4). The result has
 `clusters`, `reason`, `k`, `sizes`, `summary`, `stability`, `null_p`, `symptoms`, `left_out`,
