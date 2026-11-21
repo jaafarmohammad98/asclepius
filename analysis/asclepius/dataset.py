@@ -50,7 +50,10 @@ class LabDataset:
     `markers` has one row per marker per report. `record` identifies a report across all loaded
     files (`<file number>/<record_id>`, files numbered from 1 in load order), because each extractor
     file numbers its reports from r001. `fingerprint` is a SHA-256 over the input files' bytes
-    (metadata file included), so a result can name the exact data it came from.
+    (metadata file included), so a result can name the exact data it came from. `files` gives
+    each input file's role (`lab reports`, `metadata`), name and SHA-256, in load order, for the
+    run record (`asclepius.record`), which keeps only the role and hash, since a file name could
+    name a patient.
 
     `records` has one row per report: `record`, `file`, `record_id`, `sex`, `age_years`, and from
     the metadata file (`asclepius.metadata`) `group`, `tier`, `drug`, `months_since_stopping` and any
@@ -64,6 +67,16 @@ class LabDataset:
     records: pd.DataFrame
     unmatched: tuple[str, ...] = ()
     kind: str = "lab-report"
+    files: tuple[FileHash, ...] = ()
+
+
+@dataclass(frozen=True)
+class FileHash:
+    """One input file of a dataset: what it is (`role`), its name and the SHA-256 of its bytes."""
+
+    role: str
+    name: str
+    sha256: str
 
 
 def load_lab_reports(
@@ -77,9 +90,12 @@ def load_lab_reports(
         raise DatasetError("No dataset files were given.")
     digest = hashlib.sha256()
     frames = []
+    hashes = []
     for number, path in enumerate(files, start=1):
         raw = path.read_bytes()
-        digest.update(hashlib.sha256(raw).digest())
+        file_hash = hashlib.sha256(raw)
+        digest.update(file_hash.digest())
+        hashes.append(FileHash("lab reports", path.name, file_hash.hexdigest()))
         frame = _read_file(path)
         frame.insert(0, "file", number)
         frame.insert(0, "record", str(number) + "/" + frame["record_id"])
@@ -92,10 +108,18 @@ def load_lab_reports(
         meta_path = Path(metadata)
         if not meta_path.is_file():
             raise DatasetError(f"{meta_path.name}: the file does not exist.")
+        meta_hash = hashlib.sha256(meta_path.read_bytes())
         digest.update(b"metadata")
-        digest.update(hashlib.sha256(meta_path.read_bytes()).digest())
+        digest.update(meta_hash.digest())
+        hashes.append(FileHash("metadata", meta_path.name, meta_hash.hexdigest()))
         records, unmatched = meta.apply(records, meta_path)
-    return LabDataset(markers=markers, fingerprint=digest.hexdigest(), records=records, unmatched=unmatched)
+    return LabDataset(
+        markers=markers,
+        fingerprint=digest.hexdigest(),
+        records=records,
+        unmatched=unmatched,
+        files=tuple(hashes),
+    )
 
 
 def _read_file(path: Path) -> pd.DataFrame:

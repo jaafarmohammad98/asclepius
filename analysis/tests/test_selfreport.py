@@ -176,6 +176,9 @@ def test_a_post_without_a_year_or_condition_still_loads(tmp_path):
 def test_the_dataset_records_its_version_and_settings(tmp_path):
     data = load_self_reports(EXPORT)
     assert len(data.fingerprint) == 64
+    assert [(f.role, f.name, len(f.sha256)) for f in data.files] == [
+        (name, f"{name}.csv", 64) for name in ("cases", "causal_drugs", "symptoms", "interventions", "labs")
+    ]
     assert data.settings == {"include_unverified": False}
     assert load_self_reports(EXPORT, include_unverified=True).settings == {"include_unverified": True}
     changed = broken_export(tmp_path, "labs", "450.0", "451.0")
