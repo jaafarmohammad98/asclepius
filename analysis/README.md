@@ -1,7 +1,7 @@
 # analysis
 
-The analysis engine (milestone 3). So far it loads and checks data, and writes synthetic datasets
-with a known answer for testing the statistics.
+The analysis engine (milestone 3). So far it loads and checks data, writes synthetic datasets
+with a known answer for testing the statistics, and compares markers between two groups.
 
 ```sh
 cd analysis
@@ -94,3 +94,26 @@ the share of authors who tried an intervention reporting improvement and worse. 
 2 to 4 times, with their symptoms and interventions spread over the posts, so the planted
 answer only appears once posts are merged per author. A few posts come from deleted accounts,
 and a few fail the evidence check; the loader must leave out both (the second by default).
+
+## Group comparison
+
+`asclepius.compare.compare_groups(data, "PSSD", "healthy control")` compares every marker between
+two groups of a `LabDataset`, separately in each sex (spec A1), and returns a findings table, one
+row per marker and sex, largest effect first:
+
+| Column | Meaning |
+|---|---|
+| `marker_id`, `marker_name`, `sex` | what was compared |
+| `group_a`, `group_b`, `n_a`, `n_b` | the two groups and how many reports each had for this marker (S3) |
+| `median_a`, `median_b` | each group's median value |
+| `effect_size` | Cliff's delta, P(a > b) - P(a < b): -1 when every value in group a is below every value in group b, 0 for no difference |
+| `ci_low`, `ci_high` | 95% percentile bootstrap interval of the effect size (2,000 resamples, each group resampled separately) |
+| `p_value` | two-sided permutation test on the rank sum (Mann-Whitney), exact when there are at most 9,999 ways to split the values, else 9,999 random splits (S1) |
+
+Reports with no sex are left out. A value given as `<x` or `>x` counts as x. The same `seed` gives
+the same table. `compare_values(a, b)` does the same for two lists of values.
+
+Not done here yet: the group-size limit (S4) and the false discovery rate correction (S2) come in
+M3-06, so a row on its own is not a finding. On synthetic data with groups of 40 (12 women each),
+chance differences among the women often have a larger effect size than a planted 40% difference;
+with groups of 100 the planted marker comes first every time (30 of 30 seeds).
