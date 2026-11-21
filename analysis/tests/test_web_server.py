@@ -69,6 +69,12 @@ def test_a_dataset_file_goes_to_a_finished_run(app, tmp_path):
         time.sleep(0.05)
     assert run["state"] == "finished" and run["done"] == run["total"] == 4
 
+    # strict JSON, as a browser parses it: no NaN anywhere
+    status, content = call(app + "/api/findings")
+    assert status == 200
+    findings = json.loads(content, parse_constant=lambda c: pytest.fail(f"{c} is not JSON"))
+    assert [s["kind"] for s in findings["sections"]] == ["subgroups", "comparison", "syndromes", "ranges"]
+
 
 def test_a_loading_error_comes_back_in_plain_words(app):
     api(app, "/api/clear", "POST")
