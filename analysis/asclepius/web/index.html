@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Asclepius</title>
+<style>
+  :root {
+    --bg: #fbfbfa; --panel: #ffffff; --text: #1d1f21; --muted: #5f6368; --line: #dadce0;
+    --accent: #2f5d8a; --accent-text: #ffffff; --bad-bg: #fdecea; --bad: #8a1c12;
+    --ok: #1e6b3a; --warn: #7a5200; --bar: #e8eaed;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #17181a; --panel: #202124; --text: #e8eaed; --muted: #a0a4a8; --line: #3c4043;
+      --accent: #8ab4f8; --accent-text: #0b1b2e; --bad-bg: #3b1d1a; --bad: #f6aea6;
+      --ok: #81c995; --warn: #fdd663; --bar: #3c4043; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  h2 { font-size: 1.1rem; margin: 0 0 12px; }
+  p { margin: 0 0 12px; }
+  .muted { color: var(--muted); }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    padding: 16px; margin-top: 16px; }
+  section[hidden] { display: none; }
+  fieldset { border: 1px solid var(--line); border-radius: 6px; margin: 0 0 12px; padding: 12px; }
+  legend { font-weight: 600; padding: 0 4px; }
+  label { display: block; margin: 8px 0 4px; }
+  input[type=file] { max-width: 100%; }
+  button { font: inherit; border-radius: 6px; padding: 8px 16px; cursor: pointer;
+    border: 1px solid var(--accent); background: var(--accent); color: var(--accent-text); }
+  button:disabled { opacity: .5; cursor: default; }
+  select { font: inherit; padding: 4px; max-width: 100%; background: var(--panel); color: var(--text);
+    border: 1px solid var(--line); border-radius: 4px; }
+  .error { background: var(--bad-bg); color: var(--bad); border-radius: 6px; padding: 10px 12px;
+    margin: 12px 0 0; white-space: pre-wrap; }
+  .table-wrap { overflow-x: auto; margin-bottom: 12px; }
+  table { border-collapse: collapse; min-width: 100%; }
+  th, td { border-bottom: 1px solid var(--line); padding: 4px 10px; text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { font-weight: 600; }
+  .label { display: inline-block; border: 1px solid var(--warn); color: var(--warn);
+    border-radius: 4px; padding: 0 6px; font-size: .9em; }
+  .groups { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-bottom: 12px; }
+  .groups label { margin: 0 0 4px; }
+  progress { width: 100%; height: 10px; accent-color: var(--accent); }
+  ol.steps { padding-left: 20px; margin: 12px 0 0; }
+  ol.steps li { margin-bottom: 8px; }
+  .state { font-weight: 600; }
+  .state.done { color: var(--ok); }
+  .state.refused, .state.not-built-yet { color: var(--warn); }
+  .state.failed { color: var(--bad); }
+  .state.running, .state.waiting { color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Asclepius</h1>
+  <p class="muted">Runs on this computer only. Files you pick are not sent anywhere else, and are
+    deleted when the app stops. Thresholds are provisional, needs expert review.</p>
+
+  <section id="load">
+    <h2>1. Load a dataset</h2>
+    <p class="muted">Load one kind at a time: the two kinds are never pooled.</p>
+    <fieldset>
+      <legend>Lab reports</legend>
+      <label for="reports">Dataset files from the extractor (CSV, one or more)</label>
+      <input id="reports" type="file" accept=".csv,text/csv" multiple>
+      <label for="metadata">Metadata file: group and tier of each report (optional)</label>
+      <input id="metadata" type="file" accept=".csv,text/csv">
+    </fieldset>
+    <fieldset>
+      <legend>Self-reports</legend>
+      <label for="export">The harvester's export folder (<code>data/export</code>)</label>
+      <input id="export" type="file" webkitdirectory directory>
+    </fieldset>
+    <button id="load-button" type="button">Load</button>
+    <div id="load-error" class="error" role="alert" hidden></div>
+  </section>
+
+  <section id="review" hidden>
+    <h2>2. Check what was loaded</h2>
+    <div id="review-body"></div>
+  </section>
+
+  <section id="run" hidden>
+    <h2>3. Run the analysis</h2>
+    <div id="group-choice" class="groups" hidden>
+      <div><label for="group-a">Compare</label><select id="group-a"></select></div>
+      <div><label for="group-b">with</label><select id="group-b"></select></div>
+    </div>
+    <button id="run-button" type="button">Run the full analysis</button>
+    <div id="run-error" class="error" role="alert" hidden></div>
+    <div id="progress" hidden>
+      <p><span id="run-label" class="label" hidden></span></p>
+      <p id="progress-text" class="muted" aria-live="polite"></p>
+      <progress id="progress-bar" value="0" max="1"></progress>
+      <ol id="steps" class="steps"></ol>
+    </div>
+  </section>
+</main>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const TABLES = ["cases", "causal_drugs", "symptoms", "interventions", "labs"];
+const FEW = "fewer than 5"; // counts below 5 are never shown (spec S11); the server sends them as null
+
+function count(n) { return n === null || n === undefined ? FEW : n.toLocaleString("en"); }
+
+function el(tag, text, attrs = {}) {
+  const node = document.createElement(tag);
+  if (text !== undefined && text !== null) node.textContent = text;
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  return node;
+}
+
+function table(head, rows) {
+  const wrap = el("div", null, { class: "table-wrap" });
+  const t = el("table");
+  const tr = el("tr");
+  head.forEach((h) => tr.append(el("th", h, { scope: "col" })));
+  t.append(el("thead")).append(tr);
+  const body = t.appendChild(el("tbody"));
+  rows.forEach((cells) => {
+    const r = body.appendChild(el("tr"));
+    cells.forEach((c, i) => r.append(el(i === 0 ? "th" : "td", c, i === 0 ? { scope: "row" } : {})));
+  });
+  wrap.append(t);
+  return wrap;
+}
+
+function showError(id, message) {
+  const box = $(id);
+  box.textContent = message || "";
+  box.hidden = !message;
+}
+
+async function api(path, options = {}) {
+  const response = await fetch(path, options);
+  const text = await response.text();
+  const body = text ? JSON.parse(text) : {};
+  if (!response.ok) throw new Error(body.error || `The app answered ${response.status}.`);
+  return body;
+}
+
+async function upload(role, file, name) {
+  const response = await fetch(`/api/files/${role}?name=${encodeURIComponent(name)}`,
+    { method: "PUT", body: file });
+  if (!response.ok) throw new Error((await response.json()).error);
+}
+
+function exportTables(files) {
+  // the five tables, from the top-most folder holding them (a picked folder may hold others)
+  const tables = files.filter((f) => TABLES.includes(f.name.replace(/\.csv$/, "")) && f.name.endsWith(".csv"));
+  const depth = (f) => (f.webkitRelativePath || f.name).split("/").length;
+  const top = Math.min(...tables.map(depth));
+  return tables.filter((f) => depth(f) === top);
+}
+
+$("load-button").addEventListener("click", async () => {
+  const reports = [...$("reports").files], metadata = [...$("metadata").files];
+  const exported = exportTables([...$("export").files]);
+  showError("load-error", "");
+  $("review").hidden = $("run").hidden = true;
+  if ($("export").files.length && !exported.length) {
+    showError("load-error", "The folder picked has none of the harvester's tables (cases.csv, ...). Pick its data/export folder.");
+    return;
+  }
+  $("load-button").disabled = true;
+  try {
+    await api("/api/clear", { method: "POST" });
+    for (const f of reports) await upload("reports", f, f.name);
+    for (const f of metadata) await upload("metadata", f, f.name);
+    for (const f of exported) await upload("export", f, f.name);
+    showReview(await api("/api/load", { method: "POST" }));
+  } catch (error) {
+    showError("load-error", error.message);
+  } finally {
+    $("load-button").disabled = false;
+  }
+});
+
+function showReview(review) {
+  const body = $("review-body");
+  body.replaceChildren();
+  if (review.kind === "self-report") {
+    body.append(el("p", null)).append(el("span", review.label, { class: "label" }));
+    body.append(el("p", `${count(review.authors)} authors, each counted once however many posts they wrote.`));
+    body.append(table(["Condition", "Authors"], review.conditions.map((c) => [c.condition, count(c.authors)])));
+    body.append(el("p", `Left out: ${count(review.excluded.unverified)} posts that failed the evidence check ` +
+      `(evidence_ok false), and ${count(review.excluded.no_author)} posts from deleted accounts, which cannot be merged per author.`));
+  } else {
+    body.append(table(["Group", "Reports"], review.groups.map((g) => [g.group, count(g.records)])));
+    const sexes = [...new Set(review.records.map((c) => c.sex))].sort();
+    const tiers = [...new Set(review.records.map((c) => c.tier))].sort();
+    const head = ["Group", ...sexes.flatMap((s) => tiers.map((t) => `${s}, tier ${t}`))];
+    const groups = review.groups.map((g) => g.group);
+    const rows = groups.map((g) => [g, ...sexes.flatMap((s) => tiers.map((t) => {
+      const cell = review.records.find((c) => c.group === g && c.sex === s && c.tier === t);
+      return cell ? count(cell.records) : "0";
+    }))]);
+    body.append(el("p", "Reports per group, sex and tier (A: confirmed by a clinician; B: the default; C: least trusted):"));
+    body.append(table(head, rows));
+    if (review.unmatched !== 0) {
+      body.append(el("p", `${count(review.unmatched)} metadata rows name no loaded report and were left out.`, { class: "muted" }));
+    }
+  }
+  $("review").hidden = false;
+  showRunChoice(review);
+}
+
+function showRunChoice(review) {
+  const lab = review.kind === "lab-report";
+  $("group-choice").hidden = !lab;
+  if (lab) {
+    const [a, b] = [$("group-a"), $("group-b")];
+    a.replaceChildren(...review.choices.map((g) => el("option", g, { value: g })));
+    b.replaceChildren(...review.choices.map((g) => el("option", g, { value: g })));
+    const control = review.choices.find((g) => g.endsWith("control"));
+    a.value = review.choices.includes("PSSD") ? "PSSD" : review.choices[0];
+    b.value = control || review.choices.find((g) => g !== a.value) || "";
+  }
+  $("run-button").disabled = lab && review.choices.length < 2;
+  showError("run-error", lab && review.choices.length < 2
+    ? "A run compares two groups, and the metadata assigns fewer than two. Load a metadata file naming each report's group." : "");
+  $("progress").hidden = true;
+  $("run").hidden = false;
+}
+
+$("run-button").addEventListener("click", async () => {
+  showError("run-error", "");
+  const choice = $("group-choice").hidden ? {} : { group_a: $("group-a").value, group_b: $("group-b").value };
+  $("run-button").disabled = $("load-button").disabled = true;
+  try {
+    showStatus(await api("/api/run", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(choice) }));
+    await follow();
+  } catch (error) {
+    showError("run-error", error.message);
+  } finally {
+    $("run-button").disabled = $("load-button").disabled = false;
+  }
+});
+
+async function follow() {
+  for (;;) {
+    const status = await api("/api/status");
+    showStatus(status);
+    if (status.state !== "running") return;
+    await new Promise((done) => setTimeout(done, 400));
+  }
+}
+
+function showStatus(status) {
+  $("progress").hidden = false;
+  $("run-label").hidden = !status.label;
+  $("run-label").textContent = status.label || "";
+  $("progress-bar").max = status.total || 1;
+  $("progress-bar").value = status.done;
+  $("progress-text").textContent = status.state === "finished"
+    ? `Finished: ${status.total} steps.` : `Running: step ${Math.min(status.done + 1, status.total)} of ${status.total}...`;
+  $("steps").replaceChildren(...status.steps.map((step) => {
+    const item = el("li");
+    item.append(el("span", step.name + ": "), el("span", step.state, { class: `state ${step.state.replaceAll(" ", "-")}` }));
+    if (step.message) item.append(el("div", step.message, { class: "muted" }));
+    return item;
+  }));
+}
+</script>
+</body>
+</html>
