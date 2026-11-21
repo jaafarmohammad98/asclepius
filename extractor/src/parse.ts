@@ -2,6 +2,10 @@ import type { TextLine } from "./pdfText.ts";
 import type { DutchRecord, Marker } from "./types.ts";
 import { runChecks } from "./checks.ts";
 
+/** The warning a record carries when no result rows were found. The page shows this case as its own error state. */
+export const NO_TABLES_WARNING =
+  "No result tables could be read. The report may be a scan, or use a layout this version does not support.";
+
 const VALUE = /^([<>])?\s*(\d+(?:\.\d+)?)$/;
 const UNIT = /^[a-zµμ]+\/[a-zµμ]+$/i;
 const RANGE = /^(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)$/;
@@ -133,9 +137,7 @@ export function parseDutch(lines: TextLine[]): DutchRecord {
   }
 
   if (markers.length === 0) {
-    warnings.push(
-      "No result tables could be read. The report may be a scan, or use a layout this version does not support.",
-    );
+    warnings.push(NO_TABLES_WARNING);
   }
 
   const pages = lines.reduce((max, l) => Math.max(max, l.page), 0);

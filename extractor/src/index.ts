@@ -3,8 +3,9 @@ import { parseDutch } from "./parse.ts";
 import type { DutchRecord } from "./types.ts";
 
 export type { DutchRecord, Marker, Check } from "./types.ts";
-export { parseDutch } from "./parse.ts";
+export { NO_TABLES_WARNING, parseDutch } from "./parse.ts";
 export { toCsv } from "./csv.ts";
+export { batchToCsv, batchToJson, summariseBatch, type Batch, type BatchReport, type ReportState } from "./batch.ts";
 export { findDuplicates, fingerprint } from "./duplicates.ts";
 
 /** Read a DUTCH report PDF and return its anonymised record. */
