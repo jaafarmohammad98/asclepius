@@ -401,3 +401,80 @@ score with nothing planted:
 | 50 + 50, shift 1 point | 8 of 20 | 1 of 20 | 1 of 20 |
 | 100 + 100, shift 3 points, half tier A | 20 of 20 | 20 of 20 | 1 of 20 |
 | 50 + 50, nothing planted | 1 of 20 | 0 of 20 | 1 of 20 |
+
+## Cross-syndrome comparison
+
+Do PSSD, PFS and PAS share a mechanism (spec A4)? If they do, a marker or ratio that is off in one
+should be off the same way in the others. `asclepius.syndromes.compare_syndromes(data, reference,
+settings)` compares every raw marker and enzyme-activity ratio, within sex, in two kinds of test:
+
+- **Each syndrome against the reference** (`comparison` `cross-syndrome: vs reference`), which
+  gives each syndrome's direction. The reference is a control group, `healthy control` by default
+  or `SSRI-exposed control`, compared with the same test as any group comparison.
+- **Each pair of syndromes against each other** (`cross-syndrome: between syndromes`), which says
+  where they differ.
+
+The syndromes compared are those with reports in the data. Every test is corrected together in one
+false discovery rate correction, re-run on Tier A records and labelled exactly as in `run_analysis`
+(S2, S5, S6): 408 tests with all three syndromes and controls. A `measure` column says whether a
+row is a `raw marker` or an `enzyme-activity ratio`.
+
+**Without controls**, `reference="reference range"` compares each syndrome with the reports' own
+reference ranges instead. Of the values placed with certainty (as in the reference-range rows), the
+effect is the share above the range minus the share below it, from -1 (all below) to 1 (all above),
+0 when as many fall on each side, as in healthy people, for whom the range is about the middle 95%.
+The p-value is an exact two-sided sign test of above against below, the interval a percentile
+bootstrap. This is not a Cliff's delta, but the same 0.33 threshold labels it (provisional, M3-11).
+It assumes that healthy values fall outside the range equally often on each side, which a real
+lab's range may not do. Ratios have no range, so they are only compared between syndromes.
+`share_above` and `share_below` are both hidden when fewer than 5 fall on either side (S11).
+
+Limits (S4): a syndrome with fewer than 10 reports is left out and listed in `refused`; fewer than
+two syndromes left, or a reference group with fewer than 10, is refused with `GroupTooSmall`. A
+test where either side has fewer than 10 values in that sex is refused as in a run. No count below
+5 is shown in a refusal or the summary (S11).
+
+The result is a `RunResult` (`findings`, `refused`, `skipped`, `statement`, `settings`, `record`)
+plus `summary`, one row per measure, marker and sex:
+
+| Column | Meaning |
+|---|---|
+| `n_PSSD`, `n_PFS`, `n_PAS`, `n_reference` | values per syndrome and in the control group (none for reference ranges) |
+| `effect_PSSD`, ... | each syndrome's effect against the reference |
+| `direction_PSSD`, ... | `higher` or `lower` when that test is strong or suggestive, else `no clear shift`; `not tested` when refused |
+| `differ` | the pairs whose test is strong or suggestive, as `PFS lower than PSSD` |
+| `pattern` | see below |
+| `shared_by` | the syndromes shifted the same way, for `shared` and `same direction, different size` |
+| `label` | how strong the pattern is: the weakest label among the findings that make it (for `differs`, the strongest difference) |
+
+| Pattern | When |
+|---|---|
+| `shared` | two or more syndromes are shifted the same way, none the other way, and those do not differ from each other |
+| `same direction, different size` | as `shared`, but two of them also differ from each other |
+| `differs` | syndromes are shifted opposite ways, or a pair differs |
+| `one syndrome only` | one syndrome is shifted, and no pair differs |
+| `no clear shift` | nothing is strong or suggestive |
+| `not tested` | no syndrome could be tested against the reference |
+
+A syndrome with `no clear shift` beside two that are shifted does not stop a `shared` pattern; the
+`differ` column says whether it was found to differ from them. The statement is the run's (S8),
+followed by how many marker-sex rows are `shared`, `same direction, different size` or `differs`.
+The record gains `analysis` (`cross-syndrome`) and `reference`; `groups` lists the syndromes
+compared and the reference. `export_run` adds `summary.csv`, and `reproduce` runs it again.
+
+On synthetic data with 100 per syndrome (and 100 controls), 20 seeds each:
+
+| Data | Planted marker, men | Planted marker, women | Other markers |
+|---|---|---|---|
+| androsterone ×0.5 in all three, half tier A | `shared` 20 of 20 (17 strong) | `shared` 19 of 20 (11 strong) | never `shared`; a chance `differs` or `one syndrome only` in most runs, almost all suggestive |
+| androsterone ×0.5 in all three, a quarter tier A | `shared` 20 of 20 (16 strong) | `shared` 19 of 20 (all suggestive: Tier A too small) | as above |
+| androsterone ×0.5 in PFS only, half tier A | `differs` 20 of 20 (17 strong) | `differs` 18 of 20 | as above |
+| androsterone ×0.3 in all three, no controls | `shared` 20 of 20, strong | `shared` 20 of 20 (16 strong) | never `shared` |
+| androsterone ×0.5 in all three, no controls | `shared` 20 of 20, suggestive | `no clear shift` 18 of 20 | |
+| nothing planted, 40 per group | 20 of 20 seeds say `nothing reliable yet` | | |
+
+Against reference ranges, a shift must push values past the range to show, so it finds only large
+shifts: halving androsterone moves too few women's values out of range. With 40 per group, a
+shared shift in women is mostly missed. The chance findings on other markers are what a 10% false
+discovery rate allows once real findings exist: one false finding in ten is expected among the
+suggestive ones.

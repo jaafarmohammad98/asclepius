@@ -75,6 +75,7 @@ def run_record(
 
 def export_run(result: RunResult, out_dir: str | PathLike[str]) -> Path:
     """Write a run's `findings.csv`, `refused.csv` and `skipped.csv` with its record, `run_record.json`.
+    A cross-syndrome run (`asclepius.syndromes.SyndromeResult`) adds `summary.csv`.
 
     The written record is `result.record` plus `outputs`, the SHA-256 of each CSV file, so every
     exported file can be matched to the record it came with. `out_dir` must not exist yet or be
@@ -85,11 +86,11 @@ def export_run(result: RunResult, out_dir: str | PathLike[str]) -> Path:
         raise FileExistsError(f"{out}: the folder is not empty; export each run to a folder of its own.")
     out.mkdir(parents=True, exist_ok=True)
     outputs = {}
-    for name, table in (
-        ("findings", result.findings),
-        ("refused", result.refused),
-        ("skipped", result.skipped),
-    ):
+    tables = [("findings", result.findings), ("refused", result.refused), ("skipped", result.skipped)]
+    summary = getattr(result, "summary", None)  # a cross-syndrome run's
+    if summary is not None:
+        tables.append(("summary", summary))
+    for name, table in tables:
         path = out / f"{name}.csv"
         table.to_csv(path, index=False, lineterminator="\n")
         outputs[path.name] = hashlib.sha256(path.read_bytes()).hexdigest()
@@ -103,7 +104,8 @@ def reproduce(
 ) -> RunResult:
     """Run a lab-report run record (from `RunResult.record` or a `run_record.json`) again on its files.
 
-    A record with `subgroups` clusters and links the subgroups again first.
+    A record with `subgroups` clusters and links the subgroups again first. A cross-syndrome record
+    (`analysis` set) runs `asclepius.syndromes.compare_syndromes` again.
 
     Refuses with `ReproductionError` when this tool is another version than the record's, or when
     a file is missing, extra or changed, naming the file.
@@ -136,8 +138,12 @@ def reproduce(
                 f"{given.role}, SHA-256 {given.sha256[:12]}...; the record expects "
                 + (f"{want['role']} with SHA-256 {want['sha256'][:12]}...)." if want else "no file here).")
             )
-    group_a, group_b = record["groups"]
     settings = Settings(**record["settings"])
+    if record.get("analysis") == "cross-syndrome":
+        from asclepius.syndromes import compare_syndromes
+
+        return compare_syndromes(data, reference=record["reference"], settings=settings)
+    group_a, group_b = record["groups"]
     links = None
     if "subgroups" in record:  # cluster and link again, with the clustering's own settings
         from asclepius.cluster import ClusterSettings, cluster_patients

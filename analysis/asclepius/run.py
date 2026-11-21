@@ -138,15 +138,9 @@ def run_analysis(
                 f"Refused: the group {group!r} has {n} reports, and a comparison needs at least "
                 f"{settings.min_group_size} in each group (spec S4, {settings.status})."
             )
-    table, skipped = _tests(data, group_a, group_b, settings)
-    small = (table["n_a"] < settings.min_group_size) | (table["n_b"] < settings.min_group_size)
-    refused = table.loc[small, ["comparison", "marker_id", "marker_name", "sex", "group_a", "group_b"]]
-    refused = refused.assign(
-        n_a=table.loc[small, "n_a"],
-        n_b=table.loc[small, "n_b"],
-        reason=f"fewer than {settings.min_group_size} values in a group in this sex (spec S4)",
-    ).reset_index(drop=True)
-    tested = tier_a_rerun(table[~small].reset_index(drop=True), data, group_a, group_b, settings)
+    table, skipped = group_tests(data, group_a, group_b, settings)
+    tested, refused = refuse_small(table, settings)
+    tested = tier_a_rerun(tested, data, group_a, group_b, settings)
     record = run_record(data, (group_a, group_b), settings.record())
     if subgroups is not None:
         tested = combine_findings(tested, subgroups.rows)
@@ -163,7 +157,7 @@ def run_analysis(
     )
 
 
-def _tests(
+def group_tests(
     data: LabDataset, group_a: str, group_b: str, settings: Settings
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Every marker and ratio compared, stacked into one table, and the ratios' `skipped`."""
@@ -171,6 +165,19 @@ def _tests(
     markers = compare_groups(data, group_a, group_b, **options)
     ratios = compare_ratios(data, group_a, group_b, **options)
     return combine_findings(markers, ratios.rows), ratios.skipped
+
+
+def refuse_small(table: pd.DataFrame, settings: Settings) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Split `group_tests` rows into those tested and those refused because a group has fewer than
+    `min_group_size` values in that sex (spec S4), with the `reason`."""
+    small = (table["n_a"] < settings.min_group_size) | (table["n_b"] < settings.min_group_size)
+    refused = table.loc[small, ["comparison", "marker_id", "marker_name", "sex", "group_a", "group_b"]]
+    refused = refused.assign(
+        n_a=table.loc[small, "n_a"],
+        n_b=table.loc[small, "n_b"],
+        reason=f"fewer than {settings.min_group_size} values in a group in this sex (spec S4)",
+    ).reset_index(drop=True)
+    return table[~small].reset_index(drop=True), refused
 
 
 def tier_a_rerun(
@@ -189,7 +196,7 @@ def tier_a_rerun(
         data, records=records, markers=data.markers[data.markers["record"].isin(records["record"])]
     )
     if (records["group"] == group_a).any() and (records["group"] == group_b).any():
-        rerun, _ = _tests(tier_a, group_a, group_b, settings)
+        rerun, _ = group_tests(tier_a, group_a, group_b, settings)
     else:  # a group has no Tier A report: nothing to compare
         rerun = pd.DataFrame(columns=[*KEY, *TIER_A_COLUMNS.values()])
     rerun = rerun[[*KEY, *TIER_A_COLUMNS.values()]].rename(columns={v: k for k, v in TIER_A_COLUMNS.items()})
@@ -199,11 +206,13 @@ def tier_a_rerun(
 
 def judge_tier_a(out: pd.DataFrame, settings: Settings) -> pd.DataFrame:
     """Add `tier_a_result` and `holds_in_tier_a` to rows that have the `TIER_A_COLUMNS` (a missing
-    size counts as 0), and hide the Tier A statistics of a re-run too small to test (spec S4)."""
+    size counts as 0), and hide the Tier A statistics of a re-run too small to test (spec S4).
+    Rows of one group against a fixed reference (a reference range) have no `tier_a_n_b`."""
     out = out.copy()
-    for column in ("tier_a_n_a", "tier_a_n_b"):
+    sizes = [c for c in ("tier_a_n_a", "tier_a_n_b") if c in out.columns]
+    for column in sizes:
         out[column] = out[column].fillna(0).astype("int64")
-    too_small = (out["tier_a_n_a"] < settings.min_group_size) | (out["tier_a_n_b"] < settings.min_group_size)
+    too_small = (out[sizes] < settings.min_group_size).any(axis=1)
     stats = ["tier_a_effect_size", "tier_a_ci_low", "tier_a_ci_high", "tier_a_p_value"]
     out[stats] = out[stats].astype("float64").mask(too_small)
     same_way = np.sign(out["tier_a_effect_size"]) == np.sign(out["effect_size"])
