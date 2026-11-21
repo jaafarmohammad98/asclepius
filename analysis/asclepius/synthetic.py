@@ -2,8 +2,9 @@
 
 Two kinds, matching the two loaders:
 
-- `write_lab_reports` writes an extractor CSV file (`reports.csv`), a `groups.csv` naming each
-  record's group, and `truth.json` with the settings and the planted differences.
+- `write_lab_reports` writes an extractor CSV file (`reports.csv`), a `metadata.csv` naming each
+  record's group and tier (`asclepius.metadata`), and `truth.json` with the settings and the
+  planted differences.
 - `write_self_reports` writes the harvester's five tables and `truth.json` with the planted
   drug-symptom associations and intervention outcome shares.
 
@@ -24,7 +25,7 @@ from pathlib import Path
 
 import numpy as np
 
-from asclepius import dataset, selfreport
+from asclepius import dataset, metadata, selfreport
 
 # ---------------------------------------------------------------- lab reports
 
@@ -111,7 +112,7 @@ MARKERS = (
     ),
 )
 MARKER_IDS = tuple(m.id for m in MARKERS)
-LAB_GROUPS = ("PSSD", "PFS", "PAS", "SSRI-exposed control", "healthy control")
+LAB_GROUPS = metadata.GROUPS
 LAB_COLUMNS = dataset.COLUMNS  # the extractor CSV format
 
 
@@ -131,7 +132,7 @@ class PlantedDifference:
 @dataclass(frozen=True)
 class LabOutput:
     reports: Path  # extractor CSV
-    groups: Path  # record_id, group
+    metadata: Path  # record_id, group, tier
     truth: Path  # settings and planted differences
 
 
@@ -142,17 +143,22 @@ def write_lab_reports(
     planted: Sequence[PlantedDifference] = (),
     null: bool = False,
     female_share: float = 0.3,
+    tier_a_share: float = 0.25,
     seed: int = 0,
 ) -> LabOutput:
     """Write `groups` (name -> number of patients) of synthetic DUTCH reports.
 
     Values are log-normal per sex, with the report's reference range at about the 2.5th and 97.5th
     percentiles of a healthy person. `null` mode plants nothing: no group differs from another.
+    About `tier_a_share` of each group is tier A, the rest tier B.
     """
     # 40 per group, so that even at 30% women each sex has at least 10 (spec S4)
     groups = dict(groups if groups is not None else {"PSSD": 40, "healthy control": 40})
     _check_lab_settings(groups, planted, null, female_share)
+    if not 0 <= tier_a_share <= 1:
+        raise ValueError("tier_a_share must be between 0 and 1.")
     rng = np.random.default_rng(seed)
+    tier_rng = np.random.default_rng([seed, 1])  # separate, so tiers never change the values
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
 
@@ -165,7 +171,7 @@ def write_lab_reports(
             number += 1
             record_id = f"r{number:03d}"
             sex = "female" if i < females else "male"
-            assigned.append([record_id, group, sex])
+            assigned.append([record_id, group, "A" if tier_rng.random() < tier_a_share else "B"])
             age = int(rng.integers(20, 56))
             month = int(rng.integers(0, 46))  # 2023-01 .. 2026-10
             collected = f"{2023 + month // 12}-{month % 12 + 1:02d}"
@@ -184,7 +190,7 @@ def write_lab_reports(
                 )
 
     _write_csv(out / "reports.csv", LAB_COLUMNS, rows)
-    _write_csv(out / "groups.csv", ("record_id", "group", "sex"), assigned)
+    _write_csv(out / "metadata.csv", ("record_id", "group", "tier"), assigned)
     truth = {
         "kind": "lab-report",
         "generator": f"asclepius.synthetic {version('asclepius')}",
@@ -192,10 +198,11 @@ def write_lab_reports(
         "null": not planted,
         "groups": groups,
         "female_share": female_share,
+        "tier_a_share": tier_a_share,
         "planted": [asdict(p) for p in planted],
     }
     _write_json(out / "truth.json", truth)
-    return LabOutput(reports=out / "reports.csv", groups=out / "groups.csv", truth=out / "truth.json")
+    return LabOutput(reports=out / "reports.csv", metadata=out / "metadata.csv", truth=out / "truth.json")
 
 
 def _check_lab_settings(
@@ -532,11 +539,12 @@ def main(argv: Sequence[str] | None = None) -> None:
     )
     kinds = parser.add_subparsers(dest="kind", required=True)
 
-    lab = kinds.add_parser("lab", help="extractor CSV with groups.csv and truth.json")
+    lab = kinds.add_parser("lab", help="extractor CSV with metadata.csv and truth.json")
     lab.add_argument("out_dir")
     lab.add_argument("--group", action="append", metavar="NAME=N", help='e.g. "PSSD=40" (repeatable)')
     lab.add_argument("--plant", action="append", default=[], metavar="MARKER:FOLD[:GROUP[:SEX]]")
     lab.add_argument("--female-share", type=float, default=0.3)
+    lab.add_argument("--tier-a-share", type=float, default=0.25)
 
     self_report = kinds.add_parser("selfreport", help="the harvester's five tables with truth.json")
     self_report.add_argument("out_dir")
@@ -587,9 +595,10 @@ def _run(args: argparse.Namespace) -> None:
             planted=planted,
             null=args.null,
             female_share=args.female_share,
+            tier_a_share=args.tier_a_share,
             seed=args.seed,
         )
-        print(f"Wrote {lab_out.reports}, {lab_out.groups} and {lab_out.truth}")
+        print(f"Wrote {lab_out.reports}, {lab_out.metadata} and {lab_out.truth}")
     else:
         associations = [
             PlantedAssociation(drug, symptom, float(ratio))

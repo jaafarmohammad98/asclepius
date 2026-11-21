@@ -49,16 +49,29 @@ class LabDataset:
 
     `markers` has one row per marker per report. `record` identifies a report across all loaded
     files (`<file number>/<record_id>`, files numbered from 1 in load order), because each extractor
-    file numbers its reports from r001. `fingerprint` is a SHA-256 over the input files' bytes, so a
-    result can name the exact data it came from.
+    file numbers its reports from r001. `fingerprint` is a SHA-256 over the input files' bytes
+    (metadata file included), so a result can name the exact data it came from.
+
+    `records` has one row per report: `record`, `file`, `record_id`, `sex`, `age_years`, and from
+    the metadata file (`asclepius.metadata`) `group`, `tier`, `drug`, `months_since_stopping` and any
+    `score_<name>` columns. Every report has a group (`unassigned` without a metadata row) and a
+    tier (B unless the metadata says otherwise). `unmatched` lists metadata record ids that name no
+    loaded report.
     """
 
     markers: pd.DataFrame
     fingerprint: str
+    records: pd.DataFrame
+    unmatched: tuple[str, ...] = ()
     kind: str = "lab-report"
 
 
-def load_lab_reports(paths: Iterable[str | PathLike[str]]) -> LabDataset:
+def load_lab_reports(
+    paths: Iterable[str | PathLike[str]], metadata: str | PathLike[str] | None = None
+) -> LabDataset:
+    """Load extractor CSV files, and optionally the metadata file naming each report's group and tier."""
+    from asclepius import metadata as meta  # metadata uses DatasetError from this module
+
     files = [Path(p) for p in paths]
     if not files:
         raise DatasetError("No dataset files were given.")
@@ -73,7 +86,14 @@ def load_lab_reports(paths: Iterable[str | PathLike[str]]) -> LabDataset:
         frames.append(frame)
     markers = pd.concat(frames, ignore_index=True)
     _check_units_agree(markers, files)
-    return LabDataset(markers=markers, fingerprint=digest.hexdigest())
+    records = meta.default_records(markers)
+    unmatched: tuple[str, ...] = ()
+    if metadata is not None:
+        meta_path = Path(metadata)
+        digest.update(b"metadata")
+        digest.update(hashlib.sha256(meta_path.read_bytes()).digest())
+        records, unmatched = meta.apply(records, meta_path)
+    return LabDataset(markers=markers, fingerprint=digest.hexdigest(), records=records, unmatched=unmatched)
 
 
 def _read_file(path: Path) -> pd.DataFrame:

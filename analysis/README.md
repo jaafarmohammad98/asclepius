@@ -14,7 +14,7 @@ uv run ruff check . && uv run ruff format --check . && uv run mypy
 
 | Loader | Input | Returns |
 |---|---|---|
-| `asclepius.dataset.load_lab_reports(paths)` | one or more CSV files from `npm run extract -- --csv` | `LabDataset` |
+| `asclepius.dataset.load_lab_reports(paths, metadata=None)` | one or more CSV files from `npm run extract -- --csv`, and optionally a metadata file | `LabDataset` |
 | `asclepius.selfreport.load_self_reports(dir)` | the harvester's `data/export/` folder (five tables) | `SelfReportDataset` |
 
 Both stop with a `DatasetError` that names the file, line and column of the first problem. A
@@ -31,7 +31,24 @@ case ids and author keys are dropped. Harvester condition `PSA` becomes the plan
 posts with `evidence_ok` false (`include_unverified=True` keeps them) and posts from deleted
 accounts, which cannot be merged. `excluded` counts both. A blank condition counts as `unclear`.
 
-Both datasets carry a `fingerprint` (SHA-256 of the input files) for the reproducibility record
+**Groups, tiers and questionnaire data.** `LabDataset.records` has one row per report with its
+`group` and confidence `tier` (A, B, C). They come from an optional metadata CSV keyed by
+`record_id` (`asclepius.metadata`):
+
+| Column | Required | Values |
+|---|---|---|
+| `record_id` | yes | `r001`, or `2/r001` when more than one loaded file has an `r001` |
+| `group` | yes | PSSD, PFS, PAS, SSRI-exposed control, healthy control (any case); blank means `unassigned` |
+| `tier` | no | A, B or C; blank or absent means B |
+| `drug` | no | free text |
+| `months_since_stopping` | no | a number, 0 or more |
+| `score_<name>` | no, any number | a symptom score from the questionnaire |
+
+Any other group name or column is rejected. A report with no metadata row goes to `unassigned`,
+tier B. Rows naming a report that was not loaded are left out and listed in
+`LabDataset.unmatched`. Two rows for the same report must agree (identical repeats are fine).
+
+Both datasets carry a `fingerprint` (SHA-256 of the input files, metadata included) for the reproducibility record
 (spec S7); `SelfReportDataset.settings` records the loader switch.
 
 How an author's posts merge:
@@ -64,8 +81,8 @@ uv run python -m asclepius.synthetic selfreport out/sr --authors 500 \
 # either kind with --null: nothing planted, no group differs
 ```
 
-**Lab reports** (`write_lab_reports`) give `reports.csv` (the extractor format), `groups.csv`
-(`record_id`, `group`, `sex`) and `truth.json`. Values are log-normal per sex, with each
+**Lab reports** (`write_lab_reports`) give `reports.csv` (the extractor format), `metadata.csv`
+(`record_id`, `group`, `tier`; about a quarter tier A, set with `--tier-a-share`) and `truth.json`. Values are log-normal per sex, with each
 report's DUTCH reference range at about the 2.5th and 97.5th percentiles, for 26 markers that
 include every one the enzyme-activity ratios need. A planted difference multiplies one group's
 values of one marker by a fold (optionally in one sex only).

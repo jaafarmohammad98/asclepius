@@ -25,16 +25,25 @@ def test_same_seed_gives_the_same_lab_file(tmp_path):
 
 def test_lab_file_loads_through_the_dataset_loader(tmp_path):
     out = write_lab_reports(tmp_path, groups={"PSSD": 12, "healthy control": 15}, seed=1)
-    data = load_lab_reports([out.reports])
+    data = load_lab_reports([out.reports], metadata=out.metadata)
     assert data.markers["record"].nunique() == 27
+    assert data.unmatched == ()
+    assert data.records["group"].value_counts().to_dict() == {"healthy control": 15, "PSSD": 12}
+    assert set(data.records["tier"]) == {"A", "B"}
+
+
+def test_about_tier_a_share_of_records_are_tier_a(tmp_path):
+    out = write_lab_reports(tmp_path, groups={"PSSD": 200, "healthy control": 200}, tier_a_share=0.25, seed=2)
+    tiers = load_lab_reports([out.reports], metadata=out.metadata).records["tier"]
+    assert 0.18 < (tiers == "A").mean() < 0.32
 
 
 def _log_mean_ratio(out, marker, sex, group="PSSD", other="healthy control"):
     """Geometric mean of `group` over `other` for one marker within one sex, from loaded data."""
-    data = load_lab_reports([out.reports]).markers
-    groups = pd.read_csv(out.groups).set_index("record_id")["group"]
-    rows = data[(data["marker_id"] == marker) & (data["sex"] == sex)]
-    logs = np.log(rows["value"]).groupby(rows["record_id"].map(groups)).mean()
+    data = load_lab_reports([out.reports], metadata=out.metadata)
+    groups = data.records.set_index("record")["group"]
+    rows = data.markers[(data.markers["marker_id"] == marker) & (data.markers["sex"] == sex)]
+    logs = np.log(rows["value"]).groupby(rows["record"].map(groups)).mean()
     return float(np.exp(logs[group] - logs[other]))
 
 
