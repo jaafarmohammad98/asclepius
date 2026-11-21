@@ -19,12 +19,13 @@ import pandas as pd
 from asclepius.cluster import ClusterResult, TooFewPatients, cluster_patients
 from asclepius.dataset import DatasetError, LabDataset, load_lab_reports
 from asclepius.metadata import GROUPS
+from asclepius.record import run_record
 from asclepius.refrange import lab_range_findings, self_report_range_findings
 from asclepius.run import GroupTooSmall, Settings, run_analysis
 from asclepius.selfreport import SelfReportDataset, load_self_reports
 from asclepius.subgroups import SubgroupLinks, link_subgroups
 from asclepius.syndromes import CONTROLS, REFERENCE_RANGE, SYNDROMES, compare_syndromes
-from asclepius.web import findings
+from asclepius.web import export, findings
 from asclepius.web.findings import (
     COMPARISON,
     FEW,
@@ -47,6 +48,7 @@ ROLES = ("reports", "metadata", "export")  # extractor CSVs, the metadata file, 
 WAITING, RUNNING = "waiting", "running"
 DONE, REFUSED, FAILED, NOT_BUILT = "done", "refused", "failed", "not built yet"
 IDLE, FINISHED = "idle", "finished"  # a run's state, with RUNNING
+FAILED_EXPORTED = "Unexpected error; the details are shown in the app only."
 
 
 class LoadError(ValueError):
@@ -100,6 +102,7 @@ class Workspace:
         self.data: LabDataset | SelfReportDataset | None = None
         self.steps: list[Step] = []
         self.results: dict[str, Any] = {}  # step name -> what it returned, for the findings view
+        self.record: dict[str, object] | None = None  # the latest run's record (spec S7)
         self._lock = threading.Lock()
         self._thread: threading.Thread | None = None
 
@@ -112,7 +115,7 @@ class Workspace:
                 shutil.rmtree(self.folder / role, ignore_errors=True)
                 self.files[role] = []
             self.data = None
-            self.steps, self.results = [], {}
+            self.steps, self.results, self.record = [], {}, None
 
     def add_file(self, role: str, name: str, content: bytes) -> None:
         """Keep one picked file under its own name (any folder part is dropped), so loading
@@ -139,7 +142,7 @@ class Workspace:
             if self.running():
                 raise LoadError("A run is in progress; wait for it to finish before loading other files.")
             self.data = None
-            self.steps, self.results = [], {}
+            self.steps, self.results, self.record = [], {}, None
         reports, metadata, export = (self.files[role] for role in ROLES)
         if not (reports or metadata or export):
             raise LoadError("No files were picked. Pick the dataset files, or a harvester export folder.")
@@ -176,7 +179,7 @@ class Workspace:
             if self.running():
                 raise RunError("A run is already in progress.")
             if isinstance(self.data, SelfReportDataset):
-                steps = self_report_steps(self.data)
+                steps, groups = self_report_steps(self.data), []
             else:
                 choices = lab_groups(self.data)
                 if group_a not in choices or group_b not in choices:
@@ -184,7 +187,9 @@ class Workspace:
                 if group_a == group_b:
                     raise RunError("Pick two different groups to compare.")
                 steps = lab_steps(self.data, str(group_a), str(group_b), settings)
+                groups = [str(group_a), str(group_b)]
             self.steps, self.results = steps, {}
+            self.record = run_record(self.data, groups, settings.record())
             self._thread = threading.Thread(target=self._run, daemon=True)
             self._thread.start()
 
@@ -216,6 +221,41 @@ class Workspace:
             steps = [replace(s) for s in self.steps]
             results = dict(self.results)
         return findings_view(self.data, steps, results)
+
+    def export_record(self) -> dict[str, object]:
+        """The finished run's record, as the exports carry it (`exported`)."""
+        return self._exported()[1]
+
+    def export_csv(self) -> str:
+        """The finished run's findings as CSV (`asclepius.web.export`)."""
+        return export.findings_csv(*self._exported())
+
+    def export_report(self) -> str:
+        """The finished run's report as one HTML file (`asclepius.web.export`)."""
+        return export.report_html(*self._exported())
+
+    def _exported(self) -> tuple[dict[str, object], dict[str, object]]:
+        """The finished run's findings view and record, taken together so both are of one run.
+
+        The record is the run's (`asclepius.record.run_record`) with `steps`: each step's name,
+        state and message, and the record of the analysis it ran, if it has one. A failed step's
+        message is the error's own text, which can name a file or a value, so the exports say only
+        that it failed. Raises `RunError` until a run has finished."""
+        with self._lock:
+            if self.record is None or self.running():
+                raise RunError("Run the analysis, and let it finish, before exporting.")
+            steps = [
+                replace(s, message=FAILED_EXPORTED) if s.state == FAILED else replace(s) for s in self.steps
+            ]
+            data, results, record = self.data, dict(self.results), self.record
+        entries = []
+        for step in steps:
+            entry: dict[str, object] = {"name": step.name, "state": step.state, "message": step.message}
+            made = step_record(results.get(step.name))
+            if made is not None:
+                entry["record"] = made
+            entries.append(entry)
+        return findings_view(data, steps, results), {**record, "steps": entries}
 
     def status(self) -> dict[str, object]:
         """The latest run: its state (`idle`, `running`, `finished`), and each step's state and message."""
@@ -291,6 +331,15 @@ def self_report_steps(data: SelfReportDataset) -> list[Step]:
         Step("Symptom subgroups", SYMPTOM_SUBGROUPS, None, message="added by M3-13"),
         Step("Intervention outcomes", INTERVENTIONS, None, message="added by M3-14"),
     ]
+
+
+def step_record(result: Any) -> dict[str, object] | None:
+    """The run record an analysis attached to its result, if it did (the subgroup step's is the
+    clustering's; the reference-range positions have none, being descriptions)."""
+    if isinstance(result, Subgroups):
+        return result.clusters.record
+    record = getattr(result, "record", None)
+    return record if isinstance(record, dict) else None
 
 
 def _placed(found: Any, what: str = "values") -> str:

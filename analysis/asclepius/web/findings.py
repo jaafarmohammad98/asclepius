@@ -42,6 +42,22 @@ TIER_A_STATS = ("tier_a_effect_size", "tier_a_ci_low", "tier_a_ci_high")
 ZONES = (*SIDES, "unclear")
 PERCENTILES = {"q10": 10, "q25": 25, "median": 50, "q75": 75, "q90": 90}
 RANK = {STRONG: 0, SUGGESTIVE: 1, NOISE: 2}  # strongest first
+# the statistics shown, as floats (the CSV export reads them back as such)
+STATISTICS = (
+    "median_a",
+    "median_b",
+    "share_a",
+    "share_b",
+    "share_above",
+    "share_below",
+    "median_position",
+    "effect_size",
+    "ci_low",
+    "ci_high",
+    "p_value",
+    "q_value",
+    *TIER_A_STATS,
+)
 COUNTS = ("n_a", "n_b", "n_censored", "n_unclear", "tier_a_n_a", "tier_a_n_b")
 SHOWN_COLUMNS = (
     "comparison",

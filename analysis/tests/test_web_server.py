@@ -11,6 +11,7 @@ import pytest
 
 from asclepius import synthetic
 from asclepius.run import Settings
+from asclepius.web.export import read_findings_csv
 from asclepius.web.server import make_server
 
 
@@ -74,6 +75,26 @@ def test_a_dataset_file_goes_to_a_finished_run(app, tmp_path):
     assert status == 200
     findings = json.loads(content, parse_constant=lambda c: pytest.fail(f"{c} is not JSON"))
     assert [s["kind"] for s in findings["sections"]] == ["subgroups", "comparison", "syndromes", "ranges"]
+
+    # both exports download as files, the CSV reloading to the findings shown
+    for name, kind in (("findings.csv", "text/csv"), ("report.html", "text/html")):
+        with urllib.request.urlopen(f"{app}/api/export/{name}") as response:
+            assert response.status == 200
+            assert response.headers["Content-Type"].startswith(kind)
+            assert response.headers["Content-Disposition"].startswith("attachment; filename=")
+            content = response.read().decode()
+        if name == "findings.csv":
+            rows = [r for r in read_findings_csv(content) if r["row"] == "finding"]
+            assert len(rows) == sum(len(s["findings"]) for s in findings["sections"])
+        else:
+            assert 'id="run-record"' in content
+
+
+def test_nothing_is_exported_before_a_run(app):
+    api(app, "/api/clear", "POST")
+    status, answer = api(app, "/api/export/report.html")
+    assert status == 400
+    assert "before exporting" in answer["error"]
 
 
 def test_a_loading_error_comes_back_in_plain_words(app):
