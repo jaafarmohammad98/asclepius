@@ -3,8 +3,8 @@
 The analysis engine (milestone 3). So far it loads and checks data, writes synthetic datasets
 with a known answer for testing the statistics, compares markers between two groups, places
 values within their own report's reference range, compares enzyme-activity ratios, corrects
-and labels a whole run of tests, re-runs each finding on Tier A records, and records and exports
-each run so it can be reproduced.
+and labels a whole run of tests, re-runs each finding on Tier A records, records and exports
+each run so it can be reproduced, and looks for subgroups of patients.
 
 ```sh
 cd analysis
@@ -284,3 +284,67 @@ byte-identical CSV exports; only the date changes.
 findings table; pass the whole run's table. Self-report analyses (M3-12, M3-14) call it with
 `self_report=True`: no row can be strong (S10), and every row gets the caveat `self-report, no
 controls`.
+
+## Subgroups
+
+PSSD may be several conditions (spec A3). `asclepius.cluster.cluster_patients(data, groups=["PSSD"])`
+looks for subgroups among the reports of the groups named; the groups themselves are not used.
+`groups` is required: clustering patients with controls mostly finds the patient/control split,
+not subgroups, though naming both is allowed as a deliberate check. An empty list or an unknown
+group name is refused. `tiers=["A"]` limits it to Tier A reports, for a Tier A re-run
+(S6). Fewer than 30 patients is refused with `TooFewPatients` (S4); reports with no sex are left
+out and counted in the message.
+
+1. **Features.** Every raw marker and every enzyme-activity ratio. Each becomes a normal score
+   within sex: the normal quantile of its rank / (n + 1), ties sharing a rank, limits read as their
+   number. Within sex because ranges differ by sex; ranks so that one extreme value or a skewed
+   marker cannot dominate. A feature missing for more than 20% of patients is left out
+   (`dropped`); other missing values get the middle score, 0 (`filled` counts them).
+2. **Clusters.** k-means, best of 10 k-means++ starts, for 2 to 6 clusters (fewer when 10 per
+   cluster would not fit).
+3. **Stability chooses the number.** The patients are clustered again in 50 random subsamples of
+   80%, and the adjusted Rand index says how well each matches the full clustering (1 the same, about 0
+   chance). The number of clusters with the highest mean, among those whose every cluster has at
+   least 10 patients (so M3-08b can compare them, S4), is chosen. It must reach 0.8.
+4. **Better than one group.** k-means splits one stretched cloud of patients the same way every
+   time: when every marker of a patient shares one factor (one person makes more of everything),
+   the high-vs-low split reaches stability 0.8 in most seeds. So the chosen clustering must also be tighter,
+   in the space its centres span, than k-means finds in all but 5% of 99 datasets drawn from one
+   normal distribution with the patients' own covariance and scored within sex the same way (the
+   idea of SigClust, Liu et al. 2008). Without that within-sex scoring the test gave clusters in 5 of 20
+   one-factor datasets, because evenly spaced scores split more cleanly than a normal sample.
+
+   **An exception to S1.** This check compares against normal data, which S1 rules out. Each
+   feature is already a normal score, so what it assumes is that features relate to each other in
+   straight lines. No permutation does the job: shuffling each feature alone removes the shared
+   factor the check is there to catch, and shuffling along the data's main directions keeps the
+   gap between real subgroups, so the check would never find them. The settings record it
+   (`one_group_check`), and it is listed for the clinician review (M3-11).
+
+`ClusterSettings` holds every threshold above (provisional, needs expert review). The result:
+
+| Field | Meaning |
+|---|---|
+| `statement` | `2 stable clusters` (or 3, ...) or `no stable clusters` (S8) |
+| `reason` | why: the stability and one-group p-value, or which test failed (or fewer than two usable markers) |
+| `k`, `null_p` | the number of clusters (None when none) and the one-group test's p-value |
+| `assignments` | `record` and `cluster` (1 the largest): working data for M3-08b, never shown or exported (S11) |
+| `sizes` | patients per cluster and sex; empty where fewer than 5 (S11) |
+| `profile` | per cluster and feature, the median normal score (0 the middle of that sex, about ±1 one standard deviation), to describe each cluster |
+| `stability` | per number of clusters: `stability`, `smallest` cluster, `eligible` |
+| `features`, `dropped`, `filled`, `no_sex` | what went in; a count below 5 is None or empty (S11) |
+| `settings`, `record` | `ClusterSettings.record()` plus the `tiers` clustered, and the run record (S7, as for `run_analysis`) |
+
+On synthetic data, with PSSD and PFS standing in for two hidden subgroups and four 5-alpha
+reduced markers at 40% in one, from 20 seeds each:
+
+| Data | Clusters found | Patients in their subgroup's cluster |
+|---|---|---|
+| 50 + 50, planted | 20 of 20 | 93% to 99% |
+| 30 + 30, planted | 16 of 20 (others: stability just under 0.8, or not better than one group) | 90% to 98% |
+| 30 + 30, four markers at 30% | 20 of 20 | |
+| 30 + 30, four markers at 70% | 0 of 20: a milder subgroup is not found at this size | |
+| 60 or 100, nothing planted | 0 of 20 (stability 0.2 to 0.6) | |
+| 60, one shared factor (log-sd 0.3 or 0.6) | 1 of 20 each, as a 5% test allows | |
+
+A run takes under a second for 100 patients.
