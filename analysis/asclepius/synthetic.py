@@ -3,8 +3,8 @@
 Two kinds, matching the two loaders:
 
 - `write_lab_reports` writes an extractor CSV file (`reports.csv`), a `metadata.csv` naming each
-  record's group and tier (`asclepius.metadata`), and `truth.json` with the settings and the
-  planted differences.
+  record's group and tier (`asclepius.metadata`), and optionally its drug and questionnaire
+  symptom scores, and `truth.json` with the settings and the planted differences.
 - `write_self_reports` writes the harvester's five tables and `truth.json` with the planted
   drug-symptom associations and intervention outcome shares.
 
@@ -130,6 +130,19 @@ class PlantedDifference:
 
 
 @dataclass(frozen=True)
+class PlantedScore:
+    """`group`'s symptom score `score` is `shift` points higher than everyone else's (before it is
+    rounded and kept within 0 to 10)."""
+
+    score: str
+    shift: float
+    group: str = "PSSD"
+
+
+SCORE_MEAN, SCORE_SD = 4.0, 2.0  # a symptom score on a 0 to 10 scale, when nothing is planted
+
+
+@dataclass(frozen=True)
 class LabOutput:
     reports: Path  # extractor CSV
     metadata: Path  # record_id, group, tier
@@ -144,6 +157,9 @@ def write_lab_reports(
     null: bool = False,
     female_share: float = 0.3,
     tier_a_share: float = 0.25,
+    scores: Sequence[str] = (),
+    planted_scores: Sequence[PlantedScore] = (),
+    drugs: Mapping[str, Sequence[str]] | None = None,
     seed: int = 0,
 ) -> LabOutput:
     """Write `groups` (name -> number of patients) of synthetic DUTCH reports.
@@ -151,14 +167,22 @@ def write_lab_reports(
     Values are log-normal per sex, with the report's reference range at about the 2.5th and 97.5th
     percentiles of a healthy person. `null` mode plants nothing: no group differs from another.
     About `tier_a_share` of each group is tier A, the rest tier B.
+
+    `scores` names questionnaire symptom scores, written to the metadata as `score_<name>`: whole
+    numbers from 0 to 10, normal with mean 4 and sd 2 before rounding, plus any `planted_scores`.
+    `drugs` maps a group to the drugs its patients took, each patient one of them at random.
+    Neither changes the reports themselves.
     """
     # 40 per group, so that even at 30% women each sex has at least 10 (spec S4)
     groups = dict(groups if groups is not None else {"PSSD": 40, "healthy control": 40})
+    drugs = {group: list(names) for group, names in (drugs or {}).items()}
     _check_lab_settings(groups, planted, null, female_share)
+    _check_questionnaire_settings(groups, scores, planted_scores, drugs, null)
     if not 0 <= tier_a_share <= 1:
         raise ValueError("tier_a_share must be between 0 and 1.")
     rng = np.random.default_rng(seed)
     tier_rng = np.random.default_rng([seed, 1])  # separate, so tiers never change the values
+    meta_rng = np.random.default_rng([seed, 2])  # and scores and drugs neither
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
 
@@ -172,6 +196,13 @@ def write_lab_reports(
             record_id = f"r{number:03d}"
             sex = "female" if i < females else "male"
             assigned.append([record_id, group, "A" if tier_rng.random() < tier_a_share else "B"])
+            if group in drugs:
+                assigned[-1].append(drugs[group][int(meta_rng.integers(len(drugs[group])))])
+            elif drugs:
+                assigned[-1].append("")
+            for score in scores:
+                shift = sum(p.shift for p in planted_scores if p.score == score and p.group == group)
+                assigned[-1].append(int(np.clip(round(meta_rng.normal(SCORE_MEAN, SCORE_SD) + shift), 0, 10)))
             age = int(rng.integers(20, 56))
             month = int(rng.integers(0, 46))  # 2023-01 .. 2026-10
             collected = f"{2023 + month // 12}-{month % 12 + 1:02d}"
@@ -190,7 +221,8 @@ def write_lab_reports(
                 )
 
     _write_csv(out / "reports.csv", LAB_COLUMNS, rows)
-    _write_csv(out / "metadata.csv", ("record_id", "group", "tier"), assigned)
+    columns = ["record_id", "group", "tier", *(["drug"] if drugs else []), *(f"score_{s}" for s in scores)]
+    _write_csv(out / "metadata.csv", columns, assigned)
     truth = {
         "kind": "lab-report",
         "generator": f"asclepius.synthetic {version('asclepius')}",
@@ -201,6 +233,12 @@ def write_lab_reports(
         "tier_a_share": tier_a_share,
         "planted": [asdict(p) for p in planted],
     }
+    if scores or drugs:
+        truth |= {
+            "scores": list(scores),
+            "planted_scores": [asdict(p) for p in planted_scores],
+            "drugs": drugs,
+        }
     _write_json(out / "truth.json", truth)
     return LabOutput(reports=out / "reports.csv", metadata=out / "metadata.csv", truth=out / "truth.json")
 
@@ -226,6 +264,32 @@ def _check_lab_settings(
             raise ValueError(f"Planted fold for {p.marker} must be a positive number.")
         if p.sex not in (None, "male", "female"):
             raise ValueError(f"Planted sex must be male, female or None, not {p.sex!r}.")
+
+
+def _check_questionnaire_settings(
+    groups: Mapping[str, int],
+    scores: Sequence[str],
+    planted_scores: Sequence[PlantedScore],
+    drugs: Mapping[str, Sequence[str]],
+    null: bool,
+) -> None:
+    for score in scores:
+        if not metadata.SCORE.match(f"score_{score}"):
+            raise ValueError(f"{score!r}: score names are letters, digits and underscores.")
+    if null and planted_scores:
+        raise ValueError("Null mode plants no differences; leave `planted_scores` empty.")
+    for p in planted_scores:
+        if p.score not in scores:
+            raise ValueError(f"Planted score {p.score!r} is not one of the scores.")
+        if p.group not in groups:
+            raise ValueError(f"Planted score in {p.group!r}, which is not one of the groups.")
+        if not math.isfinite(p.shift):
+            raise ValueError(f"Planted shift for {p.score} must be a number.")
+    for group, names in drugs.items():
+        if group not in groups:
+            raise ValueError(f"Drugs for {group!r}, which is not one of the groups.")
+        if not names or not all(isinstance(n, str) and n.strip() for n in names):
+            raise ValueError(f"Drugs for {group!r} must be a list of drug names.")
 
 
 def _healthy_value(rng: np.random.Generator, low: float, high: float) -> float:

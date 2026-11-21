@@ -13,6 +13,7 @@ clinician and are marked provisional until the review in M3-11.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field, replace
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
@@ -23,6 +24,9 @@ from asclepius.ratios import STATUS, compare_ratios
 from asclepius.record import run_record
 from asclepius.refrange import combine_findings
 from asclepius.selfreport import LABEL as SELF_REPORT_LABEL
+
+if TYPE_CHECKING:  # subgroups imports this module for Settings and the Tier A verdict
+    from asclepius.subgroups import SubgroupLinks
 
 STRONG, SUGGESTIVE, NOISE = "strong", "suggestive", "noise-level"
 NOTHING_RELIABLE = "nothing reliable yet"
@@ -99,15 +103,33 @@ class RunResult:
     record: dict[str, object]
 
 
-def run_analysis(data: LabDataset, group_a: str, group_b: str, settings: Settings | None = None) -> RunResult:
+def run_analysis(
+    data: LabDataset,
+    group_a: str,
+    group_b: str,
+    settings: Settings | None = None,
+    *,
+    subgroups: SubgroupLinks | None = None,
+) -> RunResult:
     """Compare every raw marker and enzyme-activity ratio between two groups, within sex, then
     correct all of them together and label each (spec S2, S4, S5, S8).
 
     Refuses, with `GroupTooSmall`, when either group has fewer than `settings.min_group_size`
     reports. A marker or ratio whose values in one sex fall short of that in either group is not
     tested: it goes to `refused` and does not count in the correction.
+
+    `subgroups`, from `asclepius.subgroups.link_subgroups` on the same data and settings, adds the
+    subgroup findings to the table, corrected and labelled with everything else; its refused tests
+    join `refused`, and the record gains `subgroups`, the clustering's statement and settings.
     """
     settings = settings or Settings()
+    if subgroups is not None:
+        if subgroups.fingerprint != data.fingerprint:
+            raise ValueError("These subgroup links were made from a different dataset.")
+        if subgroups.settings != settings.record():
+            raise ValueError(
+                "Link subgroups with the same settings as the run, so one correction covers both."
+            )
     for group in (group_a, group_b):
         n = int((data.records["group"] == group).sum())
         if 0 < n < settings.min_group_size:
@@ -124,6 +146,11 @@ def run_analysis(data: LabDataset, group_a: str, group_b: str, settings: Setting
         reason=f"fewer than {settings.min_group_size} values in a group in this sex (spec S4)",
     ).reset_index(drop=True)
     tested = tier_a_rerun(table[~small].reset_index(drop=True), data, group_a, group_b, settings)
+    record = run_record(data, (group_a, group_b), settings.record())
+    if subgroups is not None:
+        tested = combine_findings(tested, subgroups.rows)
+        refused = combine_findings(refused, subgroups.refused)
+        record["subgroups"] = subgroups.clusters
     findings = label_findings(tested, settings)
     return RunResult(
         findings=findings,
@@ -131,7 +158,7 @@ def run_analysis(data: LabDataset, group_a: str, group_b: str, settings: Setting
         skipped=skipped,
         statement=statement(findings),
         settings=settings.record(),
-        record=run_record(data, (group_a, group_b), settings.record()),
+        record=record,
     )
 
 
@@ -166,6 +193,13 @@ def tier_a_rerun(
         rerun = pd.DataFrame(columns=[*KEY, *TIER_A_COLUMNS.values()])
     rerun = rerun[[*KEY, *TIER_A_COLUMNS.values()]].rename(columns={v: k for k, v in TIER_A_COLUMNS.items()})
     out = findings.merge(rerun, on=KEY, how="left", validate="one_to_one")
+    return judge_tier_a(out, settings)
+
+
+def judge_tier_a(out: pd.DataFrame, settings: Settings) -> pd.DataFrame:
+    """Add `tier_a_result` and `holds_in_tier_a` to rows that have the `TIER_A_COLUMNS` (a missing
+    size counts as 0), and hide the Tier A statistics of a re-run too small to test (spec S4)."""
+    out = out.copy()
     for column in ("tier_a_n_a", "tier_a_n_b"):
         out[column] = out[column].fillna(0).astype("int64")
     too_small = (out["tier_a_n_a"] < settings.min_group_size) | (out["tier_a_n_b"] < settings.min_group_size)

@@ -10,6 +10,7 @@ from asclepius.synthetic import (
     PlantedAssociation,
     PlantedDifference,
     PlantedOutcome,
+    PlantedScore,
     write_lab_reports,
     write_self_reports,
 )
@@ -94,6 +95,41 @@ def test_unknown_marker_or_group_is_refused(tmp_path):
         write_lab_reports(tmp_path, planted=[PlantedDifference("cortisol", 0.5)])
     with pytest.raises(ValueError, match="Unknown group"):
         write_lab_reports(tmp_path, groups={"PSSD": 10, "controls": 10})
+
+
+def test_symptom_scores_and_drugs_go_in_the_metadata(tmp_path):
+    groups = {"PSSD": 300, "PFS": 300}
+    planted = [PlantedScore("libido", 3.0, group="PFS")]
+    drugs = {"PSSD": ["sertraline", "paroxetine"], "PFS": ["finasteride"]}
+    out = write_lab_reports(
+        tmp_path, groups=groups, scores=["libido", "fatigue"], planted_scores=planted, drugs=drugs, seed=1
+    )
+    records = load_lab_reports([out.reports], metadata=out.metadata).records
+    assert records[["score_libido", "score_fatigue"]].stack().between(0, 10).all()
+    means = records.groupby("group")[["score_libido", "score_fatigue"]].mean()
+    assert means.loc["PFS", "score_libido"] - means.loc["PSSD", "score_libido"] == pytest.approx(3, abs=0.4)
+    assert abs(means.loc["PFS", "score_fatigue"] - means.loc["PSSD", "score_fatigue"]) < 0.4
+    taken = records.groupby("group")["drug"].agg(lambda d: set(d))
+    assert taken["PSSD"] == {"sertraline", "paroxetine"} and taken["PFS"] == {"finasteride"}
+    assert json.loads(out.truth.read_text())["planted_scores"] == [
+        {"score": "libido", "shift": 3.0, "group": "PFS"}
+    ]
+
+
+def test_scores_and_drugs_leave_the_reports_unchanged(tmp_path):
+    plain = write_lab_reports(tmp_path / "a", seed=2)
+    scored = write_lab_reports(tmp_path / "b", seed=2, scores=["libido"], drugs={"PSSD": ["sertraline"]})
+    assert plain.reports.read_bytes() == scored.reports.read_bytes()
+    assert plain.metadata.read_text().splitlines()[0] == "record_id,group,tier"
+
+
+def test_unknown_score_or_drug_group_is_refused(tmp_path):
+    with pytest.raises(ValueError, match="Planted score 'mood' is not one of the scores"):
+        write_lab_reports(tmp_path, scores=["libido"], planted_scores=[PlantedScore("mood", 1.0)])
+    with pytest.raises(ValueError, match="Drugs for 'PFS', which is not one of the groups"):
+        write_lab_reports(tmp_path, drugs={"PFS": ["finasteride"]})
+    with pytest.raises(ValueError, match="score names"):
+        write_lab_reports(tmp_path, scores=["sexual function"])
 
 
 # ---------------------------------------------------------------- self-reports
