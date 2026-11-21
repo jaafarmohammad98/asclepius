@@ -348,3 +348,56 @@ reduced markers at 40% in one, from 20 seeds each:
 | 60, one shared factor (log-sd 0.3 or 0.6) | 1 of 20 each, as a 5% test allows | |
 
 A run takes under a second for 100 patients.
+
+### Linking subgroups to symptoms and drugs
+
+A cluster only matters if it corresponds to something clinical (spec A3).
+`asclepius.subgroups.link_subgroups(data, clusters, settings)` tests whether the clusters differ by
+each questionnaire symptom score (`score_<name>` in the metadata) and by drug taken (`drug`):
+
+- With 2 clusters, cluster 1 against cluster 2; with more, each cluster against all the others.
+- A score is compared with the same test as a marker (permutation test on ranks, Cliff's delta,
+  bootstrap interval), both sexes together: the clusters were already made within sex, and a
+  questionnaire score has no sex-specific range. `median_a`, `median_b` are the scores' medians.
+- A drug is a yes/no value per patient, compared the same way. On yes/no values Cliff's delta is
+  the difference between the shares who took it, `share_a` minus `share_b`. Drug names are
+  matched ignoring case. Patients with no drug recorded are left out of drug tests.
+- Each row is re-run on the Tier A patients with the same clusters (S6): does the link hold among
+  clinician-confirmed patients? Tier A is not clustered again; whether the clusters themselves
+  hold in Tier A is `cluster_patients(..., tiers=["A"])`.
+- A side with fewer than 10 values, or a drug fewer than 10 clustered patients took, is not tested
+  and goes to `refused` (S4). Both shares are hidden when, on either side, fewer than 5 took the
+  drug or fewer than 5 did not: with one shown, the effect (their difference) would give the other
+  back, and with the side's size, the count. Tier A sizes and refused counts below 5 are hidden
+  too (S11). The effect and its interval are still shown, so an effect near ±1 with the sizes
+  still narrows a small count down; for review in M3-11.
+- With no stable clusters there is nothing to link, and the statement says so (S8); the run's
+  statement ends with it.
+
+The rows are not corrected or labelled on their own. Pass them to the run, which corrects them with
+every marker and ratio test and labels them like any other finding (S2, S5):
+
+```python
+clusters = cluster_patients(data, groups=["PSSD"])
+links = link_subgroups(data, clusters, settings)
+result = run_analysis(data, "PSSD", "healthy control", settings, subgroups=links)
+```
+
+Subgroup rows have `comparison` `subgroup: symptom score` or `subgroup: drug taken`, `marker_id`
+`score_<name>` or `drug:<name>`, `sex` `all`, `group_a` `cluster 1` (and so on), and
+`subgroups_of`, the groups clustered. The run refuses links made from other data or other
+settings. Its record gains `subgroups` (the clustering's statement, reason, groups and settings),
+and `reproduce` clusters and links again from it.
+
+`write_lab_reports(scores=[...], planted_scores=[PlantedScore("libido", 3.0, group="PFS")],
+drugs={"PSSD": [...]})` writes synthetic symptom scores (whole numbers 0 to 10, mean 4 and sd 2
+before rounding) and drugs into the metadata, without changing the reports. From 20 seeds, with
+PSSD and PFS as two hidden subgroups as above, a `libido` score shifted in PFS and a `fatigue`
+score with nothing planted:
+
+| Data | Libido found (suggestive or strong) | Libido strong | Fatigue found |
+|---|---|---|---|
+| 50 + 50, shift 3 points, a quarter tier A | 20 of 20 | 11 of 20 (the others suggestive: about 12 Tier A patients a side, near the limit of 10) | 1 of 20 |
+| 50 + 50, shift 1 point | 8 of 20 | 1 of 20 | 1 of 20 |
+| 100 + 100, shift 3 points, half tier A | 20 of 20 | 20 of 20 | 1 of 20 |
+| 50 + 50, nothing planted | 1 of 20 | 0 of 20 | 1 of 20 |

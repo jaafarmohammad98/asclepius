@@ -103,6 +103,8 @@ def reproduce(
 ) -> RunResult:
     """Run a lab-report run record (from `RunResult.record` or a `run_record.json`) again on its files.
 
+    A record with `subgroups` clusters and links the subgroups again first.
+
     Refuses with `ReproductionError` when this tool is another version than the record's, or when
     a file is missing, extra or changed, naming the file.
     """
@@ -135,4 +137,16 @@ def reproduce(
                 + (f"{want['role']} with SHA-256 {want['sha256'][:12]}...)." if want else "no file here).")
             )
     group_a, group_b = record["groups"]
-    return run_analysis(data, group_a, group_b, Settings(**record["settings"]))
+    settings = Settings(**record["settings"])
+    links = None
+    if "subgroups" in record:  # cluster and link again, with the clustering's own settings
+        from asclepius.cluster import ClusterSettings, cluster_patients
+        from asclepius.subgroups import link_subgroups
+
+        cluster_settings = dict(record["subgroups"]["settings"])
+        tiers = cluster_settings.pop("tiers")
+        clusters = cluster_patients(
+            data, record["subgroups"]["groups"], ClusterSettings(**cluster_settings), tiers=tiers
+        )
+        links = link_subgroups(data, clusters, settings)
+    return run_analysis(data, group_a, group_b, settings, subgroups=links)
