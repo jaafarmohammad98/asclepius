@@ -78,7 +78,8 @@ def counts_in(value):
                 and not isinstance(item, bool)
                 and (
                     key == "n"
-                    or key.startswith(("n_", "tier_a_n"))
+                    or key.startswith(("n_", "tier_a_n", "reported_"))
+                    or key == "authors"
                     or key in ("below", "within", "above", "unclear")
                 )
             ):
@@ -249,7 +250,13 @@ def test_every_self_report_section_carries_the_self_report_label(tmp_path):
         assert finding["plot"]["type"] == "zones"  # counts only
     for key, count in counts_in(view):
         assert count == 0 or count >= 5, key
-    assert section(view, "drug and symptom profile")["state"] == "not built yet"
+    profile = section(view, "drug and symptom profile")
+    assert profile["state"] == "done" and profile["findings"] and profile["groups"]
+    assert "counts in each" in profile["note"]
+    for finding in profile["findings"]:
+        assert finding["caveat"] == "self-report, no controls" and finding["label"] != "strong"
+        assert finding["plot"]["type"] == "shares"
+        assert finding["plot"]["caption"]
 
 
 def syndrome_row(n, above, below):

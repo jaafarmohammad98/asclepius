@@ -376,6 +376,7 @@ function findingSection(s) {
   if (s.note) box.append(el("p", s.note, { class: "muted" }));
   if (s.clusters) box.append(clusterInfo(s.clusters));
   if (s.summary && s.summary.length) box.append(syndromeSummary(s));
+  if (s.groups && s.groups.length) box.append(groupCounts(s.groups));
   if (s.findings.length) box.append(findingsTable(s));
   if (s.refused && s.refused.length) box.append(refusedList(s.refused));
   return box;
@@ -494,9 +495,16 @@ function legend(s) {
   return box;
 }
 
+function groupCounts(groups) {
+  const rows = groups.map((g) => [g.level, g.group, count(g.authors), g.tested === null ? "" : g.tested ? "yes" : "no"]);
+  return table(["Level", "Group", "Authors", "Tested"], rows);
+}
+
 function effectCell(f) {
   if (f.effect_size === null || f.effect_size === undefined) return twoLines("hidden", "a count below 5 would show");
-  return twoLines(num(f.effect_size), `${num(f.ci_low)} to ${num(f.ci_high)}`);
+  const odds = typeof f.odds_ratio === "number"
+    ? `; odds ratio ${num(f.odds_ratio)} (${num(f.odds_ratio_low)} to ${num(f.odds_ratio_high)})` : "";
+  return twoLines(num(f.effect_size), `${num(f.ci_low)} to ${num(f.ci_high)}${odds}`);
 }
 
 function plotCell(f) {
@@ -561,7 +569,7 @@ const W = 300, LABEL_W = 132, ROW_H = 18;
 
 function plot(p) {
   if (p.type === "distribution") return distributionPlot(p.sides);
-  if (p.type === "shares") return sharesPlot(p.sides);
+  if (p.type === "shares") return sharesPlot(p.sides, p.caption);
   if (p.type === "zones") return zonesPlot(p.sides);
   return document.createTextNode("");
 }
@@ -599,8 +607,8 @@ function distributionPlot(sides) {
   return root;
 }
 
-function sharesPlot(sides) {
-  const root = frame(sides.length, sides.map((s) => `${s.group}: ${pct(s.share)} took it, n ${count(s.n)}`).join("; "));
+function sharesPlot(sides, caption = "share who took the drug") {
+  const root = frame(sides.length, sides.map((s) => `${s.group}: ${pct(s.share)}, n ${count(s.n)}`).join("; "));
   const left = LABEL_W, width = W - LABEL_W - 40;
   sides.forEach((s, i) => {
     sideLabel(root, i, s);
@@ -609,7 +617,7 @@ function sharesPlot(sides) {
     if (s.share !== null) root.append(svg("rect", { class: "share", x: left, y, width: s.share * width, height: 12 }));
     root.append(svg("text", { x: left + width + 4, y: y + 10 }, pct(s.share)));
   });
-  root.append(svg("text", { x: left, y: sides.length * ROW_H + 12 }, "share who took the drug"));
+  root.append(svg("text", { x: left, y: sides.length * ROW_H + 12 }, caption));
   return root;
 }
 

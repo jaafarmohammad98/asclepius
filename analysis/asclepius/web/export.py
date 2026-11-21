@@ -220,9 +220,9 @@ def distribution_svg(sides: list[dict[str, Any]]) -> str:
     return _svg(len(sides), title, body)
 
 
-def shares_svg(sides: list[dict[str, Any]]) -> str:
-    """Per side: the share that took the drug."""
-    title = "; ".join(f"{s['group']}: {_pct(s['share'])} took it, n {_count(s['n'])}" for s in sides)
+def shares_svg(sides: list[dict[str, Any]], caption: str = "share who took the drug") -> str:
+    """Per side: a share (that took the drug, or that reports a symptom), named by `caption`."""
+    title = "; ".join(f"{s['group']}: {_pct(s['share'])}, n {_count(s['n'])}" for s in sides)
     width, body = W - LABEL_W - 40, []
     for i, s in enumerate(sides):
         y = i * ROW_H + 3
@@ -232,7 +232,7 @@ def shares_svg(sides: list[dict[str, Any]]) -> str:
                 f'<rect class="share" x="{LABEL_W}" y="{y}" width="{s["share"] * width:.2f}" height="12"/>'
             )
         body.append(f'<text x="{LABEL_W + width + 4}" y="{y + 10}">{_pct(s.get("share"))}</text>')
-    body.append(f'<text x="{LABEL_W}" y="{len(sides) * ROW_H + 12}">share who took the drug</text>')
+    body.append(f'<text x="{LABEL_W}" y="{len(sides) * ROW_H + 12}">{_e(caption)}</text>')
     return _svg(len(sides), title, body)
 
 
@@ -269,6 +269,8 @@ PLOTS = {"distribution": distribution_svg, "shares": shares_svg, "zones": zones_
 def plot_svg(plot: dict[str, Any] | None) -> str:
     if not plot or plot.get("type") not in PLOTS or not plot.get("sides"):
         return ""
+    if plot["type"] == "shares" and plot.get("caption"):
+        return shares_svg(plot["sides"], str(plot["caption"]))
     return PLOTS[plot["type"]](plot["sides"])
 
 
@@ -297,7 +299,13 @@ def _marker(f: dict[str, Any]) -> str:
 def _effect(f: dict[str, Any]) -> str:
     if f.get("effect_size") is None:
         return "–"
-    return f"{_num(f['effect_size'])} [{_num(f.get('ci_low'))}, {_num(f.get('ci_high'))}]"
+    effect = f"{_num(f['effect_size'])} [{_num(f.get('ci_low'))}, {_num(f.get('ci_high'))}]"
+    if f.get("odds_ratio") is not None:
+        effect += (
+            f'<br><span class="muted">odds ratio {_num(f["odds_ratio"])} '
+            f"[{_num(f.get('odds_ratio_low'))}, {_num(f.get('odds_ratio_high'))}]</span>"
+        )
+    return effect
 
 
 def _tier_a(f: dict[str, Any]) -> str:
@@ -414,6 +422,9 @@ def _section_html(s: dict[str, Any]) -> str:
             parts.append(f'<p class="muted">{_e(clusters["reason"])}</p>')
         sizes = [{"cluster": c["cluster"], "sex": c["sex"], "n": c["n"]} for c in clusters.get("sizes", [])]
         parts.append(_generic_table(sizes))
+    if s.get("groups"):
+        parts.append("<h3>Authors per drug class and drug</h3>")
+        parts.append(_generic_table(s["groups"]))
     if s.get("summary"):
         parts.append(f"<h3>Pattern per marker (reference: {_e(s.get('reference'))})</h3>")
         parts.append(_generic_table(s["summary"]))
