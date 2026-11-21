@@ -1,8 +1,9 @@
 # analysis
 
 The analysis engine (milestone 3). So far it loads and checks data, writes synthetic datasets
-with a known answer for testing the statistics, compares markers between two groups, and places
-values within their own report's reference range, and compares enzyme-activity ratios.
+with a known answer for testing the statistics, compares markers between two groups, places
+values within their own report's reference range, compares enzyme-activity ratios, and corrects
+and labels a whole run of tests.
 
 ```sh
 cd analysis
@@ -120,8 +121,8 @@ neither higher nor lower than 4 or `<3`, and such a pair counts as a tie. Report
 left out. The same `seed` gives the same table. `compare_values(a, b)` does the same for two lists
 of values, where a value is a number or a string like `"<5"`.
 
-Not done here yet: the group-size limit (S4) and the false discovery rate correction (S2) come in
-M3-06, so a row on its own is not a finding. On synthetic data with groups of 40 (12 women each),
+The group-size limit (S4) and the false discovery rate correction (S2) are applied by
+`run_analysis` (below), not here, so a row on its own is not a finding. On synthetic data with groups of 40 (12 women each),
 chance differences among the women often have a larger effect size than a planted 40% difference;
 with groups of 100 the planted marker comes first every time (30 of 30 seeds).
 
@@ -158,10 +159,10 @@ for having no range.
 
 `combine_findings(compare_groups(...), lab_range_findings(...).rows, ...)` stacks them into one
 findings table; the `comparison` column (`group comparison`, `enzyme-activity ratio`, `reference
-range`, `reference range, self-report`) tells them apart, and columns one kind lacks are left empty. The
-count limits (S4, S11) and the labels (S5, S10, including "self-report, no controls") are not
-applied yet (M3-06), so most self-report rows, with fewer than 5 authors, must not be shown as they
-are.
+range`, `reference range, self-report`) tells them apart, and columns one kind lacks are left empty. Reference-range
+rows are not tests, so the correction skips them and they get no label. The count limit S11 is
+not applied yet (M3-12), so most self-report rows, with fewer than 5 authors, must not be shown as
+they are.
 
 ## Enzyme-activity ratios
 
@@ -200,6 +201,42 @@ is larger than androsterone's alone in 39 of 40 sex-seed pairs, but not reliably
 etiocholanolone's: synthetic markers are drawn independently, so the ratio carries both markers'
 noise, where real related metabolites rise and fall together.
 
-Ratios are tested in a call of their own, apart from the raw markers. When the false discovery
-rate correction comes (M3-06), it must run over the combined table, so markers and ratios count as
-one run (S2).
+Ratios are tested in a call of their own, apart from the raw markers; `run_analysis` corrects
+both together, as one run (S2).
+
+## A run: correction, limits and labels
+
+`asclepius.run.run_analysis(data, "PSSD", "healthy control", settings)` is the entry point for a
+lab-report dataset. It runs `compare_groups` and `compare_ratios`, stacks them with
+`combine_findings`, and corrects the combined table once: one Benjamini-Hochberg false discovery
+rate correction over raw markers, ratios and both sexes together (S2), 68 tests on the synthetic
+data. A run is one dataset; lab reports and self-reports are corrected in separate runs. It returns:
+
+- `findings`: the tested rows, with `q_value` (the corrected p-value) and `label`.
+- `refused`: rows not tested because a group had fewer than 10 values in that sex, with a `reason`.
+  They do not count in the correction.
+- `skipped`: as in `compare_ratios`.
+- `statement`: `nothing reliable yet` when no finding is strong or suggestive (S8), else the counts.
+- `settings`: every threshold the run used (`Settings.record()`), marked `provisional, needs expert
+  review` until M3-11.
+
+A group with fewer than 10 reports is refused outright with `GroupTooSmall`, whose message names the
+group and its size (S4). The labels (S5):
+
+| Label | Rule (defaults in `Settings`) |
+|---|---|
+| strong | q at most 0.05, Cliff's delta at least 0.33 either way (Romano's "medium"), and holds in Tier A |
+| suggestive | q at most 0.10, and not strong |
+| noise-level | everything else |
+
+Holding in Tier A is the `holds_in_tier_a` column, which the Tier A re-run (M3-07) will set. Until
+then no row has it, so every lab finding "holds only in the full dataset" and is at most
+suggestive. This is needed, not just pedantic: on null synthetic data, 3 of 60 seeds give a chance
+finding with q at most 0.05 and a medium effect, as a 5% false discovery rate allows; and with a
+real difference planted, an unrelated marker can pass too. The Tier A condition makes such a
+chance finding much less likely to be strong, though not impossible. With q at most 0.10, about 1 null run in 10 has a suggestive finding.
+
+`label_findings(table, settings, self_report=False)` does the correction and labelling for any
+findings table; pass the whole run's table. Self-report analyses (M3-12, M3-14) call it with
+`self_report=True`: no row can be strong (S10), and every row gets the caveat `self-report, no
+controls`.
