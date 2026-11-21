@@ -526,16 +526,21 @@ Each step's one-line statement is shown, and when the run finishes, its findings
    size) or by effect size. A run, or a step, with no strong or suggestive finding says
    **Nothing reliable yet** in a box above it (S8). Each finding has a plot:
    - group comparisons, ratios and subgroup symptom scores: each group's 10th, 25th, 50th, 75th
-     and 90th percentiles as a box plot; no single value is drawn (S11);
+     and 90th percentiles as a box plot, for groups of 10 or more; no single value is drawn (S11);
    - subgroup drugs: the share of each cluster that took the drug (hidden when fewer than 5 on a
-     side took it, or did not);
+     side took it, or did not, and then the effect too: on yes/no values it is the difference of
+     the shares, which with the sizes would give the count back; the Tier A effect of a drug link
+     is always hidden);
    - reference-range positions (lab and self-report) and syndromes against the reference ranges:
      how many values fall below, within and above the range, or are unclear. Counts only; a
      count of 1 to 4 is hidden, and so is the next smallest when a total would give it back.
-     These rows describe and are not tests, so their label is "description, not a test".
+     These rows describe and are not tests, so their label is "description, not a test". A
+     syndrome with 1 to 4 values within the range has its shares, effect and plot hidden.
 
-   The subgroup section shows the clusters and their sizes, and their links to symptom scores
-   and drugs, labelled in the run's one correction. The cross-syndrome section adds a summary of
+   The subgroup section shows the clusters and their sizes per sex (a cluster with a sex hidden
+   hides the other too, since the links show its total), and their links to symptom scores and
+   drugs, labelled in the run's one correction; when the comparison does not finish, the links
+   have no label and are not shown. The cross-syndrome section adds a summary of
    the markers with a pattern (shared, same direction with a different size, differs, one
    syndrome only), then every test. Every self-report section carries "self-report, no
    controls"; the drug and symptom profile, symptom subgroups and intervention outcomes show as

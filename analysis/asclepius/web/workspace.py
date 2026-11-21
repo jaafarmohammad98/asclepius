@@ -16,7 +16,7 @@ from typing import Any
 
 import pandas as pd
 
-from asclepius.cluster import MIN_SHOWN, ClusterResult, TooFewPatients, cluster_patients
+from asclepius.cluster import ClusterResult, TooFewPatients, cluster_patients
 from asclepius.dataset import DatasetError, LabDataset, load_lab_reports
 from asclepius.metadata import GROUPS
 from asclepius.refrange import lab_range_findings, self_report_range_findings
@@ -24,8 +24,10 @@ from asclepius.run import GroupTooSmall, Settings, run_analysis
 from asclepius.selfreport import SelfReportDataset, load_self_reports
 from asclepius.subgroups import SubgroupLinks, link_subgroups
 from asclepius.syndromes import CONTROLS, REFERENCE_RANGE, SYNDROMES, compare_syndromes
+from asclepius.web import findings
 from asclepius.web.findings import (
     COMPARISON,
+    FEW,
     INTERVENTIONS,
     PROFILE,
     RANGES,
@@ -33,10 +35,10 @@ from asclepius.web.findings import (
     SUBGROUPS,
     SYMPTOM_SUBGROUPS,
     findings_view,
+    shown,
 )
 from asclepius.web.findings import SYNDROMES as SYNDROMES_KIND
 
-FEW = f"fewer than {MIN_SHOWN}"  # in place of a count too small to show (spec S11)
 NO_SEX = "not given"
 ROLES = ("reports", "metadata", "export")  # extractor CSVs, the metadata file, a harvester export's tables
 
@@ -82,25 +84,10 @@ class Step:
     message: str = ""
 
 
-def shown(count: int) -> int | None:
-    """`count`, or None when it is below 5 and must not be shown (spec S11)."""
-    return int(count) if count >= MIN_SHOWN else None
-
-
 def shown_parts(parts: pd.Series) -> pd.Series:
-    """`parts` of a total that is shown, with every count below 5 hidden (None), and then the next
-    smallest too until the hidden ones add up to 0 or at least 5: otherwise the total minus the
-    parts shown would give a hidden count back (spec S11)."""
-    hidden = parts < MIN_SHOWN
-    for label in parts.sort_values(kind="stable").index:
-        if hidden[label]:
-            continue
-        if not 0 < parts[hidden].sum() < MIN_SHOWN:
-            break
-        hidden[label] = True
-    return pd.Series(
-        [None if h else int(n) for n, h in zip(parts, hidden, strict=True)], index=parts.index, dtype=object
-    )
+    """`asclepius.web.findings.shown_parts` for counts in a Series, keeping its order."""
+    kept = findings.shown_parts({label: int(n) for label, n in parts.items()})
+    return pd.Series([kept[label] for label in parts.index], index=parts.index, dtype=object)
 
 
 class Workspace:

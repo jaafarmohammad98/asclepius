@@ -1,5 +1,7 @@
 """The findings view (M3-10b): what the page shows of a finished run."""
 
+import numpy as np
+import pandas as pd
 import pytest
 from test_subgroups import FIVE_ALPHA
 from test_web import FAST, add_export, add_lab, finished, lab_files
@@ -9,7 +11,7 @@ from asclepius.cluster import cluster_patients
 from asclepius.dataset import load_lab_reports
 from asclepius.run import run_analysis
 from asclepius.subgroups import link_subgroups
-from asclepius.web.findings import findings_view
+from asclepius.web.findings import cluster_sizes, distribution, finding_view, findings_view
 from asclepius.web.workspace import DONE, Step, Subgroups, Workspace
 
 
@@ -176,6 +178,11 @@ def test_subgroup_links_are_labelled_with_the_comparison_and_plot_each_cluster(t
     results = {"Look for subgroups": Subgroups(clusters, links), "Compare": comparison}
     view = findings_view(data, steps, results)
 
+    # without the comparison, the links have no label (spec S5), so none is shown
+    alone = section(findings_view(data, steps[:1], results), "subgroups")
+    assert alone["findings"] == [] and "not shown" in alone["note"]
+    assert alone["clusters"]["statement"] == "2 stable clusters"
+
     subgroups = section(view, "subgroups")
     assert subgroups["clusters"]["statement"] == "2 stable clusters"
     assert subgroups["clusters"]["sizes"]
@@ -243,3 +250,93 @@ def test_every_self_report_section_carries_the_self_report_label(tmp_path):
     for key, count in counts_in(view):
         assert count == 0 or count >= 5, key
     assert section(view, "drug and symptom profile")["state"] == "not built yet"
+
+
+def syndrome_row(n, above, below):
+    """A syndrome against the reference ranges, as `compare_syndromes` gives it."""
+    return pd.Series(
+        {
+            "comparison": "cross-syndrome: vs reference",
+            "marker_id": "x",
+            "marker_name": "X",
+            "sex": "male",
+            "group_a": "PSSD",
+            "group_b": "reference range",
+            "n_a": n,
+            "share_above": above / n,
+            "share_below": below / n,
+            "effect_size": (above - below) / n,
+            "ci_low": -0.1,
+            "ci_high": 0.2,
+            "p_value": 0.5,
+            "label": "noise-level",
+        }
+    )
+
+
+def test_a_syndrome_shift_hides_a_within_count_below_5_and_all_that_gives_it_back():
+    view = finding_view(syndrome_row(14, above=5, below=6), values=None)
+    assert view["share_above"] is None and view["share_below"] is None
+    assert view["effect_size"] is None  # with n, above - below and the shares, within comes back
+    assert all(view["plot"]["sides"][0][z] is None for z in ("below", "within", "above"))
+    assert view["n_a"] == 14 and view["label"] == "noise-level"
+
+
+def test_a_syndrome_shift_with_every_zone_large_enough_is_shown():
+    view = finding_view(syndrome_row(30, above=5, below=6), values=None)
+    side = view["plot"]["sides"][0]
+    assert (side["below"], side["within"], side["above"]) == (6, 19, 5)
+    assert view["effect_size"] == pytest.approx(-1 / 30)
+
+
+def test_a_drug_link_with_hidden_shares_hides_its_effect_too():
+    row = pd.Series(
+        {
+            "comparison": "subgroup: drug taken",
+            "marker_id": "drug:x",
+            "marker_name": "x",
+            "sex": "all",
+            "group_a": "cluster 1",
+            "group_b": "cluster 2",
+            "n_a": 30,
+            "n_b": 31,
+            "share_a": np.nan,
+            "share_b": np.nan,
+            "effect_size": 0.4,
+            "ci_low": 0.2,
+            "ci_high": 0.6,
+            "tier_a_effect_size": 0.5,
+            "tier_a_ci_low": 0.1,
+            "tier_a_ci_high": 0.8,
+            "label": "suggestive",
+        }
+    )
+    view = finding_view(row, values=None)
+    for column in (
+        "effect_size",
+        "ci_low",
+        "ci_high",
+        "tier_a_effect_size",
+        "tier_a_ci_low",
+        "tier_a_ci_high",
+    ):
+        assert view[column] is None, column
+    assert view["label"] == "suggestive" and (view["n_a"], view["n_b"]) == (30, 31)
+
+
+def test_a_percentile_plot_needs_10_values():
+    assert distribution("PSSD", pd.Series([1.0, 2, 3, 4, 5, 6, 7, 8, 9]))["median"] is None
+    assert distribution("PSSD", pd.Series([float(v) for v in range(10)]))["median"] == 4.5
+
+
+def test_cluster_sizes_hide_a_sex_whose_count_the_cluster_total_gives_back():
+    sizes = pd.DataFrame(
+        {
+            "cluster": [1, 1, 2, 2],
+            "sex": ["female", "male", "female", "male"],
+            "n_patients": [None, 38, 14, 32],
+        }
+    )
+    shown_sizes = {(r["cluster"], r["sex"]): r["n"] for r in cluster_sizes(sizes)}
+    assert shown_sizes[(1, "male")] is None  # the cluster's total is shown with its links
+    assert shown_sizes[(2, "female")] == 14

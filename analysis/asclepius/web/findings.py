@@ -17,7 +17,7 @@ so the view is valid JSON.
 from __future__ import annotations
 
 import math
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from typing import Any
 
 import numpy as np
@@ -30,10 +30,15 @@ from asclepius.ratios import compute_ratios
 from asclepius.refrange import SIDES
 from asclepius.run import NOISE, NOTHING_RELIABLE, PROVISIONAL, STRONG, SUGGESTIVE, statement
 from asclepius.selfreport import LABEL as SELF_REPORT_LABEL
-from asclepius.subgroups import SUBGROUP_DRUG, SUBGROUP_KINDS, SubgroupLinks
+from asclepius.subgroups import SUBGROUP_DRUG, SUBGROUP_KINDS, SUBGROUP_SCORE, SubgroupLinks
 from asclepius.syndromes import REFERENCE_RANGE
 
 DESCRIPTION = "description, not a test"
+FEW = f"fewer than {MIN_SHOWN}"  # in place of a count too small to show (spec S11)
+# Percentiles of fewer values come close to giving the values back (at 5, the five percentiles
+# are the five values), so a side is plotted from S4's smallest group size up (spec S11).
+MIN_PLOTTED = 10
+TIER_A_STATS = ("tier_a_effect_size", "tier_a_ci_low", "tier_a_ci_high")
 ZONES = (*SIDES, "unclear")
 PERCENTILES = {"q10": 10, "q25": 25, "median": 50, "q75": 75, "q90": 90}
 RANK = {STRONG: 0, SUGGESTIVE: 1, NOISE: 2}  # strongest first
@@ -97,17 +102,18 @@ class Values:
         return self._long[ratio]
 
     def side(self, ratio: bool, marker: str, sex: str, group: str) -> pd.Series:
+        """The values of `marker` (a ratio's id when `ratio`) in one group and sex."""
         long = self.of(ratio)
         chosen = (long["marker_id"] == marker) & (long["group"] == group) & (long["sex"] == sex)
         return long.loc[chosen, "value"].astype("float64")
 
 
 def distribution(group: str, values: pd.Series) -> dict[str, object]:
-    """A side of a `distribution` plot: its size and percentiles, none below 5 values (spec S11).
-    A limit ("<5") counts as its number, as the medians do."""
+    """A side of a `distribution` plot: its size and percentiles, none below `MIN_PLOTTED` values
+    (spec S11). A limit ("<5") counts as its number, as the medians do."""
     n = len(values)
     side: dict[str, object] = {"group": group, "n": shown(n)}
-    if n < MIN_SHOWN:
+    if n < MIN_PLOTTED:
         return side | dict.fromkeys(PERCENTILES)
     points = np.percentile(values.to_numpy(), list(PERCENTILES.values()))
     return side | {name: float(p) for name, p in zip(PERCENTILES, points, strict=True)}
@@ -155,6 +161,41 @@ def row_view(row: pd.Series) -> dict[str, object]:
     return out
 
 
+def finding_view(
+    row: pd.Series, values: Values | None, plot: dict[str, object] | None = None
+) -> dict[str, object]:
+    """One tested finding as the page shows it, with its plot (`plot`, or the lab-report one made
+    from `values`). Also hides what would give back a count below 5 from the numbers shown (S11):
+
+    - a syndrome against the reference ranges whose values within the range are 1 to 4: the size,
+      the shares above and below, or the size and the effect (share above minus share below)
+      would give that count back, so the shares, the effect and the plot are hidden;
+    - a drug link whose shares are hidden: on yes/no values the effect is the difference of the
+      shares, which with both sizes can give a count of takers back, so it is hidden too. Its Tier A
+      effect always is, since the Tier A shares are not checked.
+    """
+    out = row_view(row)
+    if row.get("group_b") == REFERENCE_RANGE and _within(row) in range(1, MIN_SHOWN):
+        hidden = ("share_above", "share_below", "effect_size", "ci_low", "ci_high", *TIER_A_STATS)
+        out |= dict.fromkeys(hidden)
+        row = row.drop(["share_above", "share_below"])
+    if row.get("comparison") == SUBGROUP_DRUG:
+        out |= dict.fromkeys(TIER_A_STATS)
+        if out.get("share_a") is None or out.get("share_b") is None:
+            out |= dict.fromkeys(("effect_size", "ci_low", "ci_high"))
+    if plot is None:
+        plot = drug_shares(row) if row.get("comparison") == SUBGROUP_DRUG else lab_plot(row, values)
+    return out | {"plot": plot}
+
+
+def _within(row: pd.Series) -> int | None:
+    """How many of a syndrome's values fall within the reference range, when its shares are known."""
+    if pd.isna(row.get("share_above")) or pd.isna(row.get("share_below")) or pd.isna(row.get("n_a")):
+        return None
+    n = int(row["n_a"])
+    return n - round(row["share_above"] * n) - round(row["share_below"] * n)
+
+
 def ordered(rows: list[dict[str, object]]) -> list[dict[str, object]]:
     """Strongest first, then the largest effect; rows with no label (descriptions) last."""
 
@@ -171,6 +212,7 @@ def tested_statement(table: pd.DataFrame) -> str:
 
 
 def refused_view(table: pd.DataFrame) -> list[dict[str, object]]:
+    """Tests not made, with their sizes (below 5 hidden) and the reason."""
     columns = ["comparison", "marker_name", "sex", "group_a", "group_b", "n_a", "n_b", "reason"]
     rows = []
     for _, row in table.iterrows():
@@ -181,10 +223,10 @@ def refused_view(table: pd.DataFrame) -> list[dict[str, object]]:
 # ---------------------------------------------------------------------------------- lab reports
 
 
-def comparison_section(result: Any, values: Values) -> dict[str, object]:
+def comparison_section(result: Any, values: Values | None) -> dict[str, object]:
     """The two groups compared: raw markers and ratios (the subgroup rows have their own section)."""
     table = result.findings[~result.findings["comparison"].isin(SUBGROUP_KINDS)]
-    rows = [row_view(row) | {"plot": lab_plot(row, values)} for _, row in table.iterrows()]
+    rows = [finding_view(row, values) for _, row in table.iterrows()]
     refused = result.refused[~result.refused["comparison"].isin(SUBGROUP_KINDS)]
     said = tested_statement(table)
     return {
@@ -196,11 +238,13 @@ def comparison_section(result: Any, values: Values) -> dict[str, object]:
     }
 
 
-def lab_plot(row: pd.Series, values: Values) -> dict[str, object]:
+def lab_plot(row: pd.Series, values: Values | None) -> dict[str, object]:
     """The plot of a lab-report finding: the two groups' distributions, or for a syndrome against
     the reference ranges, where its values fall."""
     if row.get("group_b") == REFERENCE_RANGE:
         return shift_zones(row)
+    if values is None:
+        raise ValueError("A group comparison's plot needs the dataset's values.")
     ratio = RATIO in (row.get("comparison"), row.get("measure"))
     sides = [
         distribution(row[g], values.side(ratio, row["marker_id"], row["sex"], row[g]))
@@ -210,8 +254,9 @@ def lab_plot(row: pd.Series, values: Values) -> dict[str, object]:
 
 
 def shift_zones(row: pd.Series) -> dict[str, object]:
-    """A syndrome against the reference ranges. Its shares above and below are hidden when a count
-    behind them is below 5; with the effect and the size, any one zone would then give them back."""
+    """A syndrome against the reference ranges: how many values fall below, within and above. All
+    are hidden when the shares are (`compare_syndromes` hides them when above or below is 1 to 4,
+    `finding_view` when within is), since the effect and the size would give any one back."""
     n = int(row["n_a"]) if pd.notna(row.get("n_a")) else 0
     counts: dict[str, int | None] = dict.fromkeys(SIDES)  # `n` counts the values placed, so no unclear
     if pd.notna(row.get("share_above")) and pd.notna(row.get("share_below")):
@@ -250,7 +295,7 @@ def range_section(found: Any, *, self_report: bool = False) -> dict[str, object]
     placed = shown(len(found.patients))
     what = "author and test pairs" if self_report else "values"
     return {
-        "statement": f"{placed if placed is not None else 'fewer than 5'} {what} placed in their own range",
+        "statement": f"{placed if placed is not None else FEW} {what} placed in their own range",
         "nothing_reliable": None,  # descriptions: nothing here is tested
         "labels": [SELF_REPORT_LABEL] if self_report else [],
         "findings": rows,
@@ -270,41 +315,70 @@ def subgroup_section(found: Any, comparison: Any, data: LabDataset) -> dict[str,
     if comparison is not None:
         table = comparison.findings[comparison.findings["comparison"].isin(SUBGROUP_KINDS)]
         refused = comparison.refused[comparison.refused["comparison"].isin(SUBGROUP_KINDS)]
-    else:
-        table, refused = links.rows.assign(label=None), links.refused
-    rows = [row_view(row) | {"plot": subgroup_plot(row, clusters, data)} for _, row in table.iterrows()]
+    else:  # unlabelled links are not shown (spec S5): only how many there were
+        table, refused = links.rows.iloc[0:0], links.refused.iloc[0:0]
+    rows = [
+        finding_view(
+            row, None, plot=score_plot(row, clusters, data) if row["comparison"] == SUBGROUP_SCORE else None
+        )
+        for _, row in table.iterrows()
+    ]
+    nothing: bool | None
     if clusters.k is None:
         said, nothing = clusters.statement, True
     else:
-        said = tested_statement(table) if comparison is not None else "links not labelled"
-        nothing = said == NOTHING_RELIABLE
-    sizes = [
-        {"cluster": plain(r["cluster"]), "sex": plain(r["sex"]), "n": shown(r["n_patients"])}
-        for _, r in clusters.sizes.iterrows()
-    ]
+        said = tested_statement(table) if comparison is not None else f"{len(links.rows)} links not labelled"
+        nothing = said == NOTHING_RELIABLE if comparison is not None else None
     out: dict[str, object] = {
         "statement": said,
         "nothing_reliable": nothing,
         "labels": [f"thresholds {PROVISIONAL}"],
-        "clusters": {"statement": clusters.statement, "reason": clusters.reason, "sizes": sizes},
+        "clusters": {
+            "statement": clusters.statement,
+            "reason": clusters.reason,
+            "sizes": cluster_sizes(clusters.sizes),
+        },
         "findings": ordered(rows),
         "refused": refused_view(refused),
     }
     if comparison is None:
-        out["note"] = "The links are labelled with the group comparison, which did not finish."
+        out["note"] = (
+            "The links to symptoms and drugs are labelled in one correction with the group "
+            "comparison, which did not finish, so they are not shown."
+        )
     return out
 
 
-def subgroup_plot(row: pd.Series, clusters: ClusterResult, data: LabDataset) -> dict[str, object]:
+def cluster_sizes(sizes: pd.DataFrame) -> list[dict[str, object]]:
+    """Patients per cluster and sex. The links show each cluster's size, so when one sex of a
+    cluster is hidden (1 to 4), the cluster's others would give it back: they are hidden too."""
+    out = []
+    for cluster, cells in sizes.groupby("cluster", sort=True):
+        counts = [shown(n) for n in cells["n_patients"]]
+        if None in counts:
+            counts = [None] * len(counts)
+        out += [
+            {"cluster": plain(cluster), "sex": plain(sex), "n": n}
+            for sex, n in zip(cells["sex"], counts, strict=True)
+        ]
+    return out
+
+
+def drug_shares(row: pd.Series) -> dict[str, object]:
+    """A drug link's plot: the share of each side that took it (hidden as `subgroups` hides it)."""
+    return {
+        "type": "shares",
+        "sides": [
+            {"group": row["group_a"], "n": shown(row["n_a"]), "share": plain(row["share_a"])},
+            {"group": row["group_b"], "n": shown(row["n_b"]), "share": plain(row["share_b"])},
+        ],
+    }
+
+
+def score_plot(row: pd.Series, clusters: ClusterResult, data: LabDataset) -> dict[str, object]:
+    """A symptom-score link's plot: the score's distribution in the cluster and in the other side
+    (the next cluster, or all the others), as `link_subgroups` names them."""
     sides = [row["group_a"], row["group_b"]]
-    if row["comparison"] == SUBGROUP_DRUG:
-        return {
-            "type": "shares",
-            "sides": [
-                {"group": sides[0], "n": shown(row["n_a"]), "share": plain(row["share_a"])},
-                {"group": sides[1], "n": shown(row["n_b"]), "share": plain(row["share_b"])},
-            ],
-        }
     scores = clusters.assignments.join(data.records.set_index("record")[row["marker_id"]], on="record")
     number = int(str(row["group_a"]).removeprefix("cluster "))
     in_a = scores["cluster"] == number
@@ -319,9 +393,9 @@ def subgroup_plot(row: pd.Series, clusters: ClusterResult, data: LabDataset) -> 
     }
 
 
-def syndrome_section(result: Any, values: Values) -> dict[str, object]:
+def syndrome_section(result: Any, values: Values | None) -> dict[str, object]:
     """PSSD, PFS and PAS against the reference and each other, and the pattern per marker."""
-    rows = [row_view(row) | {"plot": lab_plot(row, values)} for _, row in result.findings.iterrows()]
+    rows = [finding_view(row, values) for _, row in result.findings.iterrows()]
     said = tested_statement(result.findings)
     summary = [{c: plain(v) for c, v in r.items()} for _, r in result.summary.iterrows()]
     syndromes = [c.removeprefix("direction_") for c in result.summary.columns if c.startswith("direction_")]
@@ -343,6 +417,7 @@ def syndrome_section(result: Any, values: Values) -> dict[str, object]:
 def section(
     kind: str, name: str, state: str, message: str, body: dict[str, object] | None
 ) -> dict[str, object]:
+    """A step's section: its state and message, its labels, and `body` once it has finished."""
     out: dict[str, object] = {
         "kind": kind,
         "title": name,
@@ -354,21 +429,14 @@ def section(
     return out | (body or {})
 
 
-def build(
-    kind: str, result: Any, results: dict[str, Any], data: Any, values: Values | None
-) -> dict[str, object]:
-    """The body of a finished step's section."""
-    if kind == COMPARISON:
-        return comparison_section(result, values)  # type: ignore[arg-type]
-    if kind == SUBGROUPS:
-        return subgroup_section(result, results.get(COMPARISON), data)
-    if kind == SYNDROMES:
-        return syndrome_section(result, values)  # type: ignore[arg-type]
-    if kind == RANGES:
-        return range_section(result)
-    if kind == SELF_REPORT_RANGES:
-        return range_section(result, self_report=True)
-    raise ValueError(f"No view for {kind!r}.")
+# a finished step's section body, by kind: (its result, every result by kind, the data, its values)
+BUILDERS: dict[str, Callable[[Any, dict[str, Any], Any, Values | None], dict[str, object]]] = {
+    COMPARISON: lambda result, _, __, values: comparison_section(result, values),
+    SUBGROUPS: lambda result, results, data, _: subgroup_section(result, results.get(COMPARISON), data),
+    SYNDROMES: lambda result, _, __, values: syndrome_section(result, values),
+    RANGES: lambda result, *_: range_section(result),
+    SELF_REPORT_RANGES: lambda result, *_: range_section(result, self_report=True),
+}
 
 
 def findings_view(data: Any, steps: Iterable[Any], results: dict[str, Any]) -> dict[str, object]:
@@ -382,7 +450,7 @@ def findings_view(data: Any, steps: Iterable[Any], results: dict[str, Any]) -> d
     for step in steps:
         body = None
         if step.kind in by_kind:
-            body = build(step.kind, by_kind[step.kind], by_kind, data, values)
+            body = BUILDERS[step.kind](by_kind[step.kind], by_kind, data, values)
         sections.append(section(step.kind, step.name, step.state, step.message, body))
     tested = [s for s in sections if s.get("nothing_reliable") is not None and s["state"] == "done"]
     nothing = bool(tested) and all(s["nothing_reliable"] for s in tested)
