@@ -17,6 +17,8 @@ def lab_dataset(tmp_path, **settings):
 
 @pytest.mark.parametrize("seed", range(20))
 def test_null_data_gives_no_strong_finding(tmp_path, seed):
+    # Strong needs `holds_in_tier_a`, which only the Tier A re-run (M3-07) sets, so this becomes a
+    # real check there. Without the Tier A condition, seed 8 has a chance finding with q < 0.05.
     data = lab_dataset(tmp_path, null=True, seed=seed)
     result = run_analysis(data, *GROUPS)
     assert not (result.findings["label"] == "strong").any()

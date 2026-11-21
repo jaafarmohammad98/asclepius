@@ -233,8 +233,8 @@ Holding in Tier A is the `holds_in_tier_a` column, which the Tier A re-run (M3-0
 then no row has it, so every lab finding "holds only in the full dataset" and is at most
 suggestive. This is needed, not just pedantic: on null synthetic data, 3 of 60 seeds give a chance
 finding with q at most 0.05 and a medium effect, as a 5% false discovery rate allows; and with a
-real difference planted, an unrelated marker can pass too. Only the Tier A condition can keep
-those out of strong. With q at most 0.10, about 1 null run in 10 has a suggestive finding.
+real difference planted, an unrelated marker can pass too. The Tier A condition makes such a
+chance finding much less likely to be strong, though not impossible. With q at most 0.10, about 1 null run in 10 has a suggestive finding.
 
 `label_findings(table, settings, self_report=False)` does the correction and labelling for any
 findings table; pass the whole run's table. Self-report analyses (M3-12, M3-14) call it with

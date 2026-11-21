@@ -18,13 +18,13 @@ import pandas as pd
 
 from asclepius.compare import BOOTSTRAP, PERMUTATIONS, compare_groups
 from asclepius.dataset import LabDataset
-from asclepius.ratios import compare_ratios
+from asclepius.ratios import STATUS, compare_ratios
 from asclepius.refrange import combine_findings
 from asclepius.selfreport import LABEL as SELF_REPORT_LABEL
 
 STRONG, SUGGESTIVE, NOISE = "strong", "suggestive", "noise-level"
 NOTHING_RELIABLE = "nothing reliable yet"
-PROVISIONAL = "provisional, needs expert review"
+PROVISIONAL = STATUS  # "provisional, needs expert review", until M3-11
 TIER_A = "holds_in_tier_a"  # set by the Tier A re-run (M3-07); missing means not shown to hold
 
 
