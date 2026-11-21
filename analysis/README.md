@@ -163,9 +163,9 @@ for having no range.
 `combine_findings(compare_groups(...), lab_range_findings(...).rows, ...)` stacks them into one
 findings table; the `comparison` column (`group comparison`, `enzyme-activity ratio`, `reference
 range`, `reference range, self-report`) tells them apart, and columns one kind lacks are left empty. Reference-range
-rows are not tests, so the correction skips them and they get no label. The count limit S11 is
-not applied yet (M3-12), so most self-report rows, with fewer than 5 authors, must not be shown as
-they are.
+rows are not tests, so the correction skips them and they get no label. The rows themselves do
+not apply the count limit S11; the web app's findings view does (below), so most self-report rows,
+with fewer than 5 authors, must not be shown as they come from here.
 
 ## Enzyme-activity ratios
 
@@ -516,7 +516,33 @@ into a temporary folder that is deleted when the app stops (Ctrl+C).
 | Compare PSSD, PFS and PAS (`compare_syndromes`; the reference is the control picked, else the reference ranges) | Symptom subgroups (not built yet: M3-13) |
 | Positions within reference ranges (`lab_range_findings`) | Intervention outcomes (not built yet: M3-14) |
 
-Each step's one-line statement is shown; the findings table and plots are M3-10b, the export
-M3-10c. A run of 100 PSSD, 40 PFS and 100 controls takes about 7 seconds; the full r/PSSD export
-loads (3,153 authors) and runs in about 3. The logic is `asclepius.web.workspace.Workspace`
-(files, review, run); `asclepius.web.server` only serves it.
+Each step's one-line statement is shown, and when the run finishes, its findings
+(`GET /api/findings`, built by `asclepius.web.findings`), one section per step:
+
+4. **Findings.** Each finding shows its sample sizes (values in each group), its effect size
+   (Cliff's delta) with its 95% interval, its q-value, its label (strong, suggestive,
+   noise-level) and its Tier A result (holds, does not hold, or too small to test, with the Tier A
+   sizes), so a weak finding cannot pass for a strong one. Tables sort by strength (then effect
+   size) or by effect size. A run, or a step, with no strong or suggestive finding says
+   **Nothing reliable yet** in a box above it (S8). Each finding has a plot:
+   - group comparisons, ratios and subgroup symptom scores: each group's 10th, 25th, 50th, 75th
+     and 90th percentiles as a box plot; no single value is drawn (S11);
+   - subgroup drugs: the share of each cluster that took the drug (hidden when fewer than 5 on a
+     side took it, or did not);
+   - reference-range positions (lab and self-report) and syndromes against the reference ranges:
+     how many values fall below, within and above the range, or are unclear. Counts only; a
+     count of 1 to 4 is hidden, and so is the next smallest when a total would give it back.
+     These rows describe and are not tests, so their label is "description, not a test".
+
+   The subgroup section shows the clusters and their sizes, and their links to symptom scores
+   and drugs, labelled in the run's one correction. The cross-syndrome section adds a summary of
+   the markers with a pattern (shared, same direction with a different size, differs, one
+   syndrome only), then every test. Every self-report section carries "self-report, no
+   controls"; the drug and symptom profile, symptom subgroups and intervention outcomes show as
+   not built yet until M3-12 to M3-14 add them. Every count below 5 is hidden in the view (0, which
+   is no one, is shown).
+
+The export is M3-10c. A run of 100 PSSD, 40 PFS and 100 controls takes about 7 seconds; the full
+r/PSSD export loads (3,153 authors) and runs in about 3. The logic is
+`asclepius.web.workspace.Workspace` (files, review, run), with the findings view in
+`asclepius.web.findings`; `asclepius.web.server` only serves them.

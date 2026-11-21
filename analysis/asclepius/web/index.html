@@ -54,6 +54,37 @@
   .state.refused, .state.not-built-yet { color: var(--warn); }
   .state.failed { color: var(--bad); }
   .state.running, .state.waiting { color: var(--muted); }
+  main.wide { max-width: 1280px; }
+  .findings-table th[scope=row] { white-space: normal; min-width: 140px; max-width: 220px; }
+  td.wrap { white-space: normal; min-width: 120px; max-width: 170px; text-align: left; }
+  td .sub, th .sub { display: block; font-weight: 400; color: var(--muted); font-size: .85em; }
+  .nothing { border: 2px solid var(--warn); border-radius: 8px; padding: 12px 16px; margin: 0 0 12px;
+    font-size: 1.15rem; font-weight: 600; }
+  .nothing .muted { display: block; font-size: .95rem; font-weight: 400; margin-top: 4px; }
+  details.finding-group { border-top: 1px solid var(--line); padding: 12px 0 0; margin-top: 12px; }
+  details.finding-group > summary { cursor: pointer; font-weight: 600; font-size: 1.05rem; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+  .strength { display: inline-block; border-radius: 4px; padding: 0 6px; font-size: .9em; font-weight: 600;
+    border: 1px solid var(--line); }
+  .strength.strong { border-color: var(--ok); color: var(--ok); }
+  .strength.suggestive { border-color: var(--warn); color: var(--warn); }
+  .strength.noise-level, .strength.description, .strength.unlabelled { color: var(--muted); font-weight: 400; }
+  .sort { display: flex; gap: 8px; align-items: center; margin: 8px 0; flex-wrap: wrap; }
+  .sort button { padding: 2px 10px; background: var(--panel); color: var(--text); border-color: var(--line); }
+  .sort button[aria-pressed=true] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  td.plot { padding: 2px 6px; }
+  td.plot svg { display: block; }
+  svg text { fill: var(--text); font: 11px system-ui, sans-serif; }
+  svg .axis { stroke: var(--line); }
+  svg .box { fill: var(--bar); stroke: var(--accent); }
+  svg .whisker, svg .median { stroke: var(--accent); stroke-width: 1.5; }
+  svg .median { stroke-width: 2.5; }
+  svg .zone-below { fill: #4e79a7; } svg .zone-within { fill: var(--bar); }
+  svg .zone-above { fill: #e15759; } svg .zone-unclear { fill: #b0a36b; }
+  svg .hidden-part { fill: none; stroke: var(--muted); stroke-dasharray: 2 2; }
+  svg .share { fill: var(--accent); } svg .share-bg { fill: var(--bar); }
+  .legend { font-size: .9em; color: var(--muted); margin: 4px 0 8px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; margin: 0 4px 0 10px; vertical-align: middle; }
 </style>
 </head>
 <body>
@@ -101,6 +132,11 @@
       <ol id="steps" class="steps"></ol>
     </div>
   </section>
+
+  <section id="findings" hidden>
+    <h2>4. Findings</h2>
+    <div id="findings-body"></div>
+  </section>
 </main>
 <script>
 "use strict";
@@ -122,7 +158,7 @@ function table(head, rows) {
   const t = el("table");
   const tr = el("tr");
   head.forEach((h) => tr.append(el("th", h, { scope: "col" })));
-  t.append(el("thead")).append(tr);
+  t.appendChild(el("thead")).append(tr);
   const body = t.appendChild(el("tbody"));
   rows.forEach((cells) => {
     const r = body.appendChild(el("tr"));
@@ -161,6 +197,7 @@ function exportTables(files) {
 }
 
 $("load-button").addEventListener("click", async () => {
+  $("findings").hidden = true;
   const reports = [...$("reports").files], metadata = [...$("metadata").files];
   const exported = exportTables([...$("export").files]);
   showError("load-error", "");
@@ -187,7 +224,7 @@ function showReview(review) {
   const body = $("review-body");
   body.replaceChildren();
   if (review.kind === "self-report") {
-    body.append(el("p", null)).append(el("span", review.label, { class: "label" }));
+    body.appendChild(el("p", null)).append(el("span", review.label, { class: "label" }));
     body.append(el("p", `${count(review.authors)} authors, each counted once however many posts they wrote.`));
     body.append(table(["Condition", "Authors"], review.conditions.map((c) => [c.condition, count(c.authors)])));
     body.append(el("p", `Left out: ${count(review.excluded.unverified)} posts that failed the evidence check ` +
@@ -232,6 +269,7 @@ function showRunChoice(review) {
 
 $("run-button").addEventListener("click", async () => {
   showError("run-error", "");
+  $("findings").hidden = true;
   const choice = $("group-choice").hidden ? {} : { group_a: $("group-a").value, group_b: $("group-b").value };
   $("run-button").disabled = $("load-button").disabled = true;
   try {
@@ -249,7 +287,7 @@ async function follow() {
   for (;;) {
     const status = await api("/api/status");
     showStatus(status);
-    if (status.state !== "running") return;
+    if (status.state !== "running") { showFindings(await api("/api/findings")); return; }
     await new Promise((done) => setTimeout(done, 400));
   }
 }
@@ -268,6 +306,323 @@ function showStatus(status) {
     if (step.message) item.append(el("div", step.message, { class: "muted" }));
     return item;
   }));
+}
+// ------------------------------------------------------------------ findings (M3-10b)
+
+const RANK = { strong: 0, suggestive: 1, "noise-level": 2 };
+const NUMBER = new Intl.NumberFormat("en", { maximumSignificantDigits: 3 });
+const SVG = "http://www.w3.org/2000/svg";
+
+function num(x) { return x === null || x === undefined ? "–" : NUMBER.format(x); }
+function pct(x) { return x === null || x === undefined ? "hidden" : `${Math.round(x * 100)}%`; }
+function svg(tag, attrs = {}, text) {
+  const node = document.createElementNS(SVG, tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function strength(label) {
+  const cls = label === "description, not a test" ? "description" : label || "unlabelled";
+  return el("span", label || "not labelled", { class: `strength ${cls}` });
+}
+
+function nothingReliable(text, detail) {
+  const box = el("div", null, { class: "nothing", role: "status" });
+  box.append(text);
+  if (detail) box.append(el("span", detail, { class: "muted" }));
+  return box;
+}
+
+function showFindings(view) {
+  const body = $("findings-body");
+  body.replaceChildren();
+  if (view.label) body.appendChild(el("p")).append(el("span", view.label, { class: "label" }));
+  if (view.nothing_reliable) {
+    body.append(nothingReliable("Nothing reliable yet.",
+      "No finding in this run is strong or suggestive. That is a result, not an error (spec S8)."));
+  }
+  view.sections.forEach((s) => body.append(findingSection(s)));
+  document.querySelector("main").classList.add("wide");
+  $("findings").hidden = false;
+}
+
+function findingSection(s) {
+  const box = el("details", null, { class: "finding-group" });
+  box.open = true;
+  const summary = box.appendChild(el("summary", `${s.title} `));
+  summary.append(el("span", s.state, { class: `state ${s.state.replaceAll(" ", "-")}` }));
+  const chips = el("div", null, { class: "chips" });
+  (s.labels || []).forEach((l) => chips.append(el("span", l, { class: "label" })));
+  if (chips.childNodes.length) box.append(chips);
+  if (s.state !== "done") {
+    box.append(el("p", s.message || "No findings: this step did not finish.", { class: "muted" }));
+    return box;
+  }
+  if (s.nothing_reliable) {
+    box.append(nothingReliable(s.statement === "nothing reliable yet" ? "Nothing reliable yet." : `Nothing reliable yet: ${s.statement}.`));
+  }
+  else if (s.statement) box.append(el("p", s.statement));
+  if (s.note) box.append(el("p", s.note, { class: "muted" }));
+  if (s.clusters) box.append(clusterInfo(s.clusters));
+  if (s.summary && s.summary.length) box.append(syndromeSummary(s));
+  if (s.findings.length) box.append(findingsTable(s));
+  if (s.refused && s.refused.length) box.append(refusedList(s.refused));
+  return box;
+}
+
+function clusterInfo(c) {
+  const wrap = el("div");
+  wrap.append(el("p", `Clusters: ${c.statement}${c.reason ? ` (${c.reason})` : ""}.`));
+  if (c.sizes.length) {
+    wrap.append(table(["Cluster", "Sex", "Patients"], c.sizes.map((r) => [`cluster ${r.cluster}`, r.sex, count(r.n)])));
+  }
+  return wrap;
+}
+
+function syndromeSummary(s) {
+  const quiet = ["no clear shift", "not tested"];
+  const shown = s.summary.filter((r) => !quiet.includes(r.pattern))
+    .sort((a, b) => (RANK[a.label] ?? 9) - (RANK[b.label] ?? 9));
+  const head = ["Marker", ...s.syndromes.map((x) => `${x} (n)`),
+    ...(s.reference === "reference range" ? [] : [`${s.reference} (n)`]), "Pairs that differ", "Pattern", "Label"];
+  const wrap = el("div");
+  wrap.append(el("p", `Each marker across syndromes, against the ${s.reference}. ` +
+    `${s.summary.length - shown.length} of ${s.summary.length} marker and sex rows show no clear shift, or were not tested, and are left out of this summary; their tests are in the table below.`));
+  if (!shown.length) return wrap;
+  const t = wrap.appendChild(table(head, []));
+  t.classList.add("findings-table");
+  const body = t.querySelector("tbody");
+  shown.forEach((r) => {
+    const row = body.appendChild(el("tr"));
+    row.append(markerCell(r));
+    [...s.syndromes.map((x) => `${r[`direction_${x}`]} (${count(r[`n_${x}`])})`),
+      ...(s.reference === "reference range" ? [] : [count(r.n_reference)]), r.differ || "–", r.pattern,
+    ].forEach((t) => row.append(el("td", t)));
+    row.appendChild(el("td")).append(strength(r.label));
+  });
+  return wrap;
+}
+
+function sizes(f) {
+  return f.n_b === undefined ? count(f.n_a) : `${count(f.n_a)} / ${count(f.n_b)}`;
+}
+
+function markerCell(f) {
+  const ratio = f.comparison === "enzyme-activity ratio" || f.measure === "enzyme-activity ratio";
+  const prefix = { "subgroup: drug taken": "drug: ", "subgroup: symptom score": "symptom score: " }[f.comparison] || "";
+  const cell = el("th", `${prefix}${f.marker_name}${ratio ? " (ratio)" : ""}`, { scope: "row" });
+  cell.append(el("span", f.sex === "all" ? "both sexes" : f.sex || "sex not given", { class: "sub" }));
+  return cell;
+}
+
+function twoLines(main, sub) {
+  const cell = el("td", null, { class: "wrap" });
+  cell.append(main);
+  if (sub) cell.append(el("span", sub, { class: "sub" }));
+  return cell;
+}
+
+function tierA(f) {
+  if (!f.tier_a_result) return twoLines("–");
+  const short = (x) => (x === null ? "<5" : count(x));
+  const n = f.tier_a_n_b === undefined ? short(f.tier_a_n_a) : `${short(f.tier_a_n_a)} / ${short(f.tier_a_n_b)}`;
+  const effect = f.tier_a_effect_size === null || f.tier_a_effect_size === undefined ? "" : `, effect ${num(f.tier_a_effect_size)}`;
+  return twoLines(f.tier_a_result, `n ${n}${effect}`);
+}
+
+function findingsTable(s) {
+  const described = s.findings.every((f) => f.label === "description, not a test");
+  const wrap = el("div");
+  let order = described ? "marker" : "strength";
+  const bar = el("div", null, { class: "sort" });
+  const sorts = described
+    ? [["marker", "Marker"], ["size", "Sample size"]]
+    : [["strength", "Strength"], ["effect", "Effect size"]];
+  bar.append(el("span", "Sort by:", { class: "muted" }));
+  const buttons = sorts.map(([key, text]) => {
+    const b = el("button", text, { type: "button", "aria-pressed": String(key === order) });
+    b.addEventListener("click", () => { order = key; draw(); });
+    bar.append(b);
+    return [key, b];
+  });
+  const holder = el("div");
+  wrap.append(bar, legend(s), holder);
+  function draw() {
+    buttons.forEach(([key, b]) => b.setAttribute("aria-pressed", String(key === order)));
+    holder.replaceChildren(described ? rangeRows(sorted(s.findings, order)) : testRows(sorted(s.findings, order)));
+  }
+  draw();
+  return wrap;
+}
+
+function sorted(findings, order) {
+  const effect = (f) => (typeof f.effect_size === "number" ? Math.abs(f.effect_size) : -1);
+  const key = {
+    strength: (a, b) => (RANK[a.label] ?? 9) - (RANK[b.label] ?? 9) || effect(b) - effect(a),
+    effect: (a, b) => effect(b) - effect(a) || (RANK[a.label] ?? 9) - (RANK[b.label] ?? 9),
+    marker: (a, b) => `${a.marker_name} ${a.sex} ${a.group_a}`.localeCompare(`${b.marker_name} ${b.sex} ${b.group_a}`),
+    size: (a, b) => (b.n_a ?? 0) - (a.n_a ?? 0),
+  }[order];
+  return [...findings].sort(key);
+}
+
+function legend(s) {
+  const box = el("div", null, { class: "legend" });
+  const zones = s.findings.some((f) => f.plot && f.plot.type === "zones");
+  const dist = s.findings.some((f) => f.plot && f.plot.type === "distribution");
+  if (dist) box.append("Plots: box from the 25th to the 75th percentile, thick line at the median, whiskers from the 10th to the 90th. No single value is drawn. ");
+  if (zones) {
+    box.append("Values per zone:");
+    [["below", "below range"], ["within", "within"], ["above", "above range"], ["unclear", "unclear"]].forEach(([z, t]) => {
+      const sw = el("i", null, { class: `swatch-${z}` });
+      sw.style.background = { below: "#4e79a7", within: "var(--bar)", above: "#e15759", unclear: "#b0a36b" }[z];
+      box.append(sw, t);
+    });
+    box.append(". Dashed, and <5 in the table: counts of 1 to 4, which are never shown, and any count hidden with them so the total cannot give them back.");
+  }
+  return box;
+}
+
+function effectCell(f) {
+  if (f.effect_size === null || f.effect_size === undefined) return twoLines("hidden", "a count below 5 would show");
+  return twoLines(num(f.effect_size), `${num(f.ci_low)} to ${num(f.ci_high)}`);
+}
+
+function plotCell(f) {
+  const cell = el("td", null, { class: "plot" });
+  if (f.plot) cell.append(plot(f.plot));
+  return cell;
+}
+
+function testRows(findings) {
+  const pairs = new Set(findings.map((f) => `${f.group_a} vs ${f.group_b}`));
+  const head = ["Marker", ...(pairs.size > 1 ? ["Groups"] : []),
+    "n", "Effect (95% CI)", "q", "Label", "Tier A only", "Plot"];
+  const wrap = el("div");
+  if (pairs.size === 1) {
+    wrap.append(el("p", `${[...pairs][0]}. n: values in each group. ` +
+      "Effect: Cliff's delta, from -1 (every value lower in the first group) to 1 (every value higher).", { class: "muted" }));
+  }
+  const t = wrap.appendChild(table(head, []));
+  t.classList.add("findings-table");
+  const body = t.querySelector("tbody");
+  findings.forEach((f) => {
+    const r = body.appendChild(el("tr"));
+    r.append(markerCell(f));
+    if (pairs.size > 1) r.append(el("td", `${f.group_a} vs ${f.group_b}`));
+    r.append(el("td", sizes(f)), effectCell(f), el("td", num(f.q_value)));
+    r.appendChild(el("td")).append(strength(f.label));
+    r.append(tierA(f), plotCell(f));
+  });
+  return wrap;
+}
+
+function rangeRows(findings) {
+  const head = ["Marker", "Group", "n", "Below / within / above / unclear", "Median position", "Label", "Plot"];
+  const wrap = table(head, []);
+  wrap.classList.add("findings-table");
+  const body = wrap.querySelector("tbody");
+  findings.forEach((f) => {
+    const r = body.appendChild(el("tr"));
+    r.append(markerCell(f));
+    const z = f.zones, short = (x) => (x === null ? "<5" : count(x));
+    [f.group_a || "–", count(f.n_a), ["below", "within", "above", "unclear"].map((k) => short(z[k])).join(" / "),
+      num(f.median_position)].forEach((t) => r.append(el("td", t)));
+    r.appendChild(el("td")).append(strength(f.label));
+    r.append(plotCell(f));
+  });
+  return wrap;
+}
+
+function refusedList(refused) {
+  const box = el("details");
+  box.append(el("summary", `${refused.length} tests not made (group too small, spec S4)`));
+  box.append(table(["Marker", "Sex", "Groups", "n", "Reason"], refused.map((r) => [
+    r.marker_name || r.group_a || "–", r.sex || "–", [r.group_a, r.group_b].filter(Boolean).join(" vs ") || "–",
+    r.n_b === null && r.group_b === null ? count(r.n_a) : `${count(r.n_a)} / ${count(r.n_b)}`, r.reason,
+  ])));
+  return box;
+}
+
+// ------------------------------------------------------------------ plots
+
+const W = 300, LABEL_W = 132, ROW_H = 18;
+
+function plot(p) {
+  if (p.type === "distribution") return distributionPlot(p.sides);
+  if (p.type === "shares") return sharesPlot(p.sides);
+  if (p.type === "zones") return zonesPlot(p.sides);
+  return document.createTextNode("");
+}
+
+function frame(rows, title, footer = true) {
+  const height = rows * ROW_H + (footer ? 16 : 2);
+  const root = svg("svg", { width: W, height, viewBox: `0 0 ${W} ${height}`, role: "img" });
+  root.append(svg("title", {}, title));
+  return root;
+}
+
+function sideLabel(root, i, side) {
+  root.append(svg("text", { x: 0, y: i * ROW_H + 13 }, `${side.group} (${side.n === null ? "<5" : side.n})`));
+}
+
+function distributionPlot(sides) {
+  const drawn = sides.filter((s) => s.median !== null);
+  const root = frame(sides.length, sides.map((s) => `${s.group}: n ${count(s.n)}, median ${num(s.median)}, ` +
+    `25th–75th ${num(s.q25)}–${num(s.q75)}, 10th–90th ${num(s.q10)}–${num(s.q90)}`).join("; "));
+  if (!drawn.length) return root;
+  const lo = Math.min(...drawn.map((s) => s.q10)), hi = Math.max(...drawn.map((s) => s.q90));
+  const span = hi - lo || 1, left = LABEL_W, width = W - LABEL_W - 4;
+  const x = (v) => left + ((v - lo) / span) * width;
+  sides.forEach((s, i) => {
+    sideLabel(root, i, s);
+    if (s.median === null) return;
+    const y = i * ROW_H + 9;
+    root.append(svg("line", { class: "whisker", x1: x(s.q10), x2: x(s.q90), y1: y, y2: y }));
+    root.append(svg("rect", { class: "box", x: x(s.q25), y: y - 6, width: Math.max(1, x(s.q75) - x(s.q25)), height: 12 }));
+    root.append(svg("line", { class: "median", x1: x(s.median), x2: x(s.median), y1: y - 7, y2: y + 7 }));
+  });
+  const y = sides.length * ROW_H + 12;
+  root.append(svg("text", { x: left, y }, num(lo)));
+  root.append(svg("text", { x: W - 4, y, "text-anchor": "end" }, num(hi)));
+  return root;
+}
+
+function sharesPlot(sides) {
+  const root = frame(sides.length, sides.map((s) => `${s.group}: ${pct(s.share)} took it, n ${count(s.n)}`).join("; "));
+  const left = LABEL_W, width = W - LABEL_W - 40;
+  sides.forEach((s, i) => {
+    sideLabel(root, i, s);
+    const y = i * ROW_H + 3;
+    root.append(svg("rect", { class: "share-bg", x: left, y, width, height: 12 }));
+    if (s.share !== null) root.append(svg("rect", { class: "share", x: left, y, width: s.share * width, height: 12 }));
+    root.append(svg("text", { x: left + width + 4, y: y + 10 }, pct(s.share)));
+  });
+  root.append(svg("text", { x: left, y: sides.length * ROW_H + 12 }, "share who took the drug"));
+  return root;
+}
+
+function zonesPlot(sides) {
+  const zones = ["below", "within", "above", "unclear"].filter((z) => z in sides[0]);
+  const root = frame(sides.length, sides.map((s) => `${s.group}: n ${count(s.n)}; ` +
+    zones.map((z) => `${z} ${count(s[z])}`).join(", ")).join("; "), false);
+  const left = LABEL_W, width = W - LABEL_W - 4;
+  sides.forEach((s, i) => {
+    sideLabel(root, i, s);
+    const y = i * ROW_H + 3;
+    if (!s.n) { root.append(svg("rect", { class: "hidden-part", x: left, y, width, height: 12 })); return; }
+    let at = left;
+    zones.forEach((z) => {
+      if (!s[z]) return; // hidden, or 0
+      const w = (s[z] / s.n) * width;
+      root.append(svg("rect", { class: `zone-${z}`, x: at, y, width: w, height: 12 }));
+      if (w > 22) root.append(svg("text", { x: at + 3, y: y + 10 }, String(s[z])));
+      at += w;
+    });
+    if (at < left + width - 0.5) root.append(svg("rect", { class: "hidden-part", x: at, y, width: left + width - at, height: 12 }));
+  });
+  return root;
 }
 </script>
 </body>

@@ -10,20 +10,31 @@ from __future__ import annotations
 import shutil
 import threading
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 
-from asclepius.cluster import MIN_SHOWN, TooFewPatients, cluster_patients
+from asclepius.cluster import MIN_SHOWN, ClusterResult, TooFewPatients, cluster_patients
 from asclepius.dataset import DatasetError, LabDataset, load_lab_reports
 from asclepius.metadata import GROUPS
 from asclepius.refrange import lab_range_findings, self_report_range_findings
 from asclepius.run import GroupTooSmall, Settings, run_analysis
 from asclepius.selfreport import SelfReportDataset, load_self_reports
-from asclepius.subgroups import link_subgroups
+from asclepius.subgroups import SubgroupLinks, link_subgroups
 from asclepius.syndromes import CONTROLS, REFERENCE_RANGE, SYNDROMES, compare_syndromes
+from asclepius.web.findings import (
+    COMPARISON,
+    INTERVENTIONS,
+    PROFILE,
+    RANGES,
+    SELF_REPORT_RANGES,
+    SUBGROUPS,
+    SYMPTOM_SUBGROUPS,
+    findings_view,
+)
+from asclepius.web.findings import SYNDROMES as SYNDROMES_KIND
 
 FEW = f"fewer than {MIN_SHOWN}"  # in place of a count too small to show (spec S11)
 NO_SEX = "not given"
@@ -51,12 +62,21 @@ class NoPatients(ValueError):
 REFUSALS = (GroupTooSmall, TooFewPatients, NoPatients)  # the analysis declining, by its rules (spec S4)
 
 
+@dataclass(frozen=True)
+class Subgroups:
+    """The subgroup step's result: the clusters, and their links to symptoms and drugs."""
+
+    clusters: ClusterResult
+    links: SubgroupLinks
+
+
 @dataclass
 class Step:
     """One part of a run. `work` returns its result and a one-line message, or raises one of
     `REFUSALS`; None means the analysis is not built yet and `message` says which issue adds it."""
 
     name: str
+    kind: str  # what the step does, one of the `asclepius.web.findings` section kinds
     work: Callable[[], tuple[Any, str]] | None
     state: str = WAITING
     message: str = ""
@@ -202,6 +222,14 @@ class Workspace:
             with self._lock:
                 step.state, step.message = state, message
 
+    def findings(self) -> dict[str, object]:
+        """The latest run's findings, one section per step (`asclepius.web.findings`). Steps still
+        waiting or running have no findings yet."""
+        with self._lock:
+            steps = [replace(s) for s in self.steps]
+            results = dict(self.results)
+        return findings_view(self.data, steps, results)
+
     def status(self) -> dict[str, object]:
         """The latest run: its state (`idle`, `running`, `finished`), and each step's state and message."""
         with self._lock:
@@ -236,7 +264,7 @@ def lab_steps(data: LabDataset, group_a: str, group_b: str, settings: Settings) 
             )
         clusters = cluster_patients(data, groups=patients[:1])
         links[0] = link_subgroups(data, clusters, settings)
-        return links[0], links[0].statement
+        return Subgroups(clusters, links[0]), links[0].statement
 
     def compare() -> tuple[Any, str]:
         result = run_analysis(data, group_a, group_b, settings, subgroups=links[0])
@@ -254,10 +282,12 @@ def lab_steps(data: LabDataset, group_a: str, group_b: str, settings: Settings) 
         return found, _placed(found)
 
     return [
-        Step(f"Look for subgroups of {patients[0]}" if patients else "Look for subgroups", subgroups),
-        Step(f"Compare {group_a} with {group_b}", compare),
-        Step(f"Compare {', '.join(SYNDROMES[:-1])} and {SYNDROMES[-1]}", syndromes),
-        Step("Positions within reference ranges", ranges),
+        Step(
+            f"Look for subgroups of {patients[0]}" if patients else "Look for subgroups", SUBGROUPS, subgroups
+        ),
+        Step(f"Compare {group_a} with {group_b}", COMPARISON, compare),
+        Step(f"Compare {', '.join(SYNDROMES[:-1])} and {SYNDROMES[-1]}", SYNDROMES_KIND, syndromes),
+        Step("Positions within reference ranges", RANGES, ranges),
     ]
 
 
@@ -269,10 +299,10 @@ def self_report_steps(data: SelfReportDataset) -> list[Step]:
         return found, _placed(found, "author and test pairs")
 
     return [
-        Step("Typed-in lab values within reference ranges", ranges),
-        Step("Drug and symptom profile", None, message="added by M3-12"),
-        Step("Symptom subgroups", None, message="added by M3-13"),
-        Step("Intervention outcomes", None, message="added by M3-14"),
+        Step("Typed-in lab values within reference ranges", SELF_REPORT_RANGES, ranges),
+        Step("Drug and symptom profile", PROFILE, None, message="added by M3-12"),
+        Step("Symptom subgroups", SYMPTOM_SUBGROUPS, None, message="added by M3-13"),
+        Step("Intervention outcomes", INTERVENTIONS, None, message="added by M3-14"),
     ]
 
 

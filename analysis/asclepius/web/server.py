@@ -9,6 +9,7 @@ The page (`index.html`) talks to a small JSON API over `asclepius.web.workspace.
 | `POST /api/load` | load the files; the review, or `{"error": ...}` with status 400 |
 | `POST /api/run` | start the run, `{"group_a": ..., "group_b": ...}` for lab reports |
 | `GET /api/status` | the run's state and each step's |
+| `GET /api/findings` | each step's findings, sizes, labels and plots (`asclepius.web.findings`) |
 
 The server listens on 127.0.0.1 and refuses requests naming another host or coming from another
 site's page, so no other web page open in the browser can read the data or start a run. Picked
@@ -62,6 +63,8 @@ class Handler(BaseHTTPRequestHandler):
             self._send(HTTPStatus.OK, PAGE.read_bytes(), "text/html; charset=utf-8")
         elif path == "/api/status":
             self._json(HTTPStatus.OK, self.server.workspace.status())
+        elif path == "/api/findings":
+            self._json(HTTPStatus.OK, self.server.workspace.findings())
         else:
             self._json(HTTPStatus.NOT_FOUND, {"error": "Not found."})
 
@@ -138,7 +141,8 @@ class Handler(BaseHTTPRequestHandler):
         return self.rfile.read(length) if length > 0 else b""
 
     def _json(self, status: HTTPStatus, payload: object) -> None:
-        self._send(status, json.dumps(payload).encode(), "application/json")
+        # allow_nan=False: NaN is not JSON, and the page's parser would refuse the whole answer
+        self._send(status, json.dumps(payload, allow_nan=False).encode(), "application/json")
 
     def _send(self, status: HTTPStatus, body: bytes, content_type: str) -> None:
         self.send_response(status)
