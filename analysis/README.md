@@ -289,8 +289,9 @@ controls`.
 
 PSSD may be several conditions (spec A3). `asclepius.cluster.cluster_patients(data, groups=["PSSD"])`
 looks for subgroups among the reports of the groups named (every report when `groups` is None);
-the groups themselves are not used. Fewer than 30 patients is refused with `TooFewPatients`
-(S4); reports with no sex are left out and counted in the message.
+the groups themselves are not used. `tiers=["A"]` limits it to Tier A reports, for a Tier A re-run
+(S6). Fewer than 30 patients is refused with `TooFewPatients` (S4); reports with no sex are left
+out and counted in the message.
 
 1. **Features.** Every raw marker and every enzyme-activity ratio. Each becomes a normal score
    within sex: the normal quantile of its rank / (n + 1), ties sharing a rank, limits read as their
@@ -316,13 +317,14 @@ the groups themselves are not used. Fewer than 30 patients is refused with `TooF
 | Field | Meaning |
 |---|---|
 | `statement` | `2 stable clusters` (or 3, ...) or `no stable clusters` (S8) |
-| `reason` | why: the stability and one-group p-value, or which test failed |
+| `reason` | why: the stability and one-group p-value, or which test failed (or fewer than two usable markers) |
 | `k`, `null_p` | the number of clusters (None when none) and the one-group test's p-value |
 | `assignments` | `record` and `cluster` (1 the largest): working data for M3-08b, never shown or exported (S11) |
-| `sizes` | patients per cluster and sex |
+| `sizes` | patients per cluster and sex; empty where fewer than 5 (S11) |
 | `profile` | per cluster and feature, the median normal score (0 the middle of that sex, about ±1 one standard deviation), to describe each cluster |
 | `stability` | per number of clusters: `stability`, `smallest` cluster, `eligible` |
-| `features`, `dropped`, `filled`, `no_sex`, `settings` | what went in, and `ClusterSettings.record()` |
+| `features`, `dropped`, `filled`, `no_sex` | what went in; a count below 5 is None or empty (S11) |
+| `settings`, `record` | `ClusterSettings.record()` plus the `tiers` clustered, and the run record (S7, as for `run_analysis`) |
 
 On synthetic data, with PSSD and PFS standing in for two hidden subgroups and four 5-alpha
 reduced markers at 40% in one, from 20 seeds each:

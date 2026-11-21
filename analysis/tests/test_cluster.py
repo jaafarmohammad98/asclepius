@@ -23,11 +23,11 @@ def test_refuses_fewer_than_30_patients(tmp_path):
 FIVE_ALPHA = ("androsterone", "5a_androstanediol", "a_tetrahydrocortisol_a_thf", "a_pregnanediol")
 
 
-def two_subgroups(tmp_path, size=50, fold=0.4, seed=0):
+def two_subgroups(tmp_path, size=50, fold=0.4, seed=0, **settings):
     """Two groups of `size`, PFS with `FIVE_ALPHA` at `fold`. Clustering never sees the group, so
     PSSD and PFS stand in for two hidden subgroups of one condition."""
     planted = [synthetic.PlantedDifference(m, fold, group="PFS") for m in FIVE_ALPHA]
-    return lab_dataset(tmp_path, groups={"PSSD": size, "PFS": size}, planted=planted, seed=seed)
+    return lab_dataset(tmp_path, groups={"PSSD": size, "PFS": size}, planted=planted, seed=seed, **settings)
 
 
 def agreement(result, data):
@@ -102,3 +102,63 @@ def test_reports_with_no_sex_are_left_out(tmp_path):
     data = dataclasses.replace(data, records=records)
     with pytest.raises(TooFewPatients, match="29 patients \\(6 more left out for having no sex\\)"):
         cluster_patients(data)
+
+
+def test_30_per_subgroup_is_found_in_most_seeds(tmp_path):
+    found = []
+    for seed in range(20):
+        data = two_subgroups(tmp_path / str(seed), size=30, seed=seed)
+        result = cluster_patients(data, groups=["PSSD", "PFS"])
+        if result.k is not None:
+            assert result.k == 2 and agreement(result, data)[0] >= 0.9
+            found.append(seed)
+    assert len(found) == 16  # the others say "no stable clusters"
+
+
+def test_tiers_limit_who_is_clustered(tmp_path):
+    data = two_subgroups(tmp_path, size=100, seed=1, tier_a_share=0.5)
+    result = cluster_patients(data, groups=["PSSD", "PFS"], tiers=["A"])
+    tier_a = data.records.loc[data.records["tier"] == "A", "record"]
+    assert result.k == 2 and set(result.assignments["record"]) == set(tier_a)
+    with pytest.raises(TooFewPatients):
+        cluster_patients(two_subgroups(tmp_path / "small", size=40), tiers=["A"])
+
+
+def test_too_few_usable_markers_says_no_stable_clusters(tmp_path):
+    data = lab_dataset(tmp_path, groups={"PSSD": 40}, null=True)
+    kept = data.markers[data.markers["marker_id"] == "testosterone"]
+    result = cluster_patients(dataclasses.replace(data, markers=kept))
+    assert result.statement == NO_STABLE
+    assert "two markers" in result.reason and result.features == ("testosterone",)
+
+
+def test_counts_below_5_are_not_shown(tmp_path):
+    # 10% women: each cluster has fewer than 5 of them (spec S11)
+    planted = [synthetic.PlantedDifference(m, 0.4, group="PFS") for m in FIVE_ALPHA]
+    data = lab_dataset(tmp_path, groups={"PSSD": 40, "PFS": 40}, planted=planted, female_share=0.1, seed=0)
+    result = cluster_patients(data)
+    women = result.sizes[result.sizes["sex"] == "female"]["n_patients"]
+    assert women.isna().all() and result.sizes["n_patients"].dropna().ge(5).all()
+
+
+def test_small_counts_of_missing_values_are_not_shown(tmp_path):
+    data = lab_dataset(tmp_path, groups={"PSSD": 40}, null=True)
+
+    def without(marker, reports):
+        gone = (data.markers["marker_id"] == marker) & data.markers["record"].isin(
+            data.records["record"][:reports]
+        )
+        return cluster_patients(dataclasses.replace(data, markers=data.markers[~gone]))
+
+    assert without("dhea_s", 3).filled is None  # 3 values filled: fewer than 5 (spec S11)
+    assert without("dhea_s", 6).filled == 6
+    dropped = without("dhea_s", 20).dropped  # missing for more than 20%: left out
+    assert dropped.to_dict("records") == [{"marker_id": "dhea_s", "n_missing": 20}]
+
+
+def test_the_result_carries_a_run_record(tmp_path):
+    data = two_subgroups(tmp_path)
+    record = cluster_patients(data, groups=["PSSD", "PFS"]).record
+    assert record["dataset"]["fingerprint"] == data.fingerprint
+    assert record["tool"] and record["groups"] == ["PFS", "PSSD"]
+    assert record["settings"]["min_patients"] == 30 and record["settings"]["tiers"] is None

@@ -28,8 +28,10 @@ import pandas as pd
 
 from asclepius.dataset import LabDataset
 from asclepius.ratios import STATUS, compute_ratios
+from asclepius.record import run_record
 
 NO_STABLE = "no stable clusters"
+MIN_SHOWN = 5  # no count below this is shown (spec S11)
 
 
 @dataclass(frozen=True)
@@ -89,13 +91,15 @@ class ClusterResult:
     `assignments`: `record` and `cluster` (1 is the largest), one row per patient. Working data
     for linking clusters to symptoms (M3-08b), never shown or exported (spec S11). Empty when
     there are no clusters.
-    `sizes`: patients per `cluster` and `sex`. `profile`: per `cluster` and feature, the median
+    `sizes`: patients per `cluster` and `sex`, empty where fewer than 5 (spec S11). `profile`: per `cluster` and feature, the median
     normal score (0 is the middle of that sex, about +-1 one standard deviation), so a cluster can
     be described. `stability`: per `k`, its `stability`, `smallest` cluster and whether it was
     `eligible` (every cluster big enough). `null_p`: the one-group test's p-value for the chosen
     clustering. `features`: the marker and ratio ids used; `dropped`: features left out and how
     many patients lacked each; `filled`: missing values given the middle score; `no_sex`: reports
-    left out for having no sex. `settings`: `ClusterSettings.record()`.
+    left out for having no sex. Counts below 5 are None or empty (S11). `settings`:
+    `ClusterSettings.record()` and the `tiers` clustered. `record`: the run record
+    (`asclepius.record.run_record`: dataset fingerprint and file hashes, tool version, settings).
     """
 
     statement: str
@@ -108,15 +112,21 @@ class ClusterResult:
     null_p: float | None
     features: tuple[str, ...]
     dropped: pd.DataFrame
-    filled: int
-    no_sex: int
+    filled: int | None
+    no_sex: int | None
     settings: dict[str, object]
+    record: dict[str, object]
 
 
 def cluster_patients(
-    data: LabDataset, groups: Sequence[str] | None = None, settings: ClusterSettings | None = None
+    data: LabDataset,
+    groups: Sequence[str] | None = None,
+    settings: ClusterSettings | None = None,
+    *,
+    tiers: Sequence[str] | None = None,
 ) -> ClusterResult:
     """Cluster the reports of `groups` (every report when None) by their markers and ratios.
+    `tiers` limits them to those tiers, as `["A"]` for a Tier A re-run (spec S6).
 
     Reports with no sex are left out, since scores are made within sex. Refuses, with
     `TooFewPatients`, when fewer than `settings.min_patients` remain (spec S4). The same settings
@@ -126,16 +136,34 @@ def cluster_patients(
     records = data.records
     if groups is not None:
         records = records[records["group"].isin(list(groups))]
+    if tiers is not None:
+        records = records[records["tier"].isin(list(tiers))]
     has_sex = records["sex"].notna()
     records = records[has_sex]
-    n = len(records)
+    n, no_sex = len(records), int((~has_sex).sum())
     if n < settings.min_patients:
-        left_out = f" ({int((~has_sex).sum())} more left out for having no sex)" if not has_sex.all() else ""
+        left_out = f" ({_count_text(no_sex)} more left out for having no sex)" if no_sex else ""
         raise TooFewPatients(
             f"Refused: {n} patients{left_out}, and clustering needs at least {settings.min_patients} "
             f"(spec S4, {settings.status})."
         )
     scores, dropped, filled, names = _scores(data, records, settings)
+    sexes = records["sex"].to_numpy()  # in the order of `scores`
+    settings_record = {**settings.record(), "tiers": None if tiers is None else list(tiers)}
+    base: dict = {
+        "features": tuple(scores.columns),
+        "dropped": dropped,
+        "filled": _shown(filled),
+        "no_sex": _shown(no_sex),
+        "settings": settings_record,
+        "record": run_record(data, sorted(records["group"].unique()), settings_record),
+    }
+    if scores.shape[1] < 2:
+        return _no_clusters(
+            "fewer than two markers that most patients have",
+            stability=pd.DataFrame(columns=["k", "stability", "smallest", "eligible"]),
+            **base,
+        )
     x = scores.to_numpy()
     rng = np.random.default_rng(settings.seed)
 
@@ -143,7 +171,7 @@ def cluster_patients(
     for k in range(2, settings.k_max + 1):
         if k * settings.min_cluster_size > n:
             break
-        labels, _ = _kmeans(x, k, settings.restarts, rng)
+        labels = _kmeans(x, k, settings.restarts, rng)
         fits[k] = labels
         smallest = int(np.bincount(labels, minlength=k).min())
         rows.append(
@@ -155,30 +183,24 @@ def cluster_patients(
             }
         )
     stability = pd.DataFrame(rows, columns=["k", "stability", "smallest", "eligible"])
-    base = {
-        "stability": stability,
-        "features": tuple(scores.columns),
-        "dropped": dropped,
-        "filled": filled,
-        "no_sex": int((~has_sex).sum()),
-        "settings": settings.record(),
-    }
+    base["stability"] = stability
 
     eligible = stability[stability["eligible"]]
     if eligible.empty:
-        return _none(f"no split into clusters of at least {settings.min_cluster_size} patients", **base)
+        return _no_clusters(
+            f"no split into clusters of at least {settings.min_cluster_size} patients", **base
+        )
     best = eligible.loc[eligible["stability"].idxmax()]  # the first, so the smaller k, on a tie
     k = int(best["k"])
     if best["stability"] < settings.min_stability:
-        return _none(
+        return _no_clusters(
             f"the most stable split ({k} clusters) has stability {best['stability']:.2f}, "
             f"below {settings.min_stability}",
             **base,
         )
-    sexes = records.set_index("record").loc[scores.index, "sex"].to_numpy()
     null_p = _null_p(x, sexes, k, _spread(x, fits[k]), settings, rng)
     if null_p > settings.null_alpha:
-        return _none(
+        return _no_clusters(
             f"{k} clusters are stable but no tighter than in one group with the same spread "
             f"(p = {null_p:.2f})",
             null_p=null_p,
@@ -194,6 +216,7 @@ def cluster_patients(
     sizes = (
         assignments.assign(sex=sexes).groupby(["cluster", "sex"]).size().rename("n_patients").reset_index()
     )
+    sizes["n_patients"] = sizes["n_patients"].astype("Int64").mask(sizes["n_patients"] < MIN_SHOWN)
     profile = (
         scores.groupby(assignments["cluster"].to_numpy())
         .median()
@@ -214,17 +237,27 @@ def cluster_patients(
     )
 
 
-def _none(reason: str, null_p: float | None = None, **base) -> ClusterResult:
+def _no_clusters(reason: str, null_p: float | None = None, **base) -> ClusterResult:
+    """The "no stable clusters" result; `base` holds the fields every result has."""
     return ClusterResult(
         statement=NO_STABLE,
         reason=reason,
         k=None,
         assignments=pd.DataFrame(columns=["record", "cluster"]),
-        sizes=pd.DataFrame(columns=["cluster", "sex", "n_patients"]),
+        sizes=pd.DataFrame({"cluster": [], "sex": [], "n_patients": pd.array([], dtype="Int64")}),
         profile=pd.DataFrame(columns=["cluster", "marker_id", "marker_name", "median_score"]),
         null_p=null_p,
         **base,
     )
+
+
+def _shown(count: int) -> int | None:
+    """`count`, or None when it is below 5 and must not be shown (spec S11)."""
+    return count if count >= MIN_SHOWN else None
+
+
+def _count_text(count: int) -> str:
+    return str(count) if count >= MIN_SHOWN else f"fewer than {MIN_SHOWN}"
 
 
 def _scores(
@@ -242,12 +275,14 @@ def _scores(
     missing = table.isna().sum()
     too_often = missing > settings.max_missing_share * len(table)
     dropped = pd.DataFrame(
-        {"marker_id": missing.index[too_often], "n_missing": missing[too_often].to_numpy()}
+        {
+            "marker_id": missing.index[too_often],
+            "n_missing": pd.array(missing[too_often].to_numpy(), dtype="Int64"),
+        }
     )
+    dropped["n_missing"] = dropped["n_missing"].mask(dropped["n_missing"] < MIN_SHOWN)
     table = table.loc[:, ~too_often]
-    if table.shape[1] < 2:
-        raise ValueError("Clustering needs at least two markers that most patients have.")
-    sex = records.set_index("record").loc[table.index, "sex"].to_numpy()
+    sex = records["sex"].to_numpy()
     filled = int(table.isna().sum().sum())
     scores = pd.DataFrame(_normal_scores(table.to_numpy(), sex), index=table.index, columns=table.columns)
     return scores.fillna(0.0), dropped, filled, names
@@ -267,9 +302,9 @@ def _normal_scores(values: np.ndarray, sex: np.ndarray) -> np.ndarray:
 _QUANTILE = np.vectorize(NormalDist().inv_cdf, otypes=[float])
 
 
-def _kmeans(x: np.ndarray, k: int, restarts: int, rng: np.random.Generator) -> tuple[np.ndarray, float]:
-    """The best of `restarts` k-means runs from k-means++ starts: labels 0..k-1 and the
-    within-cluster sum of squares."""
+def _kmeans(x: np.ndarray, k: int, restarts: int, rng: np.random.Generator) -> np.ndarray:
+    """Labels 0..k-1 from the best (smallest within-cluster sum of squares) of `restarts` k-means
+    runs from k-means++ starts."""
     best_labels, best_ss = np.zeros(len(x), dtype=int), np.inf
     for _ in range(restarts):
         centres = _plus_plus(x, k, rng)
@@ -290,7 +325,7 @@ def _kmeans(x: np.ndarray, k: int, restarts: int, rng: np.random.Generator) -> t
         ss = _within(x, labels, k)
         if ss < best_ss:
             best_labels, best_ss = labels.copy(), ss
-    return best_labels, best_ss
+    return best_labels
 
 
 def _plus_plus(x: np.ndarray, k: int, rng: np.random.Generator) -> np.ndarray:
@@ -327,23 +362,32 @@ def _spread(x: np.ndarray, labels: np.ndarray) -> float:
     return _within(z, labels, k) / float((z**2).sum())
 
 
-def _stability(x: np.ndarray, labels: np.ndarray, k: int, settings: ClusterSettings, rng) -> float:
+def _stability(
+    x: np.ndarray, labels: np.ndarray, k: int, settings: ClusterSettings, rng: np.random.Generator
+) -> float:
     """Mean adjusted Rand index between the full clustering and each subsample's own clustering."""
     size = round(settings.subsample_share * len(x))
     agreement = []
     for _ in range(settings.subsamples):
         rows = rng.choice(len(x), size=size, replace=False)
-        sub, _ = _kmeans(x[rows], k, settings.restarts, rng)
+        sub = _kmeans(x[rows], k, settings.restarts, rng)
         agreement.append(adjusted_rand(labels[rows], sub))
     return float(np.mean(agreement))
 
 
-def _null_p(x: np.ndarray, sex: np.ndarray, k: int, observed: float, settings: ClusterSettings, rng) -> float:
+def _null_p(
+    x: np.ndarray,
+    sex: np.ndarray,
+    k: int,
+    observed: float,
+    settings: ClusterSettings,
+    rng: np.random.Generator,
+) -> float:
     """Share of one-group normal datasets, with the patients' covariance, whose k-means `_spread` is
     at most `observed` (counting the data itself, so never 0).
 
-    Each sample is scored within sex, as the patients were. The sample covariance is used as it is. With about as many features as patients its largest
-    directions are overstated, which makes one group look more clustered and the test cautious.
+    Each sample is scored within sex, as the patients were. The sample covariance is used as it
+    is. With about as many features as patients its largest directions are overstated, which makes one group look more clustered and the test cautious.
     """
     centred = x - x.mean(axis=0)
     _, s, vt = np.linalg.svd(centred, full_matrices=False)
@@ -353,7 +397,7 @@ def _null_p(x: np.ndarray, sex: np.ndarray, k: int, observed: float, settings: C
         # scored within sex like the patients, whose evenly spaced scores have lighter tails than
         # a normal sample and so split a little more cleanly
         null = _normal_scores((rng.standard_normal((len(x), len(s))) * scale) @ vt, sex)
-        labels, _ = _kmeans(null, k, settings.restarts, rng)
+        labels = _kmeans(null, k, settings.restarts, rng)
         tighter += _spread(null, labels) <= observed
     return (tighter + 1) / (settings.null_samples + 1)
 
