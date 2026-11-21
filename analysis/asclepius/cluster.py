@@ -335,6 +335,19 @@ def count_text(count: int) -> str:
     return str(count) if count >= MIN_SHOWN else f"fewer than {MIN_SHOWN}"
 
 
+def shown_parts(parts: dict[str, int]) -> dict[str, int | None]:
+    """`parts` of a total that is shown, each from 1 to 4 hidden, and then the next smallest too until
+    the hidden ones add up to 0 or at least 5, so the total cannot give one back (spec S11)."""
+    hidden = {k: 0 < n < MIN_SHOWN for k, n in parts.items()}  # 0 is no one, so it is shown
+    for key in sorted(parts, key=parts.__getitem__):
+        if hidden[key] or parts[key] == 0:  # hiding a 0 would hide no one
+            continue
+        if not 0 < sum(n for k, n in parts.items() if hidden[k]) < MIN_SHOWN:
+            break
+        hidden[key] = True
+    return {k: None if hidden[k] else n for k, n in parts.items()}
+
+
 def _scores(
     data: LabDataset, records: pd.DataFrame, settings: ClusterSettings
 ) -> tuple[pd.DataFrame, pd.DataFrame, int, pd.Series]:

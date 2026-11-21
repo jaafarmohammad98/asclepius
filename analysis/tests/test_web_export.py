@@ -176,3 +176,11 @@ def test_an_unexpected_error_is_not_exported_word_for_word(tmp_path, monkeypatch
     step = report_record(html)["steps"][-1]
     assert step["state"] == "failed"
     assert step["message"] == "Unexpected error; the details are shown in the app only."
+
+
+def test_a_hidden_intervention_count_reads_hidden_not_fewer_than_5():
+    from asclepius.web.export import _hidden_counts
+
+    rows = _hidden_counts([{"intervention": "x", "n_authors": None, "worse": None, "share_worse": None}])
+    assert rows[0]["n_authors"] == "hidden" and rows[0]["worse"] == "hidden"
+    assert rows[0]["share_worse"] is None

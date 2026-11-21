@@ -372,6 +372,21 @@ def _generic_table(rows: list[dict[str, Any]]) -> str:
     return _table([_e(h.replace("_", " ")) for h in head], cells, text_columns=1)
 
 
+def _hidden_counts(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Intervention rows with a hidden count as "hidden": it may be 5 or more, hidden beside one
+    below 5, so "fewer than 5" would be wrong."""
+    counts = (
+        "n_authors",
+        "n_clear",
+        "major_improvement",
+        "partial_improvement",
+        "no_effect",
+        "worse",
+        "unclear",
+    )
+    return [{k: "hidden" if k in counts and v is None else v for k, v in r.items()} for r in rows]
+
+
 def _generic_cell(key: str, value: object) -> object:
     """A summary cell: a hidden count says "fewer than 5" (spec S11), another missing value "–"."""
     if value is None:
@@ -422,6 +437,11 @@ def _section_html(s: dict[str, Any]) -> str:
             parts.append(f'<p class="muted">{_e(clusters["reason"])}</p>')
         sizes = [{"cluster": c["cluster"], "sex": c["sex"], "n": c["n"]} for c in clusters.get("sizes", [])]
         parts.append(_generic_table(sizes))
+    if s.get("ranking"):
+        parts.append("<h3>Reported outcomes, ranked by the share improved</h3>")
+        parts.append(_generic_table(_hidden_counts(s["ranking"])))
+        parts.append("<h3>Safety signals: a high share reporting worse</h3>")
+        parts.append(_generic_table(_hidden_counts(s.get("safety", []))) or '<p class="muted">None.</p>')
     if s.get("symptoms"):
         parts.append("<h3>Most over-represented symptoms per cluster</h3>")
         parts.append(_generic_table(s["symptoms"]))

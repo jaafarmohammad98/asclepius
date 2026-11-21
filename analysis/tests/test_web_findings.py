@@ -1,5 +1,7 @@
 """The findings view (M3-10b): what the page shows of a finished run."""
 
+import json
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -377,5 +379,34 @@ def test_the_symptom_subgroups_section_shows_clusters_their_symptoms_and_links(t
     assert onset and onset[0]["label"] == "suggestive" and onset[0]["plot"]["type"] == "shares"
     for finding in subgroups["findings"]:
         assert finding["caveat"] == "self-report, no controls" and finding["label"] != "strong"
+    for key, count in counts_in(view):
+        assert count == 0 or count >= 5, key
+
+
+def test_the_intervention_section_ranks_reported_outcomes_and_lists_safety_signals(tmp_path):
+    planted = [
+        synthetic.PlantedOutcome("tadalafil", improved=0.6, worse=0.05),
+        synthetic.PlantedOutcome("cyproheptadine", improved=0.1, worse=0.45),
+    ]
+    workspace = Workspace(tmp_path / "work")
+    add_export(
+        workspace,
+        synthetic.write_self_reports(tmp_path / "sr", authors=1000, outcomes=planted, seed=1).export,
+    )
+    workspace.load()
+    workspace.start_run(settings=FAST)
+    finished(workspace)
+    view = workspace.findings()
+
+    s = section(view, "intervention outcomes")
+    assert s["state"] == "done"
+    assert "reported outcome, not evidence that it works" in s["labels"]
+    assert s["ranking"][0]["intervention"] == "tadalafil" and s["ranking"][0]["rank"] == 1
+    assert "cyproheptadine" in {r["intervention"] for r in s["safety"]}
+    for r in s["ranking"] + s["safety"]:
+        for key in ("n_clear", "major_improvement", "partial_improvement", "no_effect", "worse", "unclear"):
+            assert r[key] is None or r[key] == 0 or r[key] >= 5, key
+    text = json.dumps(s).lower()
+    assert not any(word in text for word in ("recommend", "effective", "efficacy", "should try"))
     for key, count in counts_in(view):
         assert count == 0 or count >= 5, key

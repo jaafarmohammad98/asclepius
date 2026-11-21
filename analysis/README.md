@@ -646,6 +646,56 @@ On synthetic data (`synthetic.PlantedSubgroup`), 400 authors, 20 seeds each:
 On the r/PSSD export (Nov 2026): 2,461 authors clustered on 51 symptoms; no stable clusters (the
 most stable split, 2 clusters, has stability 0.45); about 6 seconds.
 
+## Intervention outcomes
+
+Patients have tried many things and reported the results. Ranked honestly, that tells researchers
+which interventions are worth a proper study; it does not tell anyone what works (spec A7).
+`asclepius.interventions.rank_interventions(data, settings, worse_signal=0.2)` takes a
+`SelfReportDataset` and counts, per intervention, the authors reporting each outcome.
+
+- **One author, one outcome.** The loader merges posts per author (S9): an author who reported
+  the same intervention twice counts once, with their latest clear outcome. "Latest" is by year;
+  posts of the same year that disagree give `unclear`, and a newer `unclear` does not replace an
+  older clear outcome.
+- **Unclear apart.** `unclear` outcomes are left out of the shares and counted in `unclear`;
+  `n_clear` is the authors with a clear outcome, `n_authors` all of them.
+- **Shares.** `share_improved` (major plus partial improvement) and `share_worse`, of `n_clear`,
+  each with its 95% Wilson interval (`improved_low`, `improved_high`, `worse_low`, `worse_high`,
+  S3). An intervention with fewer than `min_group_size` (10) authors with a clear outcome goes to
+  `refused` (S4). The refused list names only interventions at least 5 authors reported; the
+  rarer ones are counted in one row (`fewer than 5 authors`), since a rare name could point at one
+  author's case (S11).
+- **Ranking.** `rank` 1 has the highest lower bound of the share improved. `safety` lists,
+  separately, the interventions whose share worse has a lower bound of at least `worse_signal`
+  (20%, provisional, for review in M3-11), highest first; `safety_signal` marks them in
+  `findings`. The flag is judged on the true share worse even when that share is hidden (below), so
+  the cases most reported as worse are not dropped; a yes/no flag gives no count back.
+- **Wording.** Every table has a `caveat` column: "reported outcome, not evidence that it works;
+  self-report, no controls", and so does the statement. Nothing is worded as advice (overview
+  rule 5); a test checks every text for "recommend", "effective" and the like.
+- **Counts below 5 (S11).** No count from 1 to 4 is shown; 0, which is no one, is. A share with
+  its interval gives its counts back, so `share_improved` is shown only when the improved and the
+  other clear counts are 0 or at least 5, and `share_worse` likewise; when both are shown, the no
+  effect count must be too, or only the share improved is shown. The outcome counts are then
+  hidden within the groups the shown shares leave unknown (the major/partial split, for one), as
+  the reference-range zones are: each count from 1 to 4, and the next smallest until the hidden
+  ones add up to 0 or 5 or more. A row whose share improved is hidden is not ranked, and
+  `not_ranked` says why; the page and the HTML report write a hidden count as "hidden", since it
+  may be 5 or more, hidden beside one that is not. `n_authors`
+  and `unclear` are shown only when `unclear` is 0 or at least 5.
+
+The result has `findings` (ranked), `safety`, `refused`, `skipped` (empty), `statement` and
+`record` (`analysis` `intervention outcomes`, the settings with `worse_signal`). `export_run`
+writes it like any run, with `safety.csv`.
+
+On synthetic data (`synthetic.PlantedOutcome`), 1,000 authors: tadalafil planted at 60% improved,
+5% worse, and cyproheptadine at 10% and 45%. Over 60 seeds each planted share lies inside its
+interval in 90% to 97% of runs (95% nominal); tadalafil ranks first and cyproheptadine is a safety
+signal. On the r/PSSD export (Nov 2026): 75 interventions ranked (29 more with a hidden share),
+11 safety signals (4 with their share hidden), 168 refused and named for fewer than 10 authors
+with a clear outcome, and 1,645 reported by fewer than 5 authors counted, not named; under a
+second.
+
 ## Web app
 
 `uv run asclepius-app` starts the app and opens its page (`--port` picks another port,
@@ -673,7 +723,7 @@ into a temporary folder that is deleted when the app stops (Ctrl+C).
 | Look for subgroups of the patient group picked, the first if both are (`cluster_patients`, `link_subgroups`); refused with two control groups | Typed-in lab values within reference ranges |
 | Compare the two groups (`run_analysis`, with the subgroup links in one correction) | Drug and symptom profile (`profile_drugs`) |
 | Compare PSSD, PFS and PAS (`compare_syndromes`; the reference is the control picked, else the reference ranges) | Symptom subgroups (`cluster_symptoms`) |
-| Positions within reference ranges (`lab_range_findings`) | Intervention outcomes (not built yet: M3-14) |
+| Positions within reference ranges (`lab_range_findings`) | Intervention outcomes (`rank_interventions`) |
 
 Each step's one-line statement is shown, and when the run finishes, its findings
 (`GET /api/findings`, built by `asclepius.web.findings`), one section per step:
@@ -709,7 +759,8 @@ Each step's one-line statement is shown, and when the run finishes, its findings
    author counts in each of their classes. Symptom subgroups show the clusters and their sizes
    (or "no stable clusters" and why), how many authors were left out, each cluster's most
    over-represented symptoms, and the clusters compared by drug class, single drug, onset and
-   trajectory. Intervention outcomes show as not built yet until M3-14 adds them. Every count below 5 is hidden in the view (0, which
+   trajectory. Intervention outcomes show the ranked table and the safety signals, with how many
+   interventions were too few to rank (the export lists them). Every count below 5 is hidden in the view (0, which
    is no one, is shown).
 
 5. **Export.** Once a run has finished, two downloads take it into a paper or to a colleague:
