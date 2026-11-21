@@ -547,7 +547,28 @@ Each step's one-line statement is shown, and when the run finishes, its findings
    not built yet until M3-12 to M3-14 add them. Every count below 5 is hidden in the view (0, which
    is no one, is shown).
 
-The export is M3-10c. A run of 100 PSSD, 40 PFS and 100 controls takes about 7 seconds; the full
+5. **Export.** Once a run has finished, two downloads take it into a paper or to a colleague:
+   - **Findings (CSV)** (`GET /api/export/findings.csv`): one row per finding the page shows,
+     every section in run order (`section` names it), with the same columns and the same hidden
+     counts. Reference-range counts are `zone_below`, `zone_within`, `zone_above` and
+     `zone_unclear`. Every row names the `tool` version and the `dataset_fingerprint`, and its
+     `labels`: "provisional, needs expert review" always, "self-report, no controls" on
+     self-report rows. An empty cell is a hidden or missing value. Statistics are written exactly,
+     so `asclepius.web.export.read_findings_csv` reads the file back to the values shown: counts as
+     whole numbers, statistics as floats, empty cells as None.
+   - **Report (HTML)** (`GET /api/export/report.html`): one self-contained file (no links to the
+     internet) with the tool and dataset versions, the labels, every section's statement,
+     findings table and plots, and the run record. The record is shown, and embedded as JSON in
+     `<script type="application/json" id="run-record">` for a program to read back. It is the
+     run's `run_record` (dataset fingerprint and file hashes, tool version and code hash, the
+     groups, every setting, the date) plus `steps`: each step's name, state and message, and the
+     record of the analysis it ran (the comparison's and the cross-syndrome comparison's, the
+     clustering's for subgroups; the reference-range positions, being descriptions, have none).
+     Print it from the browser for a PDF.
+
+   Nothing can be exported before a run has finished.
+
+A run of 100 PSSD, 40 PFS and 100 controls takes about 7 seconds; the full
 r/PSSD export loads (3,153 authors) and runs in about 3. The logic is
 `asclepius.web.workspace.Workspace` (files, review, run), with the findings view in
-`asclepius.web.findings`; `asclepius.web.server` only serves them.
+`asclepius.web.findings` and the exports in `asclepius.web.export`; `asclepius.web.server` only serves them.

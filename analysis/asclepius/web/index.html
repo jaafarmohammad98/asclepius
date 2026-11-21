@@ -70,6 +70,10 @@
   .strength.suggestive { border-color: var(--warn); color: var(--warn); }
   .strength.noise-level, .strength.description, .strength.unlabelled { color: var(--muted); font-weight: 400; }
   .sort { display: flex; gap: 8px; align-items: center; margin: 8px 0; flex-wrap: wrap; }
+  .exports { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  a.button { border-radius: 6px; padding: 6px 14px; border: 1px solid var(--accent); color: var(--accent);
+    text-decoration: none; }
+  a.button:hover { background: var(--accent); color: var(--accent-text); }
   .sort button { padding: 2px 10px; background: var(--panel); color: var(--text); border-color: var(--line); }
   .sort button[aria-pressed=true] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
   td.plot { padding: 2px 6px; }
@@ -135,6 +139,12 @@
 
   <section id="findings" hidden>
     <h2>4. Findings</h2>
+    <p class="exports">
+      <a class="button" href="/api/export/findings.csv" download>Export findings (CSV)</a>
+      <a class="button" href="/api/export/report.html" download>Export report (HTML)</a>
+      <span class="muted">Each export names the tool and dataset versions and carries the run's labels;
+        the report adds the plots and the run record.</span>
+    </p>
     <div id="findings-body"></div>
   </section>
 </main>

@@ -10,6 +10,8 @@ The page (`index.html`) talks to a small JSON API over `asclepius.web.workspace.
 | `POST /api/run` | start the run, `{"group_a": ..., "group_b": ...}` for lab reports |
 | `GET /api/status` | the run's state and each step's |
 | `GET /api/findings` | each step's findings, sizes, labels and plots (`asclepius.web.findings`) |
+| `GET /api/export/findings.csv` | the finished run's findings as a CSV file (`asclepius.web.export`) |
+| `GET /api/export/report.html` | the finished run's report, with its plots and run record, as an HTML file |
 
 The server listens on 127.0.0.1 and refuses requests naming another host or coming from another
 site's page, so no other web page open in the browser can read the data or start a run. Picked
@@ -35,6 +37,10 @@ from asclepius.web.workspace import ROLES, LoadError, RunError, Workspace
 PAGE = Path(__file__).parent / "index.html"
 DEFAULT_PORT = 8765
 LOCAL_HOSTS = ("127.0.0.1", "localhost")
+EXPORTS = {  # path -> file suffix and type
+    "/api/export/findings.csv": ("csv", "text/csv; charset=utf-8"),
+    "/api/export/report.html": ("html", "text/html; charset=utf-8"),
+}
 
 
 class App(ThreadingHTTPServer):
@@ -65,6 +71,8 @@ class Handler(BaseHTTPRequestHandler):
             self._json(HTTPStatus.OK, self.server.workspace.status())
         elif path == "/api/findings":
             self._json(HTTPStatus.OK, self.server.workspace.findings())
+        elif path in EXPORTS:
+            self._export(path)
         else:
             self._json(HTTPStatus.NOT_FOUND, {"error": "Not found."})
 
@@ -118,6 +126,25 @@ class Handler(BaseHTTPRequestHandler):
         except json.JSONDecodeError:
             self._json(HTTPStatus.BAD_REQUEST, {"error": "The request was not valid JSON."})
 
+    def _export(self, path: str) -> None:
+        """A finished run's export, as a file to save, named by the dataset's fingerprint."""
+        workspace = self.server.workspace
+        suffix, content_type = EXPORTS[path]
+        try:
+            with self.server.lock:  # no load or clear between the export and its name
+                content = workspace.export_csv() if suffix == "csv" else workspace.export_report()
+                fingerprint = workspace.data.fingerprint[:12] if workspace.data is not None else "run"
+        except RunError as error:
+            self._json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
+            return
+        name = f"asclepius-{Path(path).stem}-{fingerprint}.{suffix}"
+        self._send(
+            HTTPStatus.OK,
+            content.encode("utf-8"),
+            content_type,
+            {"Content-Disposition": f'attachment; filename="{name}"'},
+        )
+
     # ------------------------------------------------------------------ helpers
 
     def _allowed(self) -> bool:
@@ -144,9 +171,13 @@ class Handler(BaseHTTPRequestHandler):
         # allow_nan=False: NaN is not JSON, and the page's parser would refuse the whole answer
         self._send(status, json.dumps(payload, allow_nan=False).encode(), "application/json")
 
-    def _send(self, status: HTTPStatus, body: bytes, content_type: str) -> None:
+    def _send(
+        self, status: HTTPStatus, body: bytes, content_type: str, headers: dict[str, str] | None = None
+    ) -> None:
         self.send_response(status)
         self.send_header("Content-Type", content_type)
+        for key, value in (headers or {}).items():
+            self.send_header(key, value)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
