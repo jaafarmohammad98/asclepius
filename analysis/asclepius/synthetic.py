@@ -24,6 +24,8 @@ from pathlib import Path
 
 import numpy as np
 
+from asclepius import dataset, selfreport
+
 # ---------------------------------------------------------------- lab reports
 
 
@@ -110,22 +112,7 @@ MARKERS = (
 )
 MARKER_IDS = tuple(m.id for m in MARKERS)
 LAB_GROUPS = ("PSSD", "PFS", "PAS", "SSRI-exposed control", "healthy control")
-LAB_COLUMNS = (
-    "record_id",
-    "sex",
-    "age_years",
-    "collection_month",
-    "report_month",
-    "marker_id",
-    "marker_name",
-    "category",
-    "comparator",
-    "value",
-    "unit",
-    "ref_low",
-    "ref_high",
-    "status",
-)
+LAB_COLUMNS = dataset.COLUMNS  # the extractor CSV format
 
 
 @dataclass(frozen=True)
@@ -162,7 +149,8 @@ def write_lab_reports(
     Values are log-normal per sex, with the report's reference range at about the 2.5th and 97.5th
     percentiles of a healthy person. `null` mode plants nothing: no group differs from another.
     """
-    groups = dict(groups if groups is not None else {"PSSD": 30, "healthy control": 30})
+    # 40 per group, so that even at 30% women each sex has at least 10 (spec S4)
+    groups = dict(groups if groups is not None else {"PSSD": 40, "healthy control": 40})
     _check_lab_settings(groups, planted, null, female_share)
     rng = np.random.default_rng(seed)
     out = Path(out_dir)
@@ -299,31 +287,15 @@ INTERVENTIONS = (
 DEFAULT_IMPROVED = 0.25
 DEFAULT_WORSE = 0.15
 MAJOR_SHARE = 1 / 3  # of those improved, the share reporting major improvement
-SELF_REPORT_COLUMNS = {
-    "cases": (
-        "case_id",
-        "author_key",
-        "year",
-        "kind",
-        "condition",
-        "sex",
-        "age",
-        "onset",
-        "months_since_stopping",
-        "overall_trajectory",
-        "evidence_ok",
-    ),
-    "causal_drugs": ("case_id", "drug", "dose_mg", "duration_months"),
-    "symptoms": ("case_id", "symptom", "severity"),
-    "interventions": ("case_id", "intervention", "outcome", "duration_weeks"),
-    "labs": ("case_id", "test", "value", "unit", "ref_low", "ref_high", "flag", "panel"),
-}
+SELF_REPORT_COLUMNS = {name: table.columns for name, table in selfreport.TABLES.items()}
 
 
 @dataclass(frozen=True)
 class PlantedAssociation:
-    """Authors whose causal drug is `drug` report `symptom` with `odds_ratio` times the odds of
-    everyone else."""
+    """Authors whose causal drug is `drug` report `symptom` with `odds_ratio` times the usual odds.
+
+    That is the odds ratio against everyone else as long as no other drug has an association
+    planted on the same symptom."""
 
     drug: str
     symptom: str
@@ -366,17 +338,21 @@ def write_self_reports(
     null: bool = False,
     repeat_share: float = 0.3,
     deleted_posts: int = 10,
+    unverified_posts: int = 10,
     seed: int = 0,
 ) -> SelfReportOutput:
     """Write a synthetic harvester export of `authors` people.
 
     `repeat_share` of authors post 2 to 4 times; their symptoms and interventions are spread over
     the posts, so the truth only shows once the loader merges them per author. `deleted_posts`
-    extra posts have no author (deleted accounts), which the loader must leave out. All posts pass
-    the evidence check. `null` mode plants nothing: no drug differs in symptoms and every
+    extra posts have no author (deleted accounts), which the loader must leave out, and
+    `unverified_posts` extra posts, each from an author of its own, fail the evidence check, so
+    the loader leaves them out by default. `null` mode plants nothing: no drug differs in symptoms and every
     intervention has the same outcome shares.
     """
-    _check_self_report_settings(authors, associations, outcomes, null, repeat_share, deleted_posts)
+    _check_self_report_settings(
+        authors, associations, outcomes, null, repeat_share, deleted_posts + unverified_posts
+    )
     rng = np.random.default_rng(seed)
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -438,12 +414,15 @@ def write_self_reports(
         if rng.random() < 0.1 and sex == "male":
             value = _round(_healthy_value(rng, 264, 916))
             flag = "low" if value < 264 else "high" if value > 916 else "normal"
-            latest.labs.append(["total testosterone", value, "ng/dL", 264.0, 916.0, flag, "blood"])
+            latest.labs.append(["total_testosterone", value, "ng/dL", 264.0, 916.0, flag, "blood"])
         posts.extend(mine)
 
-    for _ in range(deleted_posts):
+    for i in range(deleted_posts + unverified_posts):
         post = _Post(case_id="", year=int(rng.integers(2015, 2027)))
-        post.cells = {"kind": "comment", "condition": "PSSD", "evidence_ok": "True"}
+        deleted = i < deleted_posts
+        post.cells = {"kind": "comment", "condition": "PSSD", "evidence_ok": "True" if deleted else "False"}
+        if not deleted:
+            post.cells["author_key"] = _author_key(rng, keys)
         post.drugs.append([DRUGS[int(rng.integers(len(DRUGS)))], "", ""])
         post.symptoms.append(["anhedonia", ""])
         posts.insert(int(rng.integers(len(posts) + 1)), post)
@@ -457,6 +436,7 @@ def write_self_reports(
         "authors": authors,
         "repeat_share": repeat_share,
         "deleted_posts": deleted_posts,
+        "unverified_posts": unverified_posts,
         "symptom_shares": SYMPTOMS,
         "default_outcome_shares": {"improved": DEFAULT_IMPROVED, "worse": DEFAULT_WORSE},
         "associations": [asdict(a) for a in associations],
@@ -472,12 +452,12 @@ def _check_self_report_settings(
     outcomes: Sequence[PlantedOutcome],
     null: bool,
     repeat_share: float,
-    deleted_posts: int,
+    extra_posts: int,
 ) -> None:
     if authors < 1:
         raise ValueError("Write at least one author.")
-    if deleted_posts < 0:
-        raise ValueError("deleted_posts cannot be negative.")
+    if extra_posts < 0:
+        raise ValueError("deleted_posts and unverified_posts cannot be negative.")
     if not 0 <= repeat_share <= 1:
         raise ValueError("repeat_share must be between 0 and 1.")
     if null and (associations or outcomes):
@@ -565,6 +545,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     self_report.add_argument("--outcome", action="append", default=[], metavar="INTERVENTION:IMPROVED:WORSE")
     self_report.add_argument("--repeat-share", type=float, default=0.3)
     self_report.add_argument("--deleted-posts", type=int, default=10)
+    self_report.add_argument("--unverified-posts", type=int, default=10)
 
     for sub in (lab, self_report):
         sub.add_argument("--null", action="store_true", help="plant nothing")
@@ -628,6 +609,7 @@ def _run(args: argparse.Namespace) -> None:
             null=args.null,
             repeat_share=args.repeat_share,
             deleted_posts=args.deleted_posts,
+            unverified_posts=args.unverified_posts,
             seed=args.seed,
         )
         print(f"Wrote the five tables and {sr_out.truth.name} to {sr_out.export}")

@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Analysis engine: loads extractor and r/PSSD harvester datasets for group statistics"
 license = "AGPL-3.0-or-later"
 requires-python = ">=3.12"
-dependencies = ["pandas>=2.2"]
+dependencies = ["numpy>=1.26", "pandas>=2.2"]
 
 [dependency-groups]
 dev = [

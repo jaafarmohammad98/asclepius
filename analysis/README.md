@@ -75,4 +75,4 @@ planted association raises the odds of one symptom for one causal drug; a plante
 the share of authors who tried an intervention reporting improvement and worse. Some authors post
 2 to 4 times, with their symptoms and interventions spread over the posts, so the planted
 answer only appears once posts are merged per author. A few posts come from deleted accounts,
-which the loader must leave out.
+and a few fail the evidence check; the loader must leave out both (the second by default).

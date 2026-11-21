@@ -102,10 +102,13 @@ def test_same_seed_gives_the_same_self_report_tables(tmp_path):
 
 
 def test_self_report_tables_load_with_repeat_posts_merged_per_author(tmp_path):
-    out = write_self_reports(tmp_path, authors=200, repeat_share=0.4, deleted_posts=12, seed=1)
+    out = write_self_reports(
+        tmp_path, authors=200, repeat_share=0.4, deleted_posts=12, unverified_posts=7, seed=1
+    )
     data = load_self_reports(out.export)
     assert len(data.authors) == 200
-    assert data.excluded == {"no_author": 12, "unverified": 0}
+    assert data.excluded == {"no_author": 12, "unverified": 7}
+    assert len(load_self_reports(out.export, include_unverified=True).authors) == 207
     repeaters = (data.authors["n_cases"] > 1).mean()
     assert 0.3 < repeaters < 0.5
     cases = pd.read_csv(out.export / "cases.csv")
