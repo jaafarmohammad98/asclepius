@@ -60,6 +60,8 @@ DIFFERS = "differs"
 ONE_ONLY = "one syndrome only"
 _RANK = {NOISE: 0, SUGGESTIVE: 1, STRONG: 2}
 _FOUND = (STRONG, SUGGESTIVE)
+_STATS = ("effect_size", "ci_low", "ci_high", "p_value")
+_COUNTS = ("n_a", "n_b", "n_censored", "n_unclear", "tier_a_n_a", "tier_a_n_b")
 
 
 @dataclass(frozen=True)
@@ -71,7 +73,11 @@ class SyndromeResult(RunResult):
     values; hidden below 5, spec S11), `effect_<s>` (Cliff's delta against the reference) and
     `direction_<s>` (`higher`, `lower`, `no clear shift`, `not tested`); `n_reference`; `differ`,
     the pairs that differ (`PFS lower than PSSD`); `pattern`; `shared_by`; and `label`, how strong
-    the pattern is: the weakest label among the findings that make it.
+    the pattern is: the weakest label among the syndromes' shifts that make it, or for `differs`
+    by pair tests alone, the strongest difference found.
+
+    In `findings` and `refused`, every count below 5 is hidden (spec S11): sizes, limits, unclear
+    values and Tier A sizes.
     """
 
     summary: pd.DataFrame = field(default_factory=pd.DataFrame)
@@ -132,6 +138,7 @@ def compare_syndromes(
     findings = label_findings(combine_findings(*tested), settings)
     refused_table = combine_findings(*refused)
     summary = summarise(findings, refused_table, syndromes)
+    findings, refused_table = _hide_small_counts(findings), _hide_small_counts(refused_table)
     record = run_record(data, [*syndromes, reference], settings.record())
     record |= {"analysis": ANALYSIS, "reference": reference}
     return SyndromeResult(
@@ -188,27 +195,30 @@ def range_tests(
         full = range_shift(placed["zone"], settings, np.random.default_rng(seed))
         tier_a = placed[placed["tier"] == TIER_A_NAME]["zone"]
         rerun = range_shift(tier_a, settings, np.random.default_rng(seed)) if len(tier_a) else {"n": 0}
-        above, below = int((placed["zone"] == "above").sum()), int((placed["zone"] == "below").sum())
+        above, below = full["n_above"], full["n_below"]
         shares = {"share_above": above / len(placed), "share_below": below / len(placed)}
         if min(above, below) < MIN_SHOWN:  # with the effect, one share gives the other back (S11)
             shares = {"share_above": float("nan"), "share_below": float("nan")}
         rows.append(
             head
             | shares
-            | {k: full[k] for k in ("effect_size", "ci_low", "ci_high", "p_value")}
+            | {k: full[k] for k in _STATS}
             | {"tier_a_n_a": rerun["n"]}
-            | {
-                f"tier_a_{k}": rerun.get(k, float("nan"))
-                for k in ("effect_size", "ci_low", "ci_high", "p_value")
-            }
+            | {f"tier_a_{k}": rerun.get(k, float("nan")) for k in _STATS}
         )
-    tested = judge_tier_a(pd.DataFrame(rows), settings) if rows else pd.DataFrame(columns=list(rows))
+    tested = judge_tier_a(pd.DataFrame(rows), settings) if rows else pd.DataFrame()
     return tested, pd.DataFrame(refused)
 
 
 def range_shift(zones: pd.Series, settings: Settings, rng: np.random.Generator) -> dict[str, float]:
-    """`n`, `effect_size` (share above minus share below), its bootstrap `ci_low`..`ci_high` and
-    the exact two-sided sign test's `p_value` for one group's zones (`below`, `within`, `above`)."""
+    """`n`, `n_above`, `n_below`, `effect_size` (share above minus share below), its bootstrap
+    `ci_low`..`ci_high` and the exact two-sided sign test's `p_value` for one group's zones
+    (`below`, `within`, `above`).
+
+    When no value is on one side and 1 to 4 on the other, the effect times `n` would be that count,
+    so the effect and its interval are missing (spec S11). With at most 4 values outside, the sign
+    test's p-value is at least 0.125, so no such row is a finding.
+    """
     n = len(zones)
     above, below = int((zones == "above").sum()), int((zones == "below").sum())
     outside = above + below
@@ -216,13 +226,27 @@ def range_shift(zones: pd.Series, settings: Settings, rng: np.random.Generator) 
     draws = rng.multinomial(n, [above / n, below / n, (n - outside) / n], size=settings.bootstrap)
     effects = (draws[:, 0] - draws[:, 1]) / n
     low, high = np.percentile(effects, [(1 - CONFIDENCE) / 2 * 100, (1 + CONFIDENCE) / 2 * 100])
+    reveals_count = min(above, below) == 0 and 0 < max(above, below) < MIN_SHOWN
+    hidden = float("nan")
     return {
         "n": n,
-        "effect_size": (above - below) / n,
-        "ci_low": float(low),
-        "ci_high": float(high),
+        "n_above": above,
+        "n_below": below,
+        "effect_size": hidden if reveals_count else (above - below) / n,
+        "ci_low": hidden if reveals_count else float(low),
+        "ci_high": hidden if reveals_count else float(high),
         "p_value": min(1.0, 2 * tail),
     }
+
+
+def _hide_small_counts(table: pd.DataFrame) -> pd.DataFrame:
+    """Every count column with counts below 5 hidden (spec S11)."""
+    table = table.copy()
+    for column in _COUNTS:
+        if column in table.columns:
+            counts = pd.to_numeric(table[column]).astype("Int64")
+            table[column] = counts.mask(counts < MIN_SHOWN)
+    return table
 
 
 def _as_kind(table: pd.DataFrame, kind: str) -> pd.DataFrame:
@@ -306,6 +330,7 @@ def _pattern(
 
 
 def _strongest(labels: list[str], *, weakest: bool = False) -> str:
+    """The strongest of `labels`, or with `weakest`, the weakest."""
     return (min if weakest else max)(labels, key=_RANK.__getitem__)
 
 
@@ -325,4 +350,5 @@ def _too_small(group: str, n: int, settings: Settings) -> str:
 
 
 def _shown(count: int) -> int | None:
+    """`count`, or None below 5 (spec S11)."""
     return count if count >= MIN_SHOWN else None

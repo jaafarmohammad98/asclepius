@@ -424,15 +424,21 @@ reference ranges instead. Of the values placed with certainty (as in the referen
 effect is the share above the range minus the share below it, from -1 (all below) to 1 (all above),
 0 when as many fall on each side, as in healthy people, for whom the range is about the middle 95%.
 The p-value is an exact two-sided sign test of above against below, the interval a percentile
-bootstrap. This is not a Cliff's delta, but the same 0.33 threshold labels it (provisional, M3-11).
+bootstrap. This is not a Cliff's delta, but the same 0.33 threshold labels it: a net third of a
+group outside its range is a large shift, so the threshold is stricter here than for controls. Both
+the test and the threshold are new and listed for the clinician review (M3-11).
 It assumes that healthy values fall outside the range equally often on each side, which a real
 lab's range may not do. Ratios have no range, so they are only compared between syndromes.
-`share_above` and `share_below` are both hidden when fewer than 5 fall on either side (S11).
+`share_above` and `share_below` are both hidden when fewer than 5 fall on either side (S11). When
+none fall on one side and 1 to 4 on the other, the effect and its interval are hidden too, since
+the effect times `n_a` would be that count; with at most 4 values outside, the p-value is at least
+0.125, so such a row is never a finding.
 
 Limits (S4): a syndrome with fewer than 10 reports is left out and listed in `refused`; fewer than
 two syndromes left, or a reference group with fewer than 10, is refused with `GroupTooSmall`. A
 test where either side has fewer than 10 values in that sex is refused as in a run. No count below
-5 is shown in a refusal or the summary (S11).
+5 is shown in the findings, the refusals or the summary (S11): sizes, limits (`n_censored`),
+unclear values and Tier A sizes are hidden below 5.
 
 The result is a `RunResult` (`findings`, `refused`, `skipped`, `statement`, `settings`, `record`)
 plus `summary`, one row per measure, marker and sex:
@@ -445,7 +451,7 @@ plus `summary`, one row per measure, marker and sex:
 | `differ` | the pairs whose test is strong or suggestive, as `PFS lower than PSSD` |
 | `pattern` | see below |
 | `shared_by` | the syndromes shifted the same way, for `shared` and `same direction, different size` |
-| `label` | how strong the pattern is: the weakest label among the findings that make it (for `differs`, the strongest difference) |
+| `label` | how strong the pattern is: the weakest label among the syndromes' shifts that make it; for `differs` found only by pair tests, the strongest of those |
 
 | Pattern | When |
 |---|---|

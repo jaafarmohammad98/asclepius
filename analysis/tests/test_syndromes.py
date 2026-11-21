@@ -183,3 +183,29 @@ def test_a_cross_syndrome_run_is_exported_and_reproduced(tmp_path, reference):
     second = export_run(again, tmp_path / "second")
     for name in ("findings.csv", "refused.csv", "summary.csv"):
         assert (second / name).read_bytes() == (folder / name).read_bytes()
+
+
+def test_no_count_below_5_is_shown(tmp_path):
+    # 3 women per group: their tests are refused, and their counts hidden (S11)
+    data = lab_dataset(tmp_path, groups={g: 40 for g in ALL}, female_share=0.08, seed=0)
+    result = compare_syndromes(data, settings=FAST)
+    women = result.refused[result.refused["sex"] == "female"]
+    assert len(women) == 34 * 6
+    assert women["n_a"].isna().all() and women["n_b"].isna().all()
+    assert result.summary[result.summary["sex"] == "female"]["n_PSSD"].isna().all()
+    for column in ("n_a", "n_b", "n_censored", "tier_a_n_a", "tier_a_n_b"):
+        shown = result.findings[column].dropna()
+        assert (shown >= 5).all()
+    # a quarter tier A of 37 men is about 9: shown; would be hidden below 5
+    assert result.findings["tier_a_n_a"].notna().any()
+
+
+def test_a_range_shift_does_not_give_back_a_small_count():
+    # 3 above and none below: the effect, 3 / 20, times 20 would show the 3
+    zones = pd.Series(["above"] * 3 + ["within"] * 17)
+    shift = range_shift(zones, FAST, np.random.default_rng(0))
+    assert np.isnan(shift["effect_size"]) and np.isnan(shift["ci_low"]) and np.isnan(shift["ci_high"])
+    assert shift["p_value"] == pytest.approx(0.25)  # 2 * (1/2)^3
+    # 6 above: a count of 6 may be shown
+    zones = pd.Series(["above"] * 6 + ["within"] * 14)
+    assert range_shift(zones, FAST, np.random.default_rng(0))["effect_size"] == pytest.approx(0.3)

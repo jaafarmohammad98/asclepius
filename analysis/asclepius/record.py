@@ -139,9 +139,9 @@ def reproduce(
                 + (f"{want['role']} with SHA-256 {want['sha256'][:12]}...)." if want else "no file here).")
             )
     settings = Settings(**record["settings"])
-    if record.get("analysis") == "cross-syndrome":
-        from asclepius.syndromes import compare_syndromes
+    from asclepius.syndromes import ANALYSIS, compare_syndromes  # syndromes imports this module
 
+    if record.get("analysis") == ANALYSIS:
         return compare_syndromes(data, reference=record["reference"], settings=settings)
     group_a, group_b = record["groups"]
     links = None
