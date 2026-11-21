@@ -23,7 +23,8 @@ self-report message never contains a `case_id` or `author_key`.
 **Lab reports.** One row per marker per report. Reports are named `<file number>/<record_id>`,
 because each extractor file numbers its reports from `r001`. A unit must look like the ones the
 extractor reads (`ng/mg`, `µg/mg`), and one marker must use one unit across all files loaded
-together.
+together. Within a report, a marker has one row (an exact repeat counts once), and every row gives the
+same sex and age or leaves it blank.
 
 **Self-reports.** Merged so each author counts once (spec S9). Authors are numbered 1, 2, 3...;
 case ids and author keys are dropped. Harvester condition `PSA` becomes the plan's `PAS`;
@@ -105,13 +106,17 @@ row per marker and sex, largest effect first:
 |---|---|
 | `marker_id`, `marker_name`, `sex` | what was compared |
 | `group_a`, `group_b`, `n_a`, `n_b` | the two groups and how many reports each had for this marker (S3) |
-| `median_a`, `median_b` | each group's median value |
+| `n_censored` | how many of those values were printed as a limit (`<x` or `>x`) |
+| `age_a`, `age_b` | each group's median age; shown so an age difference is visible, not adjusted for |
+| `median_a`, `median_b` | each group's median value (a limit read as its number) |
 | `effect_size` | Cliff's delta, P(a > b) - P(a < b): -1 when every value in group a is below every value in group b, 0 for no difference |
 | `ci_low`, `ci_high` | 95% percentile bootstrap interval of the effect size (2,000 resamples, each group resampled separately) |
-| `p_value` | two-sided permutation test on the rank sum (Mann-Whitney), exact when there are at most 9,999 ways to split the values, else 9,999 random splits (S1) |
+| `p_value` | two-sided permutation test of Gehan's statistic, exact when there are at most 9,999 ways to split the values, else 9,999 random splits (S1); with no limits this is the rank-sum (Mann-Whitney) test |
 
-Reports with no sex are left out. A value given as `<x` or `>x` counts as x. The same `seed` gives
-the same table. `compare_values(a, b)` does the same for two lists of values.
+A value printed as a limit is compared as a range: `<5` is below 5, so it is lower than 5 or 7 but
+neither higher nor lower than 4 or `<3`, and such a pair counts as a tie. Reports with no sex are
+left out. The same `seed` gives the same table. `compare_values(a, b)` does the same for two lists
+of values, where a value is a number or a string like `"<5"`.
 
 Not done here yet: the group-size limit (S4) and the false discovery rate correction (S2) come in
 M3-06, so a row on its own is not a finding. On synthetic data with groups of 40 (12 women each),

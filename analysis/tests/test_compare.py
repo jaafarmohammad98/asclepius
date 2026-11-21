@@ -20,6 +20,27 @@ def test_effect_size_is_cliffs_delta_of_a_against_b():
     assert compare_values([5], [1, 2, 5]).effect_size == pytest.approx(2 / 3)
 
 
+def test_values_below_or_above_a_limit_are_compared_as_ranges():
+    # "<5" may be 4 or less: undecided against 4, lower than 5
+    assert compare_values(["<5"], [4]).effect_size == 0
+    assert compare_values(["<5"], [5]).effect_size == -1
+    # ">5" is above 5 and "<5"; undecided against ">3"
+    assert compare_values([">5"], [5, "<5", ">3"]).effect_size == pytest.approx(2 / 3)
+
+
+def test_limits_change_the_answer_only_when_they_overlap():
+    # read as plain numbers, 5 > 1, 2, 3 every time; as "<5" each pair is undecided
+    censored = compare_values(["<5", "<5", "<5"], [1, 2, 3])
+    assert (censored.effect_size, censored.p_value) == (0, 1)
+    # below-detection values still sort below clear values: the same p as 3 vs 3 separated
+    assert compare_values(["<1", "<1", "<1"], [4, 5, 6]).p_value == pytest.approx(0.1)
+
+
+def test_a_value_must_be_a_number_or_a_limit():
+    with pytest.raises(ValueError, match="'about 5' is not a number"):
+        compare_values(["about 5"], [1])
+
+
 def test_small_groups_get_the_exact_permutation_p_value():
     # 3 vs 3 completely separated: 2 of the 20 ways to split six values are this extreme
     assert compare_values([1, 2, 3], [4, 5, 6]).p_value == pytest.approx(0.1)
@@ -101,6 +122,51 @@ def test_same_seed_gives_the_same_table(tmp_path):
     first = compare_groups(data, "PSSD", "healthy control", seed=4, **FAST)
     second = compare_groups(data, "PSSD", "healthy control", seed=4, **FAST)
     assert first.equals(second)
+
+
+HEADER = (
+    "record_id,sex,age_years,collection_month,report_month,marker_id,marker_name,category,"
+    "comparator,value,unit,ref_low,ref_high,status"
+)
+
+
+def hand_dataset(tmp_path, reports):
+    """`reports` is (record_id, group, age, comparator, value) for one marker, all men."""
+    rows = [
+        f"{r},male,{age},,,cortisol,Cortisol,,{comp},{value},ng/mg,5,20,"
+        for r, _, age, comp, value in reports
+    ]
+    (tmp_path / "reports.csv").write_text("\n".join([HEADER, *rows]) + "\n")
+    groups = [f"{r},{group}" for r, group, *_ in reports]
+    (tmp_path / "metadata.csv").write_text("\n".join(["record_id,group", *groups]) + "\n")
+    return load_lab_reports([tmp_path / "reports.csv"], metadata=tmp_path / "metadata.csv")
+
+
+def test_rows_carry_limits_and_each_groups_median_age(tmp_path):
+    data = hand_dataset(
+        tmp_path,
+        [
+            ("r001", "PSSD", 30, "<", 1),
+            ("r002", "PSSD", 40, "", 2),
+            ("r003", "PSSD", 50, "", 3),
+            ("r004", "healthy control", 20, "", 5),
+            ("r005", "healthy control", 22, ">", 6),
+        ],
+    )
+    row = compare_groups(data, "PSSD", "healthy control").iloc[0]
+    assert (row["n_a"], row["n_b"], row["n_censored"]) == (3, 2, 2)
+    assert (row["age_a"], row["age_b"]) == (40, 21)
+    assert row["effect_size"] == -1
+
+
+def test_a_limit_overlapping_real_values_is_not_read_as_its_number(tmp_path):
+    # "<5" in PSSD against 1, 2, 3 in controls: as the number 5 PSSD would look higher
+    data = hand_dataset(
+        tmp_path,
+        [(f"r00{i}", "PSSD", 30, "<", 5) for i in range(1, 4)]
+        + [(f"r00{i + 3}", "healthy control", 30, "", i) for i in range(1, 4)],
+    )
+    assert compare_groups(data, "PSSD", "healthy control").iloc[0]["effect_size"] == 0
 
 
 def test_groups_must_be_known_different_and_present(tmp_path):
