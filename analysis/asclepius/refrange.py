@@ -16,7 +16,6 @@ from asclepius.compare import Value, parse_value
 from asclepius.dataset import LabDataset
 from asclepius.selfreport import SelfReportDataset
 
-ZONES = ("below", "within", "above", "unclear")
 CONFIDENCE_Z = 1.959963984540054  # two-sided 95%
 LAB = "reference range"
 SELF_REPORT = "reference range, self-report"
@@ -31,7 +30,7 @@ COLUMNS = (
     "n_unclear",
     "age_a",
     "median_position",
-    *(f"{c}" for side in SIDES for c in (f"share_{side}", f"{side}_low", f"{side}_high")),
+    *(c for side in SIDES for c in (f"share_{side}", f"{side}_low", f"{side}_high")),
 )
 
 
@@ -41,9 +40,12 @@ def zone(value: Value, low: float | None, high: float | None) -> str:
     low = -math.inf if low is None or math.isnan(low) else low
     high = math.inf if high is None or math.isnan(high) else high
     # the value as a range: "<x" is below x (x itself excluded), ">x" above it
-    v_low, v_high = (-math.inf, number) if comparator == "<" else (number, number)
-    if comparator == ">":
+    if comparator == "<":
+        v_low, v_high = -math.inf, number
+    elif comparator == ">":
         v_low, v_high = number, math.inf
+    else:
+        v_low, v_high = number, number
     if v_high < low or (comparator == "<" and v_high == low):
         return "below"
     if v_low > high or (comparator == ">" and v_low == high):
@@ -57,8 +59,9 @@ def zone(value: Value, low: float | None, high: float | None) -> str:
 class RangeFindings:
     """`patients`: one row per report (or author) and marker with a range, giving its `zone` and
     `position` (0 at the range's low end, 1 at its high end; missing for a limit or a range with one
-    end). `rows`: findings-table rows, one per marker, sex and group. `skipped`: markers with values
-    but no range, and how many values were left out for that."""
+    end). It is working data for later analyses, one row per person, so never shown or exported
+    (spec S11). `rows`: findings-table rows, one per marker, sex and group. `skipped`: markers
+    with values but no range, and how many values were left out for that."""
 
     patients: pd.DataFrame
     rows: pd.DataFrame
@@ -71,19 +74,12 @@ def lab_range_findings(data: LabDataset) -> RangeFindings:
     report = data.records.set_index("record")[["group", "sex", "age_years"]]
     values = values.drop(columns=["sex", "age_years"]).join(report, on="record")
     has_range = values["ref_low"].notna() | values["ref_high"].notna()
-    patients = _place(values[has_range], printed=_as_printed(values[has_range]))
-    # a value printed exactly at a range end may have been rounded; the lab's status knows which side
-    status = patients["status"].fillna("").str.split().str[0].map({"Below": "below", "Above": "above"})
-    at_end = (patients["value"] == patients["ref_low"]) | (patients["value"] == patients["ref_high"])
-    patients["zone"] = patients["zone"].where(~(at_end & status.notna()), status)
+    in_range = values[has_range]
+    said = in_range["status"].fillna("").str.split().str[0].map({"Below": "below", "Above": "above"})
+    patients = _place(in_range, printed=_as_printed(in_range), said=said)
     columns = ["record", "group", "sex", "age_years", "marker_id", "marker_name", "value", "comparator"]
     patients = patients[columns + ["ref_low", "ref_high", "zone", "position"]].reset_index(drop=True)
-    skipped = (
-        values[~has_range]
-        .groupby(["marker_id", "marker_name"], sort=True)
-        .size()
-        .reset_index(name="n_values")
-    )
+    skipped = _skipped(values[~has_range])
     rows = _group_rows(patients.rename(columns={"age_years": "age"}), LAB)
     return RangeFindings(patients=patients, rows=rows, skipped=skipped)
 
@@ -115,7 +111,7 @@ def _group_rows(patients: pd.DataFrame, comparison: str) -> pd.DataFrame:
             "n_a": n,
             "n_unclear": len(cell) - n,
             "age_a": cell["age"].astype("float64").median(),
-            "median_position": cell["position"].median(),
+            "median_position": placed["position"].median(),
         }
         for side in SIDES:
             count = int((placed["zone"] == side).sum())
@@ -126,20 +122,32 @@ def _group_rows(patients: pd.DataFrame, comparison: str) -> pd.DataFrame:
 
 
 def _as_printed(values: pd.DataFrame) -> pd.Series:
+    """Each value as the report printed it: a number, or a limit such as "<5"."""
     limited = values["comparator"].notna()
     return values["value"].astype(object).where(~limited, values["comparator"] + values["value"].map(repr))
 
 
-def _place(values: pd.DataFrame, printed: pd.Series) -> pd.DataFrame:
-    zones = [
-        zone(v, low, high)
-        for v, low, high in zip(printed, values["ref_low"], values["ref_high"], strict=True)
-    ]
+def _place(values: pd.DataFrame, printed: pd.Series, said: pd.Series) -> pd.DataFrame:
+    """Add each value's `zone` and `position` within its own range.
+
+    `said` is the source's own verdict, `below`, `above` or missing (a lab's status, an author's
+    flag). It decides only for a value printed exactly at a range end, which may have been rounded.
+    """
+    zones = pd.Series(
+        [zone(v, lo, hi) for v, lo, hi in zip(printed, values["ref_low"], values["ref_high"], strict=True)],
+        index=values.index,
+    )
+    at_end = (values["value"] == values["ref_low"]) | (values["value"] == values["ref_high"])
+    zones = zones.where(~(at_end & said.notna()), said)
     exact = printed.map(lambda v: not isinstance(v, str))
     position = (values["value"] - values["ref_low"]) / (values["ref_high"] - values["ref_low"])
     return values.assign(
         zone=zones, position=position.where(exact & (values["ref_high"] > values["ref_low"]))
     )
+
+
+def _skipped(values: pd.DataFrame) -> pd.DataFrame:
+    return values.groupby(["marker_id", "marker_name"], sort=True).size().reset_index(name="n_values")
 
 
 def combine_findings(*tables: pd.DataFrame) -> pd.DataFrame:
@@ -157,19 +165,18 @@ def self_report_range_findings(data: SelfReportDataset) -> RangeFindings:
 
     A test is named as typed, lower-cased with spaces tidied, so "Total  Testosterone" and "total
     testosterone" are one marker; units may differ, since each value is placed in its own range.
+    A value typed exactly at a range end follows the author's flag (high, low) when there is one.
     An author counts once per test: when their values fall in different zones, as `unclear`.
-    Groups are the authors' conditions. Rows are labelled `SELF_REPORT`, never pooled with lab reports.
+    Groups are the authors' conditions. Rows are labelled "reference range, self-report" and are
+    never pooled with lab reports.
     """
     labs = data.labs.assign(marker_id=data.labs["test"].str.lower().str.split().str.join(" "))
     has_range = labs["ref_low"].notna() | labs["ref_high"].notna()
-    skipped = (
-        labs[~has_range]
-        .assign(marker_name=lambda t: t["marker_id"])
-        .groupby(["marker_id", "marker_name"], sort=True)
-        .size()
-        .reset_index(name="n_values")
-    )
-    placed = _place(labs[has_range], printed=labs.loc[has_range, "value"])
+    labs = labs.assign(marker_name=labs["marker_id"])
+    skipped = _skipped(labs[~has_range])
+    in_range = labs[has_range]
+    said = in_range["flag"].map({"low": "below", "high": "above"})
+    placed = _place(in_range, printed=in_range["value"], said=said)
     per_author = (
         placed.groupby(["author", "marker_id"], sort=True)
         .agg(

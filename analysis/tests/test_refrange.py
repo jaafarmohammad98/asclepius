@@ -125,3 +125,13 @@ def test_typed_in_values_with_a_range_are_placed_per_author_as_self_report_rows(
     assert rows.loc[("prolactin", "PSSD"), "share_above"] == 1.0
     # dht is skipped (that man's value has no range; the PFS post is unverified, so not loaded)
     assert findings.skipped.to_dict("records") == [{"marker_id": "dht", "marker_name": "dht", "n_values": 1}]
+
+
+def test_a_typed_in_value_at_a_range_end_follows_its_flag_like_a_lab_status(tmp_path):
+    export = shutil.copytree(FIXTURES / "selfreport", tmp_path / "export")
+    with open(export / "labs.csv", "a") as labs:
+        labs.write("c03,shbg,70,nmol/L,15,70,high,blood\n")  # probably rounded down to the range end
+        labs.write("c03,lh,15,IU/L,15,70,,blood\n")  # no flag: the end is in the range
+    rows = self_report_range_findings(load_self_reports(export)).rows.set_index("marker_id")
+    assert rows.loc["shbg", "share_above"] == 1.0
+    assert rows.loc["lh", "share_within"] == 1.0

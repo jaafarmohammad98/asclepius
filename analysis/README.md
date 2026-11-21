@@ -133,16 +133,22 @@ Without controls, the only comparison is the range printed with each value (spec
 
 - `patients`: one row per report and marker (self-reports: per author and test) with its `zone`,
   `below`, `within` or `above` the range (ends included), and its `position`, 0 at the range's low
-  end and 1 at its high end (missing for a limit or a range with one end).
+  end and 1 at its high end (missing for a limit or a range with one end). One row per person, so
+  it is working data, never shown or exported (S11).
 - `rows`: findings-table rows, one per marker, sex and group, with the share of each group below,
   within and above, each with a 95% Wilson interval (`share_below`, `below_low`, `below_high`, ...).
   `n_a` counts the values placed; `n_unclear` the limits that could fall either side of a range
-  end (`<15` against 10 to 20). `median_position` and `age_a` (median age) are also given.
+  end (`<15` against 10 to 20). `median_position` (of the values placed) and `age_a` (median age)
+  are also given. There is one group here, so no effect size: the shares and their intervals are
+  the result (S3), and `effect_size` stays empty in the combined table.
+- Rows are per sex because ranges differ by sex; reports or authors with no sex get rows of their
+  own (sex empty), since each value is still placed in its own range.
 - `skipped`: markers with values but no range, and how many values were left out.
 
 A range with one end (`<15` printed as the range) places values above it or within, never below.
 A lab value printed exactly at a range end may have been rounded, so there the report's own
-status (`Above range`, `Below range`) decides; two public sample values need this.
+status (`Above range`, `Below range`) decides; two public sample values need this. A typed-in
+value at a range end follows its `flag` (`high`, `low`) the same way.
 
 Self-report rows are labelled `reference range, self-report`. A test name is matched lower-cased
 with spaces tidied; units may differ, since each value is placed in its own range. An author counts
@@ -153,4 +159,6 @@ for having no range.
 `combine_findings(compare_groups(...), lab_range_findings(...).rows, ...)` stacks them into one
 findings table; the `comparison` column (`group comparison`, `reference range`,
 `reference range, self-report`) tells them apart, and columns one kind lacks are left empty. The
-count limits (S4, S11) and the labels (S5, S10) are not applied yet (M3-06).
+count limits (S4, S11) and the labels (S5, S10, including "self-report, no controls") are not
+applied yet (M3-06), so most self-report rows, with fewer than 5 authors, must not be shown as they
+are.
