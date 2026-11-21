@@ -17,11 +17,14 @@ def lab_dataset(tmp_path, **settings):
 
 @pytest.mark.parametrize("seed", range(20))
 def test_null_data_gives_no_strong_finding(tmp_path, seed):
-    # Strong needs `holds_in_tier_a`, which only the Tier A re-run (M3-07) sets, so this becomes a
-    # real check there. Without the Tier A condition, seed 8 has a chance finding with q < 0.05.
-    data = lab_dataset(tmp_path, null=True, seed=seed)
-    result = run_analysis(data, *GROUPS)
-    assert not (result.findings["label"] == "strong").any()
+    # half the reports in tier A, so the Tier A re-run can test most rows. At 40 per group and a
+    # quarter tier A, every row is "too small to test" and this check could not fail.
+    data = lab_dataset(
+        tmp_path, groups={"PSSD": 100, "healthy control": 100}, null=True, tier_a_share=0.5, seed=seed
+    )
+    findings = run_analysis(data, *GROUPS, Settings(bootstrap=200)).findings
+    assert (findings["tier_a_result"] != "Tier A too small to test").mean() > 0.9
+    assert not (findings["label"] == "strong").any()
 
 
 def test_null_data_says_nothing_reliable_yet(tmp_path):
@@ -31,21 +34,44 @@ def test_null_data_says_nothing_reliable_yet(tmp_path):
     assert result.statement == NOTHING_RELIABLE == "nothing reliable yet"
 
 
-def test_a_planted_difference_survives_correction_and_is_strong_once_it_holds_in_tier_a(tmp_path):
+def test_every_finding_shows_a_full_dataset_and_a_tier_a_result(tmp_path):
+    planted = [synthetic.PlantedDifference("androsterone", 0.5, group="PSSD")]
+    data = lab_dataset(
+        tmp_path, groups={"PSSD": 100, "healthy control": 100}, planted=planted, tier_a_share=0.5, seed=1
+    )
+    findings = run_analysis(data, *GROUPS).findings.set_index(["marker_id", "sex"])
+    tier_a = data.records[data.records["tier"] == "A"]
+    for sex in ("male", "female"):
+        row = findings.loc[("androsterone", sex)]
+        expected_n = int(((tier_a["group"] == "PSSD") & (tier_a["sex"] == sex)).sum())
+        assert row["tier_a_n_a"] == expected_n < row["n_a"]
+        assert row["tier_a_effect_size"] < -0.33 and row["tier_a_p_value"] < 0.05
+        assert row["tier_a_result"] == "holds"
+        assert row["holds_in_tier_a"]
+        assert row["label"] == "strong"
+
+
+def test_a_finding_is_strong_only_where_it_holds_in_tier_a(tmp_path):
     planted = [synthetic.PlantedDifference("androsterone", 0.5, group="PSSD")]
     data = lab_dataset(tmp_path, groups={"PSSD": 100, "healthy control": 100}, planted=planted, seed=1)
     result = run_analysis(data, *GROUPS)
     found = result.findings.set_index(["marker_id", "sex"])
-    for sex in ("male", "female"):
-        assert found.loc[("androsterone", sex), "label"] == "suggestive"  # Tier A not re-run yet
-        assert found.loc[("androsterone/etiocholanolone", sex), "label"] == "suggestive"
+    for marker in ("androsterone", "androsterone/etiocholanolone"):
+        # about 25 tier A reports per group, 10 PSSD men: enough to test
+        men = found.loc[(marker, "male")]
+        assert (men["tier_a_result"], men["label"]) == ("holds", "strong")
+        # 9 PSSD and 5 control women in tier A: survives correction, but cannot be checked
+        women = found.loc[(marker, "female")]
+        assert women["q_value"] <= 0.05 and abs(women["effect_size"]) >= 0.33
+        assert (women["tier_a_n_a"], women["tier_a_n_b"]) == (9, 5)
+        assert (women["tier_a_result"], women["label"]) == ("Tier A too small to test", "suggestive")
+        assert pd.isna(women["tier_a_effect_size"]) and pd.isna(women["tier_a_p_value"])
     assert result.statement != NOTHING_RELIABLE
-    # with the Tier A re-run (M3-07) confirming it, the same rows are strong
-    confirmed = label_findings(result.findings.assign(holds_in_tier_a=True), Settings())
-    confirmed = confirmed.set_index(["marker_id", "sex"])
-    for sex in ("male", "female"):
-        assert confirmed.loc[("androsterone", sex), "label"] == "strong"
-        assert confirmed.loc[("androsterone/etiocholanolone", sex), "label"] == "strong"
+
+
+def test_a_finding_that_disappears_in_tier_a_is_not_strong():
+    findings = pd.DataFrame({"p_value": [0.001], "effect_size": [0.6], "holds_in_tier_a": [False]})
+    assert label_findings(findings, Settings())["label"].item() == "suggestive"
 
 
 def test_one_correction_covers_markers_ratios_and_both_sexes(tmp_path):

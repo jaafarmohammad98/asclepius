@@ -2,8 +2,9 @@
 
 The analysis engine (milestone 3). So far it loads and checks data, writes synthetic datasets
 with a known answer for testing the statistics, compares markers between two groups, places
-values within their own report's reference range, compares enzyme-activity ratios, and corrects
-and labels a whole run of tests.
+values within their own report's reference range, compares enzyme-activity ratios, corrects
+and labels a whole run of tests, re-runs each finding on Tier A records, and records and exports
+each run so it can be reproduced.
 
 ```sh
 cd analysis
@@ -212,13 +213,14 @@ lab-report dataset. It runs `compare_groups` and `compare_ratios`, stacks them w
 rate correction over raw markers, ratios and both sexes together (S2), 68 tests on the synthetic
 data. A run is one dataset; lab reports and self-reports are corrected in separate runs. It returns:
 
-- `findings`: the tested rows, with `q_value` (the corrected p-value) and `label`.
+- `findings`: the tested rows, with `q_value` (the corrected p-value), the Tier A re-run (below) and `label`.
 - `refused`: rows not tested because a group had fewer than 10 values in that sex, with a `reason`.
   They do not count in the correction.
 - `skipped`: as in `compare_ratios`.
 - `statement`: `nothing reliable yet` when no finding is strong or suggestive (S8), else the counts.
 - `settings`: every threshold the run used (`Settings.record()`), marked `provisional, needs expert
   review` until M3-11.
+- `record`: the run record (below).
 
 A group with fewer than 10 reports is refused outright with `GroupTooSmall`, whose message names the
 group and its size (S4). The labels (S5):
@@ -229,12 +231,53 @@ group and its size (S4). The labels (S5):
 | suggestive | q at most 0.10, and not strong |
 | noise-level | everything else |
 
-Holding in Tier A is the `holds_in_tier_a` column, which the Tier A re-run (M3-07) will set. Until
-then no row has it, so every lab finding "holds only in the full dataset" and is at most
-suggestive. This is needed, not just pedantic: on null synthetic data, 3 of 60 seeds give a chance
-finding with q at most 0.05 and a medium effect, as a 5% false discovery rate allows; and with a
-real difference planted, an unrelated marker can pass too. The Tier A condition makes such a
-chance finding much less likely to be strong, though not impossible. With q at most 0.10, about 1 null run in 10 has a suggestive finding.
+### Tier A re-run (S6)
+
+A finding that disappears among clinician-confirmed patients should not be trusted, so
+`run_analysis` re-runs every finding on Tier A records only, with the same tests and seed, and
+puts the result beside the full-dataset one:
+
+| Column | Meaning |
+|---|---|
+| `tier_a_n_a`, `tier_a_n_b` | how many Tier A values each group has for this marker and sex |
+| `tier_a_effect_size`, `tier_a_ci_low`, `tier_a_ci_high` | Cliff's delta and its interval, on Tier A only |
+| `tier_a_p_value` | the permutation p-value on Tier A only, not corrected again (it checks findings the corrected run found) |
+| `tier_a_result` | `holds`, `does not hold`, or `Tier A too small to test` |
+| `holds_in_tier_a` | True when `tier_a_result` is `holds` |
+
+A finding holds when Tier A has at least 10 values in each group (the S4 limit), its effect goes the
+same way and is at least medium (0.33), and its Tier A p-value is at most 0.05 (`Settings.tier_a_p`,
+provisional). With fewer than 10 the comparison is refused as in the full run: only the sizes are
+shown, and the finding is at most suggestive. With 100 per group and a quarter tier A, as in the
+synthetic default, that is usually the women; at 40 per group it is almost every row.
+
+This matters: on null synthetic data, 3 of 60 seeds (40 per group) give a chance finding with q at
+most 0.05 and a medium effect, as a 5% false discovery rate allows. With 100 per group and half
+tier A, 2 of 60 do; the Tier A re-run rejects one and confirms the other (seed 48, b-pregnanediol in
+men), which is labelled strong. Tier A records are part of the full dataset, so a chance pattern
+can carry into them: the check makes a chance strong finding rarer, not impossible. With a
+real difference planted, an unrelated marker can pass too. With q at most 0.10, about 1 null run
+in 10 has a suggestive finding.
+
+### Run record and export (S7)
+
+`RunResult.record` is the run record (`asclepius.record.run_record`):
+
+| Key | Value |
+|---|---|
+| `tool` | `asclepius` and its version |
+| `date` | when the run was made (UTC) |
+| `dataset` | `kind`, `fingerprint`, and `files`: each input file's `role` (`lab reports`, `metadata`; for self-reports the table name), `name` and `sha256`; self-reports add the `loader` switch |
+| `groups` | the two groups compared |
+| `settings` | `Settings.record()` |
+| `status` | `provisional, needs expert review` |
+
+`export_run(result, folder)` writes `findings.csv`, `refused.csv`, `skipped.csv` and
+`run_record.json` into an empty folder; the written record adds `outputs`, the SHA-256 of each CSV,
+so every file can be matched to its record. `reproduce(record, paths, metadata=...)` runs a record
+again: it refuses (`ReproductionError`, naming the file) when an input file is missing, extra or
+changed, or when the tool version differs, and otherwise gives identical findings and
+byte-identical CSV exports; only the date changes.
 
 `label_findings(table, settings, self_report=False)` does the correction and labelling for any
 findings table; pass the whole run's table. Self-report analyses (M3-12, M3-14) call it with

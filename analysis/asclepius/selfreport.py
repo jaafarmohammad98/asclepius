@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from asclepius.dataset import DatasetError
+from asclepius.dataset import DatasetError, FileHash
 
 LABEL = "self-report, no controls"
 
@@ -101,7 +101,8 @@ class SelfReportDataset:
     intervention or lab value, keyed by the `author` number. `excluded` counts the posts left out:
     `unverified` (`evidence_ok` false, unless asked for) and `no_author` (deleted accounts, which
     cannot be merged, so one person could be counted many times). `fingerprint` (a SHA-256 over
-    the five files) and `settings` record what a result was computed from (spec S7).
+    the five files), `files` (each file's name and SHA-256) and `settings` record what a result
+    was computed from (spec S7).
     """
 
     authors: pd.DataFrame
@@ -114,6 +115,7 @@ class SelfReportDataset:
     fingerprint: str = ""
     settings: dict[str, bool] = field(default_factory=dict)
     label: str = LABEL
+    files: tuple[FileHash, ...] = ()
 
 
 def load_self_reports(
@@ -123,8 +125,11 @@ def load_self_reports(
     tables = {name: _read_table(export_dir / f"{name}.csv", spec) for name, spec in TABLES.items()}
     _check_links(tables)
     digest = hashlib.sha256()
+    hashes = []
     for name in TABLES:  # fixed order, so the same export always gives the same fingerprint
-        digest.update(hashlib.sha256((export_dir / f"{name}.csv").read_bytes()).digest())
+        file_hash = hashlib.sha256((export_dir / f"{name}.csv").read_bytes())
+        digest.update(file_hash.digest())
+        hashes.append(FileHash(name, f"{name}.csv", file_hash.hexdigest()))
 
     cases = tables["cases"]
     cases["condition"] = cases["condition"].fillna("unclear")  # the harvester blanks values it can't map
@@ -180,6 +185,7 @@ def load_self_reports(
         excluded=excluded,
         fingerprint=digest.hexdigest(),
         settings={"include_unverified": include_unverified},
+        files=tuple(hashes),
     )
 
 
