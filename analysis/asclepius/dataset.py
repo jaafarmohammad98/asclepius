@@ -90,6 +90,8 @@ def load_lab_reports(
     unmatched: tuple[str, ...] = ()
     if metadata is not None:
         meta_path = Path(metadata)
+        if not meta_path.is_file():
+            raise DatasetError(f"{meta_path.name}: the file does not exist.")
         digest.update(b"metadata")
         digest.update(hashlib.sha256(meta_path.read_bytes()).digest())
         records, unmatched = meta.apply(records, meta_path)

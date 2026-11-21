@@ -6,7 +6,7 @@ The researcher (or the platform) supplies one CSV file with one row per report:
 |---|---|---|
 | record_id | yes | `r001` when only one loaded file has that id, else `<file number>/r001` |
 | group | yes (column) | one of `GROUPS`, any case; blank means `unassigned` |
-| tier | no | A, B or C ([data trust](overview)); blank or absent means B |
+| tier | no | A, B or C (overview, "Data trust"); blank or absent means B |
 | drug | no | free text |
 | months_since_stopping | no | a number, 0 or more |
 | score_<name> | no, any number | a number (a questionnaire symptom score) |
@@ -29,18 +29,24 @@ UNASSIGNED = "unassigned"
 TIERS = ("A", "B", "C")
 DEFAULT_TIER = "B"
 FIXED = ("record_id", "group", "tier", "drug", "months_since_stopping")
-SCORE = re.compile(r"^score_[a-z0-9_]+$")
+SCORE = re.compile(r"^score_[A-Za-z0-9_]+$")
 _QUALIFIED = re.compile(r"^(\d+)/(.+)$")
-_BY_KEY = {re.sub(r"\s+", " ", g).casefold(): g for g in GROUPS}
+
+
+def _group_key(name: str) -> str:
+    return re.sub(r"\s+", " ", name).casefold()
+
+
+_BY_KEY = {_group_key(g): g for g in GROUPS}
 
 
 def default_records(markers: pd.DataFrame) -> pd.DataFrame:
     """One row per loaded report, every one `unassigned` and tier B."""
-    first = markers.groupby("record", sort=False)
-    records = first[["file", "record_id"]].first()
+    by_report = markers.groupby("record", sort=False)
+    records = by_report[["file", "record_id"]].first()
     # a report's sex and age are the same on every marker row; take the first one given
-    records["sex"] = first["sex"].agg(lambda s: s.dropna().iloc[0] if s.notna().any() else pd.NA)
-    records["age_years"] = first["age_years"].first().astype("Int64")
+    records["sex"] = by_report["sex"].agg(lambda s: s.dropna().iloc[0] if s.notna().any() else pd.NA)
+    records["age_years"] = by_report["age_years"].first().astype("Int64")
     records["group"] = UNASSIGNED
     records["tier"] = DEFAULT_TIER
     records["drug"] = pd.Series(pd.NA, index=records.index, dtype="object")
@@ -93,7 +99,8 @@ def apply(records: pd.DataFrame, path: Path) -> tuple[pd.DataFrame, tuple[str, .
 def _read(path: Path) -> tuple[pd.DataFrame, list[str]]:
     name = path.name
     try:
-        frame = pd.read_csv(path, dtype=str, keep_default_na=False, skip_blank_lines=True)
+        # blank lines are kept as empty rows so the line numbers in messages stay right
+        frame = pd.read_csv(path, dtype=str, keep_default_na=False, skip_blank_lines=False)
     except pd.errors.EmptyDataError:
         raise DatasetError(f"{name}: the file is empty.") from None
     except (pd.errors.ParserError, UnicodeDecodeError) as err:
@@ -113,6 +120,7 @@ def _read(path: Path) -> tuple[pd.DataFrame, list[str]]:
     scores = [c for c in columns if SCORE.match(c)]
     frame = frame.apply(lambda col: col.str.strip())
     frame.index = frame.index + 2  # line in the file, counting the header as line 1
+    frame = frame[(frame != "").any(axis=1)]
 
     def fail(row: int, column: str, problem: str) -> None:
         raise DatasetError(f"{name}, line {row}, column {column}: {problem}")
@@ -123,9 +131,7 @@ def _read(path: Path) -> tuple[pd.DataFrame, list[str]]:
 
     out = pd.DataFrame(index=frame.index)
     out["record_id"] = frame["record_id"]
-    group = frame["group"].map(
-        lambda g: _BY_KEY.get(re.sub(r"\s+", " ", g).casefold(), pd.NA) if g else UNASSIGNED
-    )
+    group = frame["group"].map(lambda g: _BY_KEY.get(_group_key(g), pd.NA) if g else UNASSIGNED)
     bad = group.index[group.isna()]
     if len(bad):
         fail(

@@ -45,7 +45,8 @@ accounts, which cannot be merged. `excluded` counts both. A blank condition coun
 | `score_<name>` | no, any number | a symptom score from the questionnaire |
 
 Any other group name or column is rejected. A report with no metadata row goes to `unassigned`,
-tier B. Rows naming a report that was not loaded are left out and listed in
+tier B. Tier B is an assumption here, not a check: the extractor CSV carries no check results, so
+a report is only tier C if the metadata says so. Rows naming a report that was not loaded are left out and listed in
 `LabDataset.unmatched`. Two rows for the same report must agree (identical repeats are fine).
 
 Both datasets carry a `fingerprint` (SHA-256 of the input files, metadata included) for the reproducibility record

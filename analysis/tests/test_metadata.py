@@ -175,3 +175,20 @@ def test_empty_metadata_file_is_rejected(tmp_path):
     path.write_text("")
     with pytest.raises(DatasetError, match="metadata.csv: the file is empty"):
         load_lab_reports([SAMPLES], metadata=path)
+
+
+def test_line_numbers_count_blank_lines(tmp_path):
+    meta = metadata_file(tmp_path, "record_id,group", "", "r001,PSSD", "r002,bogus")
+    with pytest.raises(DatasetError, match="line 4, column group"):
+        load_lab_reports([SAMPLES], metadata=meta)
+
+
+def test_missing_metadata_file_is_a_dataset_error(tmp_path):
+    with pytest.raises(DatasetError, match="nothere.csv: the file does not exist"):
+        load_lab_reports([SAMPLES], metadata=tmp_path / "nothere.csv")
+
+
+def test_score_names_may_use_capitals(tmp_path):
+    meta = metadata_file(tmp_path, "record_id,group,score_HAMD", "r001,PSSD,12")
+    table = records(load_lab_reports([SAMPLES], metadata=meta))
+    assert table.at["1/r001", "score_HAMD"] == 12
