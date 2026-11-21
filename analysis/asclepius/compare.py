@@ -29,7 +29,9 @@ PERMUTATIONS = 9999
 BOOTSTRAP = 2000
 CONFIDENCE = 0.95
 SEXES = tuple(sorted(dataset.SEXES))  # ordered, for seeding
+KIND = "group comparison"  # the findings table's `comparison` column; see asclepius.refrange
 COLUMNS = (
+    "comparison",
     "marker_id",
     "marker_name",
     "sex",
@@ -104,7 +106,7 @@ def _above(values: list[Value]) -> np.ndarray:
     low_open = np.zeros(len(values), dtype=bool)
     high_open = np.zeros(len(values), dtype=bool)
     for i, value in enumerate(values):
-        comparator, number = _parse(value)
+        comparator, number = parse_value(value)
         low[i], high[i] = number, number
         if comparator == "<":
             low[i], high_open[i] = -np.inf, True
@@ -114,7 +116,7 @@ def _above(values: list[Value]) -> np.ndarray:
     return (low[:, None] > high[None, :]) | touching
 
 
-def _parse(value: Value) -> tuple[str, float]:
+def parse_value(value: Value) -> tuple[str, float]:
     comparator, text = "", value
     if isinstance(value, str):
         text = value.strip()
@@ -180,6 +182,7 @@ def compare_groups(
         )
         rows.append(
             {
+                "comparison": KIND,
                 "marker_id": marker,
                 "marker_name": names[marker],
                 "sex": sex,

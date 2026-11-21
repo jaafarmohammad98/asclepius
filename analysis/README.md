@@ -1,7 +1,8 @@
 # analysis
 
 The analysis engine (milestone 3). So far it loads and checks data, writes synthetic datasets
-with a known answer for testing the statistics, and compares markers between two groups.
+with a known answer for testing the statistics, compares markers between two groups, and places
+values within their own report's reference range.
 
 ```sh
 cd analysis
@@ -104,6 +105,7 @@ row per marker and sex, largest effect first:
 
 | Column | Meaning |
 |---|---|
+| `comparison` | `group comparison` (the other kinds are below) |
 | `marker_id`, `marker_name`, `sex` | what was compared |
 | `group_a`, `group_b`, `n_a`, `n_b` | the two groups and how many reports each had for this marker (S3) |
 | `n_censored` | how many of those values were printed as a limit (`<x` or `>x`) |
@@ -122,3 +124,33 @@ Not done here yet: the group-size limit (S4) and the false discovery rate correc
 M3-06, so a row on its own is not a finding. On synthetic data with groups of 40 (12 women each),
 chance differences among the women often have a larger effect size than a planted 40% difference;
 with groups of 100 the planted marker comes first every time (30 of 30 seeds).
+
+## Position within the reference range
+
+Without controls, the only comparison is the range printed with each value (spec A1, A8).
+`asclepius.refrange.lab_range_findings(data)` does it for a `LabDataset` and
+`self_report_range_findings(data)` for the typed-in values of a `SelfReportDataset`. Each returns:
+
+- `patients`: one row per report and marker (self-reports: per author and test) with its `zone`,
+  `below`, `within` or `above` the range (ends included), and its `position`, 0 at the range's low
+  end and 1 at its high end (missing for a limit or a range with one end).
+- `rows`: findings-table rows, one per marker, sex and group, with the share of each group below,
+  within and above, each with a 95% Wilson interval (`share_below`, `below_low`, `below_high`, ...).
+  `n_a` counts the values placed; `n_unclear` the limits that could fall either side of a range
+  end (`<15` against 10 to 20). `median_position` and `age_a` (median age) are also given.
+- `skipped`: markers with values but no range, and how many values were left out.
+
+A range with one end (`<15` printed as the range) places values above it or within, never below.
+A lab value printed exactly at a range end may have been rounded, so there the report's own
+status (`Above range`, `Below range`) decides; two public sample values need this.
+
+Self-report rows are labelled `reference range, self-report`. A test name is matched lower-cased
+with spaces tidied; units may differ, since each value is placed in its own range. An author counts
+once per test, as `unclear` when their values fall in different zones. Groups are the authors'
+conditions. On the r/PSSD export (Nov 2026): 346 author-test pairs placed, 1,360 values skipped
+for having no range.
+
+`combine_findings(compare_groups(...), lab_range_findings(...).rows, ...)` stacks them into one
+findings table; the `comparison` column (`group comparison`, `reference range`,
+`reference range, self-report`) tells them apart, and columns one kind lacks are left empty. The
+count limits (S4, S11) and the labels (S5, S10) are not applied yet (M3-06).
