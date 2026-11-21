@@ -52,7 +52,8 @@ class LabDataset:
     file numbers its reports from r001. `fingerprint` is a SHA-256 over the input files' bytes
     (metadata file included), so a result can name the exact data it came from. `files` gives
     each input file's role (`lab reports`, `metadata`), name and SHA-256, in load order, for the
-    run record (`asclepius.record`).
+    run record (`asclepius.record`), which keeps only the role and hash, since a file name could
+    name a patient.
 
     `records` has one row per report: `record`, `file`, `record_id`, `sex`, `age_years`, and from
     the metadata file (`asclepius.metadata`) `group`, `tier`, `drug`, `months_since_stopping` and any
@@ -92,8 +93,9 @@ def load_lab_reports(
     hashes = []
     for number, path in enumerate(files, start=1):
         raw = path.read_bytes()
-        digest.update(hashlib.sha256(raw).digest())
-        hashes.append(FileHash("lab reports", path.name, hashlib.sha256(raw).hexdigest()))
+        file_hash = hashlib.sha256(raw)
+        digest.update(file_hash.digest())
+        hashes.append(FileHash("lab reports", path.name, file_hash.hexdigest()))
         frame = _read_file(path)
         frame.insert(0, "file", number)
         frame.insert(0, "record", str(number) + "/" + frame["record_id"])

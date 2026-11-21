@@ -69,6 +69,15 @@ def test_a_finding_is_strong_only_where_it_holds_in_tier_a(tmp_path):
     assert result.statement != NOTHING_RELIABLE
 
 
+def test_with_no_tier_a_records_every_finding_says_tier_a_is_too_small(tmp_path):
+    planted = [synthetic.PlantedDifference("androsterone", 0.5, group="PSSD")]
+    data = lab_dataset(tmp_path, planted=planted, tier_a_share=0, seed=1)
+    findings = run_analysis(data, *GROUPS).findings
+    assert set(findings["tier_a_result"]) == {"Tier A too small to test"}
+    assert (findings[["tier_a_n_a", "tier_a_n_b"]] == 0).all().all()
+    assert "strong" not in set(findings["label"])
+
+
 def test_a_finding_that_disappears_in_tier_a_is_not_strong():
     findings = pd.DataFrame({"p_value": [0.001], "effect_size": [0.6], "holds_in_tier_a": [False]})
     assert label_findings(findings, Settings())["label"].item() == "suggestive"

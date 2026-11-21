@@ -1,7 +1,8 @@
 """The run record: what a result was computed from, so it can be reproduced (spec S7).
 
-`run_record` names the dataset (its kind, fingerprint and every input file's SHA-256), the tool
-version, the groups compared, every setting and the date. `run_analysis` attaches it to its
+`run_record` names the dataset (its kind, fingerprint and every input file's role and SHA-256;
+not the file names, which could name a patient), the tool version and a hash of its code, the
+groups compared, every setting and the date. `run_analysis` attaches it to its
 result, and `export_run` writes it beside every exported file. `reproduce` runs a record again on
 the same files and refuses when a file or the tool version differs, so its output is identical,
 apart from the date.
@@ -12,14 +13,13 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Iterable
-from dataclasses import asdict
 from datetime import UTC, datetime
 from importlib.metadata import version
 from os import PathLike
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from asclepius.dataset import LabDataset, load_lab_reports
+from asclepius.dataset import FileHash, LabDataset, load_lab_reports
 from asclepius.ratios import STATUS
 from asclepius.selfreport import SelfReportDataset
 
@@ -35,7 +35,20 @@ class ReproductionError(ValueError):
 
 
 def tool_version() -> str:
+    """`asclepius` and its installed version, e.g. `asclepius 0.1.0`."""
     return f"{TOOL} {version(TOOL)}"
+
+
+def code_hash() -> str:
+    """SHA-256 over this package's source files, so code changed without a version bump shows."""
+    digest = hashlib.sha256()
+    for path in sorted(Path(__file__).parent.glob("*.py")):
+        digest.update(path.name.encode() + b"\0" + hashlib.sha256(path.read_bytes()).digest())
+    return digest.hexdigest()
+
+
+def _file_entry(file: FileHash) -> dict[str, str]:
+    return {"role": file.role, "sha256": file.sha256}
 
 
 def run_record(
@@ -45,12 +58,13 @@ def run_record(
     dataset: dict[str, object] = {
         "kind": data.kind,
         "fingerprint": data.fingerprint,
-        "files": [asdict(f) for f in data.files],
+        "files": [_file_entry(f) for f in data.files],
     }
     if isinstance(data, SelfReportDataset):
         dataset["loader"] = dict(data.settings)
     return {
         "tool": tool_version(),
+        "code_sha256": code_hash(),
         "date": datetime.now(UTC).isoformat(timespec="seconds"),
         "dataset": dataset,
         "groups": list(groups),
@@ -99,23 +113,26 @@ def reproduce(
             f"The record was made with {record['tool']}, and this is {tool_version()}; "
             "install that version to reproduce it."
         )
+    if record["code_sha256"] != code_hash():
+        raise ReproductionError(
+            f"The record was made with other {TOOL} code than this ({tool_version()}, code "
+            f"{record['code_sha256'][:12]}... in the record, {code_hash()[:12]}... here); "
+            "check out the code the record was made with to reproduce it."
+        )
     data = load_lab_reports(paths, metadata=metadata)
     expected = record["dataset"]["files"]
-    given = [asdict(f) for f in data.files]
-    for index in range(max(len(expected), len(given))):
+    for index in range(max(len(expected), len(data.files))):
         want = expected[index] if index < len(expected) else None
-        got = given[index] if index < len(given) else None
-        if want != got:
-            name = (want or got or {}).get("name")
+        given = data.files[index] if index < len(data.files) else None
+        if given is None:
             raise ReproductionError(
-                f"{name}: not the file the record was made from (file {index + 1}: expected "
-                f"{_describe(want)}, given {_describe(got)})."
+                f"The record has {len(expected)} files, and {len(data.files)} were given."
+            )
+        if want != _file_entry(given):
+            raise ReproductionError(
+                f"{given.name}: not the file the record was made from (file {index + 1}, "
+                f"{given.role}, SHA-256 {given.sha256[:12]}...; the record expects "
+                + (f"{want['role']} with SHA-256 {want['sha256'][:12]}...)." if want else "no file here).")
             )
     group_a, group_b = record["groups"]
     return run_analysis(data, group_a, group_b, Settings(**record["settings"]))
-
-
-def _describe(file: dict | None) -> str:
-    if file is None:
-        return "no file"
-    return f"{file['role']} {file['name']} with SHA-256 {file['sha256'][:12]}..."

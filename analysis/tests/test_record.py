@@ -32,9 +32,11 @@ def sha256(path):
 def test_the_run_record_names_files_tool_settings_and_date(written):
     record = run(written).record
     assert record["dataset"]["files"] == [
-        {"role": "lab reports", "name": "reports.csv", "sha256": sha256(written.reports)},
-        {"role": "metadata", "name": "metadata.csv", "sha256": sha256(written.metadata)},
+        {"role": "lab reports", "sha256": sha256(written.reports)},
+        {"role": "metadata", "sha256": sha256(written.metadata)},
     ]
+    assert "reports.csv" not in json.dumps(record)  # a file name could name a patient
+    assert len(record["code_sha256"]) == 64
     assert record["dataset"]["kind"] == "lab-report"
     assert len(record["dataset"]["fingerprint"]) == 64
     assert record["tool"] == f"asclepius {version('asclepius')}"
@@ -59,6 +61,18 @@ def test_reproducing_with_changed_data_is_refused(written):
     record = run(written).record
     written.metadata.write_text(written.metadata.read_text().replace(",A\n", ",B\n", 1))
     with pytest.raises(ReproductionError, match="metadata.csv"):
+        reproduce(record, [written.reports], metadata=written.metadata)
+
+
+def test_reproducing_with_a_missing_file_is_refused(written):
+    record = run(written).record
+    with pytest.raises(ReproductionError, match="has 2 files, and 1 were given"):
+        reproduce(record, [written.reports])
+
+
+def test_reproducing_with_other_code_is_refused(written):
+    record = {**run(written).record, "code_sha256": "0" * 64}
+    with pytest.raises(ReproductionError, match="other asclepius code"):
         reproduce(record, [written.reports], metadata=written.metadata)
 
 

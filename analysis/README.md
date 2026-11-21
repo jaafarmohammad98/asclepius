@@ -266,8 +266,9 @@ in 10 has a suggestive finding.
 | Key | Value |
 |---|---|
 | `tool` | `asclepius` and its version |
+| `code_sha256` | a hash of the package's source files, since code can change without a version bump |
 | `date` | when the run was made (UTC) |
-| `dataset` | `kind`, `fingerprint`, and `files`: each input file's `role` (`lab reports`, `metadata`; for self-reports the table name), `name` and `sha256`; self-reports add the `loader` switch |
+| `dataset` | `kind`, `fingerprint`, and `files`: each input file's `role` (`lab reports`, `metadata`; for self-reports the table name) and `sha256`, in load order; not its name, which could name a patient. Self-reports add the `loader` switch |
 | `groups` | the two groups compared |
 | `settings` | `Settings.record()` |
 | `status` | `provisional, needs expert review` |
@@ -276,7 +277,7 @@ in 10 has a suggestive finding.
 `run_record.json` into an empty folder; the written record adds `outputs`, the SHA-256 of each CSV,
 so every file can be matched to its record. `reproduce(record, paths, metadata=...)` runs a record
 again: it refuses (`ReproductionError`, naming the file) when an input file is missing, extra or
-changed, or when the tool version differs, and otherwise gives identical findings and
+changed, or when the tool version or code differs, and otherwise gives identical findings and
 byte-identical CSV exports; only the date changes.
 
 `label_findings(table, settings, self_report=False)` does the correction and labelling for any

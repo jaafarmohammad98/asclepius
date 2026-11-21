@@ -27,6 +27,7 @@ from asclepius.selfreport import LABEL as SELF_REPORT_LABEL
 STRONG, SUGGESTIVE, NOISE = "strong", "suggestive", "noise-level"
 NOTHING_RELIABLE = "nothing reliable yet"
 PROVISIONAL = STATUS  # "provisional, needs expert review", until M3-11
+TIER_A_NAME = "A"  # metadata.TIERS[0]: confirmed by a clinician
 TIER_A = "holds_in_tier_a"  # set by the Tier A re-run; missing means not shown to hold
 HOLDS, DOES_NOT_HOLD, TOO_SMALL = "holds", "does not hold", "Tier A too small to test"
 KEY = ["comparison", "marker_id", "sex"]  # one findings row
@@ -155,13 +156,13 @@ def tier_a_rerun(
     than `min_group_size` Tier A values, the comparison is refused as in the full run (spec S4):
     only the sizes are shown.
     """
-    records = data.records[data.records["tier"] == "A"]
+    records = data.records[data.records["tier"] == TIER_A_NAME]
     tier_a = replace(
         data, records=records, markers=data.markers[data.markers["record"].isin(records["record"])]
     )
-    try:
+    if (records["group"] == group_a).any() and (records["group"] == group_b).any():
         rerun, _ = _tests(tier_a, group_a, group_b, settings)
-    except ValueError:  # a group has no Tier A report: nothing to compare
+    else:  # a group has no Tier A report: nothing to compare
         rerun = pd.DataFrame(columns=[*KEY, *TIER_A_COLUMNS.values()])
     rerun = rerun[[*KEY, *TIER_A_COLUMNS.values()]].rename(columns={v: k for k, v in TIER_A_COLUMNS.items()})
     out = findings.merge(rerun, on=KEY, how="left", validate="one_to_one")
