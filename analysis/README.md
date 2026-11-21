@@ -2,7 +2,7 @@
 
 The analysis engine (milestone 3). So far it loads and checks data, writes synthetic datasets
 with a known answer for testing the statistics, compares markers between two groups, and places
-values within their own report's reference range.
+values within their own report's reference range, and compares enzyme-activity ratios.
 
 ```sh
 cd analysis
@@ -157,8 +157,41 @@ conditions. On the r/PSSD export (Nov 2026): 346 author-test pairs placed, 1,360
 for having no range.
 
 `combine_findings(compare_groups(...), lab_range_findings(...).rows, ...)` stacks them into one
-findings table; the `comparison` column (`group comparison`, `reference range`,
+findings table; the `comparison` column (`group comparison`, `enzyme-activity ratio`, `reference range`,
 `reference range, self-report`) tells them apart, and columns one kind lacks are left empty. The
 count limits (S4, S11) and the labels (S5, S10, including "self-report, no controls") are not
 applied yet (M3-06), so most self-report rows, with fewer than 5 authors, must not be shown as they
 are.
+
+## Enzyme-activity ratios
+
+The leading hypothesis is about enzyme activity, which shows up as a ratio between metabolites
+(spec A2). `asclepius.ratios.RATIOS` holds the list as data; the table below is generated from it
+(`uv run python -m asclepius.ratios`), and a test checks that it matches.
+
+Ratio list: provisional, needs expert review.
+
+| Ratio | Numerator | Denominator | Proxy for |
+|---|---|---|---|
+| Androsterone / etiocholanolone | `androsterone` | `etiocholanolone` | 5-alpha vs 5-beta reductase (androgens) |
+| 5a-androstanediol / 5b-androstanediol | `5a_androstanediol` | `5b_androstanediol` | 5-alpha vs 5-beta reductase (androgens) |
+| a-THF / b-THF | `a_tetrahydrocortisol_a_thf` | `b_tetrahydrocortisol_b_thf` | 5-alpha vs 5-beta reductase (cortisol) |
+| a-pregnanediol / b-pregnanediol | `a_pregnanediol` | `b_pregnanediol` | 5-alpha vs 5-beta reductase (progesterone) |
+| Free cortisol / free cortisone | `24hr_free_cortisol` | `24hr_free_cortisone` | 11-beta-HSD balance |
+| 2-methoxy-E1 / 2-OH-E1 | `2_methoxy_e1` | `2_oh_e1` | Methylation (COMT) activity |
+| 2-OH-E1 / 16-OH-E1 | `2_oh_e1` | `16_oh_e1` | Estrogen metabolism pathway preference |
+| 2-OH-E1 / 4-OH-E1 | `2_oh_e1` | `4_oh_e1` | Estrogen metabolism pathway preference |
+
+`compute_ratios(data)` gives `data`, a `LabDataset` whose markers are the ratios (`marker_id` like
+`androsterone/etiocholanolone`, unit `ratio`, no reference range), and `skipped`: per ratio and
+reason, how many reports had none. A ratio is skipped for a report when a component is missing or
+blank (`component missing`), when either is zero (`component zero`), or when both are limits the
+same way, as `<10` over `<2` could be anything (`both components limits`). One limit gives a limit
+on the ratio: `<10` over 2 is `<5`, 10 over `<2` is `>5`.
+
+`compare_ratios(data, "PSSD", "healthy control")` runs them through `compare_groups`, so the rows
+have its columns and rules (within sex, Cliff's delta, permutation p-value), with `comparison` set
+to `enzyme-activity ratio` and a `status` column, `provisional, needs expert review` until the
+clinician review (M3-11). All eight ratios are computed for the three public sample reports. With
+100 per group and androsterone halved in PSSD, androsterone / etiocholanolone is the top row in both
+sexes in 19 of 20 seeds.
