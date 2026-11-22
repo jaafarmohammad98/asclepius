@@ -35,12 +35,19 @@ PMC's full-text download failed with HTTP 500 for most open-access copies on 202
 
 It ends with a line like `full text for 732 of 3784 papers (19%); 733 have an open-access
 copy, 1 of them without readable text` (the real numbers on 2026-11-22). A copy is "without
-readable text" when PMC sends no body for it: some publishers do not allow the XML.
+readable text" when PMC sends it without a body: some publishers do not allow the XML.
+
+Formulas keep their MathML symbols in the text (not their TeX copies), so a sentence reads as
+in the paper; a list or figure inside a paragraph splits it where it stands. Only the text is
+stored, not the XML: changing how text is extracted means downloading again.
 
 Every lookup and every batch of downloads is stored as it arrives, so an interrupted run
 (Ctrl-C, a crash, lost network) loses nothing: `asclepius-library fulltext` continues with
-what is left. A request that fails for a moment is retried three times; a batch that still
-fails is left for the next run, and three failing in a row stop the run. Europe PMC gets at
+what is left. A request that fails for a moment is retried three times. A download batch
+that still fails, or a copy missing from PMC's answer, is left for the next run, and three
+batches failing in a row stop the run; a lookup that still fails stops it at once. Each paper
+is looked up once: a paper that becomes open access later is not found yet (M4-02's monthly
+refresh is where lookups will be redone). Europe PMC gets at
 most 3 requests a second (it publishes no limit). No request carries any detail about the
 researcher. The full-text step takes about 10 minutes for the shipped topics, most of it
 the Europe PMC lookups.

@@ -8,8 +8,11 @@ Two steps, each stored as it goes so an interrupted run resumes where it stopped
    time, at NCBI's rate limit) and store their readable text.
 
 A paper is looked up once and a copy downloaded once; a rerun only does what is left. A
-batch that fails for a moment (after the usual retries) is left for the next run. Several
-failing in a row mean the source is unreachable, so the run stops rather than wait on each.
+download batch that fails for a moment (after the usual retries), and any copy missing from
+an answer, is left for the next run; several batches failing in a row mean PMC is
+unreachable, so the run stops rather than wait on each. A lookup that still fails stops the
+run at once (the lookups before it are kept). A copy PMC sends without body text (some
+publishers do not allow the XML) counts as downloaded, without readable text.
 """
 
 from __future__ import annotations
@@ -31,7 +34,7 @@ FAILURES_IN_A_ROW = 3
 @dataclass(frozen=True)
 class FullTextReport:
     coverage: Coverage
-    failed: int  # downloads that failed this run; the next run tries them again
+    failed: int  # copies not downloaded this run because of a failure; the next run tries them again
 
 
 def batches[T](items: Sequence[T], size: int) -> Iterator[Sequence[T]]:
@@ -78,9 +81,11 @@ def fetch_full_texts(
             raise PubMedError(f"efetch: unreadable PMC XML for {group[0][1]}..{group[-1][1]}") from error
         texts = []
         for pmid, pmcid, licence in group:
-            article = found.get(pmcid)  # missing: PMC sent nothing for it, so there is no text
-            text = jats_text(article) if article is not None else None
-            texts.append((pmid, text, licence or (licence_in(article) if article is not None else None)))
+            article = found.get(pmcid)
+            if article is None:  # an answer cut short: try again next run
+                failed += 1
+                continue
+            texts.append((pmid, jats_text(article), licence or licence_in(article)))
         record_texts(path, texts, stamp())
         done += len(group)
         if done % 100 < download_batch:
@@ -97,6 +102,8 @@ def describe(report: FullTextReport) -> str:
     line = f"full text for {c.with_text} of {c.papers} papers ({share}); {c.open_access} have an open-access copy"
     if c.unreadable:
         line += f", {c.unreadable} of them without readable text"
+    if report.failed:
+        line += f"; {report.failed} could not be downloaded this time"
     left = c.to_download + (c.papers - c.checked)
     if left:
         line += f"; {left} still to fetch, run `asclepius-library fulltext` to continue"

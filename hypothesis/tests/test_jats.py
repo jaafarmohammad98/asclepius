@@ -30,6 +30,9 @@ def _paragraphs() -> list[str]:
 def test_every_article_in_an_answer_is_found_by_its_pmcid():
     assert sorted(articles(ANSWER)) == ["PMC11450419", "PMC7253896"]
     assert articles(b"<pmc-articleset/>") == {}
+    versioned = b"""<pmc-articleset><article><front><article-meta>
+        <article-id pub-id-type="pmcid-ver">PMC1599727.1</article-id></article-meta></front></article></pmc-articleset>"""
+    assert list(articles(versioned)) == ["PMC1599727"]
 
 
 def test_the_text_starts_with_the_title_then_the_abstract():
@@ -76,19 +79,28 @@ def test_reference_and_footnote_sections_inside_the_body_are_left_out():
     assert _text(xml) == "Methods\n\nWe asked."
 
 
-def test_a_list_inside_a_paragraph_follows_it_once():
+def test_a_list_inside_a_paragraph_splits_it_where_it_stands():
     xml = b"""<article><body><sec><title>Results</title>
-        <p>Three groups were seen:<list><list-item><p>first</p></list-item><list-item><p>second</p></list-item></list></p>
-        </sec></body></article>"""
-    assert _text(xml) == "Results\n\nThree groups were seen:\n\nfirst\n\nsecond"
+        <p>Three groups were seen:<list><list-item><p>first</p></list-item><list-item><p>second</p></list-item></list>
+        and none overlapped.</p></sec></body></article>"""
+    assert _text(xml) == "Results\n\nThree groups were seen:\n\nfirst\n\nsecond\n\nand none overlapped."
 
 
-def test_tables_and_formulas_are_left_out_but_captions_kept():
+def test_a_definition_list_keeps_its_terms():
+    xml = b"""<article><body><p>Terms:</p><def-list><def-item><term>DHT</term>
+        <def><p>dihydrotestosterone</p></def></def-item></def-list></body></article>"""
+    assert _text(xml) == "Terms:\n\nDHT\n\ndihydrotestosterone"
+
+
+def test_tables_are_left_out_but_captions_and_formula_symbols_kept():
+    # the sentence must stay one a quote can match: "The ratio x rose.", not "The ratio rose."
     xml = b"""<article xmlns:mml="http://www.w3.org/1998/Math/MathML"><body>
-        <p>The ratio <mml:math><mml:mi>x</mml:mi></mml:math> rose.</p>
+        <p>The ratio <inline-formula><alternatives><tex-math>x</tex-math><mml:math><mml:semantics>
+        <mml:mi>x</mml:mi><mml:annotation encoding="TeX">x</mml:annotation></mml:semantics></mml:math>
+        </alternatives></inline-formula> rose.</p>
         <table-wrap><label>Table 1</label><caption><title>Hormone levels</title></caption>
         <table><tr><td>12.5</td></tr></table></table-wrap></body></article>"""
-    assert _text(xml) == "The ratio rose.\n\nHormone levels"
+    assert _text(xml) == "The ratio x rose.\n\nHormone levels"
 
 
 def test_a_copy_without_body_text_has_no_text():

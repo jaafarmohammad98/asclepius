@@ -95,6 +95,10 @@ class Coverage:
     to_download: int  # copies not downloaded yet
 
 
+def _no_library(path: Path) -> LibraryError:
+    return LibraryError(f"no paper library at {path}; run `asclepius-library build` first")
+
+
 def _check_schema(db: sqlite3.Connection, path: Path, *, allow_new: bool) -> bool:
     """Raise unless `path` holds a paper library; True when it is an empty file to create one in.
 
@@ -125,7 +129,7 @@ class Library:
     @classmethod
     def open(cls, path: Path) -> Library:
         if not path.is_file():
-            raise LibraryError(f"no paper library at {path}; run `asclepius-library build` first")
+            raise _no_library(path)
         connection = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
         try:
             _check_schema(connection, path, allow_new=False)
@@ -237,7 +241,7 @@ def _transaction[T](path: Path, work: Callable[[sqlite3.Connection], T], create:
     Without `create`, a missing file is an error rather than a new, empty library.
     """
     if not create and not path.is_file():
-        raise LibraryError(f"no paper library at {path}; run `asclepius-library build` first")
+        raise _no_library(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     # isolation_level=None: this code issues BEGIN and COMMIT itself, so nothing commits early
     connection = sqlite3.connect(path, isolation_level=None)
@@ -260,7 +264,7 @@ def _transaction[T](path: Path, work: Callable[[sqlite3.Connection], T], create:
 def _existing(db: sqlite3.Connection, path: Path) -> int:
     """The library's current version; raises if `path` holds no built library."""
     if _check_schema(db, path, allow_new=True):
-        raise LibraryError(f"no paper library at {path}; run `asclepius-library build` first")
+        raise _no_library(path)
     (version,) = db.execute("SELECT max(version) FROM builds").fetchone()
     if version is None:
         raise LibraryError(f"{path} is not a paper library (no finished build)")

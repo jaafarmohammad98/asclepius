@@ -14,7 +14,7 @@ from hypothesis_engine.pubmed import Transport
 
 def request_key(endpoint: str, params: dict[str, str]) -> str:
     digest = hashlib.sha256(json.dumps(params, sort_keys=True).encode()).hexdigest()[:16]
-    return f"{endpoint.replace('/', '-')}-{digest}"
+    return f"{endpoint}-{digest}"
 
 
 def response_path(folder: Path, endpoint: str, params: dict[str, str]) -> Path:

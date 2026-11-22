@@ -5,29 +5,38 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from collections.abc import Iterator
 
-# kept out of the text: table cells, formulas' markup, pictures, labels like "Figure 1", and
-# the reference list and footnotes (Europe PMC puts them in <body> as sections of their own)
-_SKIP = {"table", "tex-math", "graphic", "inline-graphic", "media", "label", "alt-text", "object-id"}
-_SKIP |= {"ref-list", "fn-group"}
+# kept out of the text: table cells, TeX copies of formulas, pictures, labels like "Figure 1",
+# and the reference list and footnotes (Europe PMC puts them in <body> as sections of their own).
+# A formula's MathML is kept: its symbols are part of the sentence a quote may come from.
 _SKIP_SECTIONS = {"ref-list", "fn-group"}
+_SKIP = {"table", "tex-math", "graphic", "inline-graphic", "media", "label", "alt-text", "object-id"}
+_SKIP |= _SKIP_SECTIONS
+_SKIP_MATHML = ("}annotation", "}annotation-xml")  # TeX or other copies inside MathML
 _SKIP_MARKERS = {"fn", "aff", "author-notes", "table-fn"}  # footnote and affiliation symbols
-# blocks that can sit inside a paragraph; they become paragraphs of their own
+# elements whose text is a paragraph of its own
+_TEXT = {"p", "title", "term"}
+# blocks that can sit inside a paragraph; they split it, in reading order
 _BLOCKS = {"p", "list", "fig", "table-wrap", "disp-quote", "boxed-text", "def-list", "statement"}
 _UNWANTED_ABSTRACTS = {"graphical", "toc", "teaser"}
 
 
 def _skipped(element: ET.Element) -> bool:
-    # namespaced elements are MathML and the like
     return (
         element.tag in _SKIP
-        or element.tag.startswith("{")
+        or element.tag.endswith(_SKIP_MATHML)
         or (element.tag == "sec" and element.get("sec-type") in _SKIP_SECTIONS)
         or (element.tag == "xref" and element.get("ref-type") in _SKIP_MARKERS)
     )
 
 
+def _tidy(pieces: list[str]) -> Iterator[str]:
+    text = " ".join("".join(pieces).split())
+    if text:
+        yield text
+
+
 def _inline_text(element: ET.Element) -> str:
-    """The element's own text, without the blocks nested in it."""
+    """The element's text with its inline markup flattened, leaving out any blocks inside it."""
     pieces = [element.text or ""]
     for child in element:
         if not (_skipped(child) or child.tag in _BLOCKS):
@@ -36,19 +45,29 @@ def _inline_text(element: ET.Element) -> str:
     return " ".join("".join(pieces).split())
 
 
+def _flow(element: ET.Element) -> Iterator[str]:
+    """A paragraph's text; a list or figure inside it splits it where it stands."""
+    pieces = [element.text or ""]
+    for child in element:
+        if child.tag in _BLOCKS and not _skipped(child):
+            yield from _tidy(pieces)
+            pieces = []
+            yield from _block(child)
+        elif not _skipped(child):
+            pieces.append(_inline_text(child))
+        pieces.append(child.tail or "")
+    yield from _tidy(pieces)
+
+
+def _block(element: ET.Element) -> Iterator[str]:
+    yield from _flow(element) if element.tag in _TEXT else _paragraphs(element)
+
+
 def _paragraphs(element: ET.Element) -> Iterator[str]:
     """Section titles and paragraphs under `element`, in reading order."""
     for child in element:
-        if _skipped(child):
-            continue
-        if child.tag in ("p", "title"):
-            text = _inline_text(child)
-            if text:
-                yield text
-            if child.tag == "p":  # a list or figure inside the paragraph comes after it
-                yield from _paragraphs(child)
-        else:
-            yield from _paragraphs(child)
+        if not _skipped(child):
+            yield from _block(child)
 
 
 def jats_text(article: ET.Element) -> str | None:
@@ -99,8 +118,8 @@ def pmcid_of(article: ET.Element) -> str | None:
     """The article's PMCID ("PMC1234567"), as `<article-id pub-id-type="pmcid">` gives it."""
     for element in article.findall("front/article-meta/article-id"):
         kind, value = element.get("pub-id-type"), (element.text or "").strip()
-        if kind == "pmcid" and value:
-            return value
+        if kind in ("pmcid", "pmcid-ver") and value.startswith("PMC"):
+            return value.split(".")[0]  # "PMC1599727.1" is version 1 of PMC1599727
         if kind in ("pmc", "pmcaid") and value.isdigit():
             return f"PMC{value}"
     return None

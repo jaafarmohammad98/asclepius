@@ -111,9 +111,13 @@ def test_coverage_counts_papers_with_full_text(tmp_path):
     assert describe(report) == "full text for 3 of 5 papers (60%); 3 have an open-access copy"
 
 
-def test_a_copy_pmc_sends_no_text_for_is_counted_and_not_asked_for_again(tmp_path):
+def test_a_copy_pmc_sends_without_body_text_is_counted_and_not_asked_for_again(tmp_path):
+    # what PMC sends when the publisher does not allow the XML: the front matter only
+    blocked = b"""<pmc-articleset><article><!--The publisher of this article does not allow
+        downloading of the full text in XML form.--><front><article-meta>
+        <article-id pub-id-type="pmcid">PMC12864535</article-id></article-meta></front></article></pmc-articleset>"""
     path = _library(tmp_path)
-    report = _fetch(path, Recorded(answer={LAST_BATCH: b"<pmc-articleset/>"}))
+    report = _fetch(path, Recorded(answer={LAST_BATCH: blocked}))
     assert report.coverage.with_text == 2
     assert report.coverage.unreadable == 1
     assert describe(report).endswith("3 have an open-access copy, 1 of them without readable text")
@@ -121,6 +125,17 @@ def test_a_copy_pmc_sends_no_text_for_is_counted_and_not_asked_for_again(tmp_pat
     again = Recorded()
     _fetch(path, again)
     assert again.downloads == []
+
+
+def test_a_copy_missing_from_an_answer_is_asked_for_again_next_run(tmp_path):
+    path = _library(tmp_path)
+    report = _fetch(path, Recorded(answer={LAST_BATCH: b"<pmc-articleset/>"}))
+    assert (report.failed, report.coverage.unreadable, report.coverage.to_download) == (1, 0, 1)
+    assert "1 could not be downloaded this time" in describe(report)
+
+    again = Recorded()
+    assert _fetch(path, again).coverage.with_text == 3
+    assert again.downloads == [LAST_BATCH]
 
 
 def test_a_finished_run_sends_nothing_when_run_again(tmp_path):
@@ -168,7 +183,9 @@ def test_a_download_that_keeps_failing_is_left_for_the_next_run(tmp_path):
     report = _fetch(path, Recorded(fail={LAST_BATCH: TransientError("HTTP 503")}))
     assert report.failed == 1
     assert report.coverage.to_download == 1
-    assert describe(report).endswith("; 1 still to fetch, run `asclepius-library fulltext` to continue")
+    assert describe(report).endswith(
+        "; 1 could not be downloaded this time; 1 still to fetch, run `asclepius-library fulltext` to continue"
+    )
 
     again = Recorded()
     assert _fetch(path, again).coverage.with_text == 3

@@ -124,6 +124,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 130
     except (TopicsError, LibraryError, PubMedError, TransientError, europepmc.EuropePMCError) as error:
         say(f"asclepius-library: {error}")
+        if downloading and not isinstance(error, LibraryError):
+            say("what was downloaded is kept; `asclepius-library fulltext` continues")
         return 1
     return 0
 
