@@ -5,6 +5,8 @@
 Then update the literal counts in `test_build.py` if PubMed's answers changed.
 """
 
+from __future__ import annotations
+
 import shutil
 import sys
 from pathlib import Path

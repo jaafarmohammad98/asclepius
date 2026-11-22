@@ -17,8 +17,9 @@ def request_key(endpoint: str, params: dict[str, str]) -> str:
     return f"{endpoint}-{digest}"
 
 
-def suffix(endpoint: str) -> str:
-    return ".json" if endpoint == "esearch" else ".xml"
+def response_path(folder: Path, endpoint: str, params: dict[str, str]) -> Path:
+    suffix = ".json" if endpoint == "esearch" else ".xml"
+    return folder / f"{request_key(endpoint, params)}{suffix}"
 
 
 class ReplayTransport:
@@ -30,7 +31,7 @@ class ReplayTransport:
 
     def __call__(self, endpoint: str, params: dict[str, str]) -> bytes:
         self.calls.append((endpoint, params))
-        path = self.folder / f"{request_key(endpoint, params)}{suffix(endpoint)}"
+        path = response_path(self.folder, endpoint, params)
         if not path.exists():
             raise AssertionError(f"no recorded response for {endpoint} {params}")
         return path.read_bytes()
@@ -41,7 +42,7 @@ def recording(transport: Transport, folder: Path) -> Transport:
 
     def send(endpoint: str, params: dict[str, str]) -> bytes:
         body = transport(endpoint, params)
-        (folder / f"{request_key(endpoint, params)}{suffix(endpoint)}").write_bytes(body)
+        response_path(folder, endpoint, params).write_bytes(body)
         return body
 
     return send

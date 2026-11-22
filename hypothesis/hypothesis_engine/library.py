@@ -1,9 +1,11 @@
 """The paper library: one SQLite file on the researcher's machine.
 
-Each build replaces the whole set of papers in one transaction and gets the next version
-number (1, 2, 3...). Outputs record that number (spec H6), so a hypothesis can be traced to
-the papers it was allowed to cite. A paper's `abstract` is NULL when PubMed has none, and
-`has_abstract` says so in a column of its own.
+Each build is written in one transaction and gets the next version number (1, 2, 3...).
+Outputs record that number (spec H6). Papers are never deleted: `paper_topics` lists, per
+version, the papers that build held and the topics that found them, so the papers an old
+output was allowed to cite can still be read and checked. A paper's record is the latest one
+fetched. Its `abstract` is NULL when PubMed has none, and `has_abstract` says so in a column
+of its own.
 """
 
 from __future__ import annotations
@@ -36,22 +38,30 @@ CREATE TABLE papers (
     first_version INTEGER NOT NULL REFERENCES builds (version)
 );
 CREATE TABLE paper_topics (
-    pmid TEXT NOT NULL REFERENCES papers (pmid) ON DELETE CASCADE,
+    version INTEGER NOT NULL REFERENCES builds (version),
+    pmid TEXT NOT NULL REFERENCES papers (pmid),
     topic TEXT NOT NULL,
     rank INTEGER NOT NULL CHECK (rank >= 1),  -- 1 = the search's most relevant result
-    PRIMARY KEY (pmid, topic)
+    PRIMARY KEY (version, pmid, topic)
 );
 """
 
 _COLUMNS = "pmid, title, abstract, doi, pmcid, journal, year"
+_IN_VERSION = "pmid IN (SELECT pmid FROM paper_topics WHERE version = ?)"
 
 
 class LibraryError(Exception):
     """No library at that path, or the file is not one."""
 
 
-def _paper(row: sqlite3.Row) -> Paper:
-    return Paper(*row)
+def _check_schema(db: sqlite3.Connection, path: Path, *, allow_new: bool) -> bool:
+    """Raise unless `path` holds a paper library; True when it is an empty file to create one in."""
+    (schema,) = db.execute("PRAGMA user_version").fetchone()
+    if schema == SCHEMA_VERSION:
+        return False
+    if schema == 0 and allow_new and not db.execute("SELECT 1 FROM sqlite_master LIMIT 1").fetchone():
+        return True
+    raise LibraryError(f"{path} is not a paper library (schema {schema}, expected {SCHEMA_VERSION})")
 
 
 class Library:
@@ -66,11 +76,7 @@ class Library:
             raise LibraryError(f"no paper library at {path}; run `asclepius-library build` first")
         connection = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
         try:
-            (schema,) = connection.execute("PRAGMA user_version").fetchone()
-            if schema != SCHEMA_VERSION:
-                raise LibraryError(
-                    f"{path} is not a paper library (schema {schema}, expected {SCHEMA_VERSION})"
-                )
+            _check_schema(connection, path, allow_new=False)
             if connection.execute("SELECT 1 FROM builds LIMIT 1").fetchone() is None:
                 raise LibraryError(f"{path} is not a paper library (no finished build)")
         except sqlite3.DatabaseError as error:
@@ -108,25 +114,36 @@ class Library:
         """When that build finished, ISO 8601 with time zone."""
         return self._latest()[1]
 
+    def _version(self, version: int | None) -> int:
+        return self.version if version is None else version
+
     def count(self) -> int:
-        return int(self._db.execute("SELECT count(*) FROM papers").fetchone()[0])
+        """Papers in the current version."""
+        sql = f"SELECT count(*) FROM papers WHERE {_IN_VERSION}"
+        return int(self._db.execute(sql, (self.version,)).fetchone()[0])
 
     def lacking_abstract(self) -> int:
-        return int(self._db.execute("SELECT count(*) FROM papers WHERE NOT has_abstract").fetchone()[0])
+        """Papers in the current version that PubMed has no abstract for."""
+        sql = f"SELECT count(*) FROM papers WHERE NOT has_abstract AND {_IN_VERSION}"
+        return int(self._db.execute(sql, (self.version,)).fetchone()[0])
 
-    def paper(self, pmid: str) -> Paper | None:
-        row = self._db.execute(f"SELECT {_COLUMNS} FROM papers WHERE pmid = ?", (pmid,)).fetchone()
-        return _paper(row) if row else None
+    def paper(self, pmid: str, version: int | None = None) -> Paper | None:
+        """The paper, if that version (the current one by default) holds it."""
+        sql = f"SELECT {_COLUMNS} FROM papers WHERE pmid = ? AND {_IN_VERSION}"
+        row = self._db.execute(sql, (pmid, self._version(version))).fetchone()
+        return Paper(*row) if row else None
 
     def papers(self) -> Iterator[Paper]:
-        for row in self._db.execute(f"SELECT {_COLUMNS} FROM papers ORDER BY CAST(pmid AS INTEGER)"):
-            yield _paper(row)
+        """Every paper in the current version, by PMID."""
+        sql = f"SELECT {_COLUMNS} FROM papers WHERE {_IN_VERSION} ORDER BY CAST(pmid AS INTEGER)"
+        for row in self._db.execute(sql, (self.version,)):
+            yield Paper(*row)
 
-    def topics(self, pmid: str) -> list[str]:
-        """The topics whose search found this paper, in topic-file order."""
+    def topics(self, pmid: str, version: int | None = None) -> list[str]:
+        """The topics whose search found this paper in that version, in topic-file order."""
         # rows go in per paper in topic-file order, so insertion order is that order
-        rows = self._db.execute("SELECT topic FROM paper_topics WHERE pmid = ? ORDER BY rowid", (pmid,))
-        return [topic for (topic,) in rows]
+        sql = "SELECT topic FROM paper_topics WHERE pmid = ? AND version = ? ORDER BY rowid"
+        return [topic for (topic,) in self._db.execute(sql, (pmid, self._version(version)))]
 
 
 def write_build(
@@ -136,7 +153,7 @@ def write_build(
     topics_sha256: str,
     built_at: str,
 ) -> int:
-    """Replace the library at `path` with `papers` (creating it if needed); return the new version.
+    """Store `papers` as the next version of the library at `path` (created if needed); return it.
 
     `found_by` maps each PMID to the (topic, rank) pairs of the searches that found it, in
     topic-file order. All or nothing: if anything fails, the file keeps its previous build.
@@ -168,30 +185,25 @@ def _write(
     topics_sha256: str,
     built_at: str,
 ) -> int:
-    (schema,) = db.execute("PRAGMA user_version").fetchone()
-    if schema == 0:
-        if db.execute("SELECT 1 FROM sqlite_master LIMIT 1").fetchone():
-            raise LibraryError(f"{path} is not a paper library; choose another file")
+    unfound = [p.pmid for p in papers if not found_by.get(p.pmid)]
+    if unfound:  # a paper no topic found would belong to no version
+        raise ValueError(f"papers {unfound[:5]} have no topic")
+    if _check_schema(db, path, allow_new=True):
         for statement in _SCHEMA.split(";"):
             if statement.strip():
                 db.execute(statement)
         db.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
-    elif schema != SCHEMA_VERSION:
-        raise LibraryError(f"{path} is not a paper library (schema {schema}, expected {SCHEMA_VERSION})")
     (last,) = db.execute("SELECT coalesce(max(version), 0) FROM builds").fetchone()
     version = int(last) + 1
     db.execute("INSERT INTO builds VALUES (?, ?, ?, ?)", (version, built_at, topics_sha256, len(papers)))
-    first_seen = dict(db.execute("SELECT pmid, first_version FROM papers").fetchall())
-    db.execute("DELETE FROM papers")
     db.executemany(
-        f"INSERT INTO papers ({_COLUMNS}, first_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        [
-            (p.pmid, p.title, p.abstract, p.doi, p.pmcid, p.journal, p.year, first_seen.get(p.pmid, version))
-            for p in papers
-        ],
+        f"""INSERT INTO papers ({_COLUMNS}, first_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (pmid) DO UPDATE SET title = excluded.title, abstract = excluded.abstract,
+            doi = excluded.doi, pmcid = excluded.pmcid, journal = excluded.journal, year = excluded.year""",
+        [(p.pmid, p.title, p.abstract, p.doi, p.pmcid, p.journal, p.year, version) for p in papers],
     )
     db.executemany(
-        "INSERT INTO paper_topics VALUES (?, ?, ?)",
-        [(p.pmid, topic, rank) for p in papers for topic, rank in found_by.get(p.pmid, ())],
+        "INSERT INTO paper_topics VALUES (?, ?, ?, ?)",
+        [(version, p.pmid, topic, rank) for p in papers for topic, rank in found_by.get(p.pmid, ())],
     )
     return version

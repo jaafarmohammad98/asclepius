@@ -158,6 +158,7 @@ BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
 TOOL = "asclepius"
 FETCH_BATCH = 200  # NCBI's suggested ids per efetch request
 RETRIES = 3
+TIMEOUT = 120.0  # seconds; a 200-record efetch answer can be several megabytes
 
 Transport = Callable[[str, dict[str, str]], bytes]
 """Sends one E-utilities request (`esearch`, `efetch`) with these parameters; returns the body."""
@@ -171,7 +172,7 @@ class PubMedError(Exception):
     """PubMed answered, but not with something usable."""
 
 
-def http_transport(api_key: str | None = None, timeout: float = 120.0) -> Transport:
+def http_transport(api_key: str | None = None) -> Transport:
     """The real network. Parameters go in a POST body, so long id lists fit (NCBI's advice)."""
 
     def send(endpoint: str, params: dict[str, str]) -> bytes:
@@ -181,7 +182,7 @@ def http_transport(api_key: str | None = None, timeout: float = 120.0) -> Transp
         data = urllib.parse.urlencode(fields).encode()
         request = urllib.request.Request(f"{BASE}{endpoint}.fcgi", data=data, method="POST")
         try:
-            with urllib.request.urlopen(request, timeout=timeout) as response:
+            with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
                 body: bytes = response.read()
                 return body
         except urllib.error.HTTPError as error:

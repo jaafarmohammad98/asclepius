@@ -30,7 +30,8 @@ from hypothesis_engine.pubmed import (
 )
 from hypothesis_engine.topics import DEFAULT_TOPICS, Topic, TopicsError, load_topics
 
-DEFAULT_LIBRARY = Path("data") / "library.sqlite"
+# inside hypothesis/, whatever folder the command runs from (git ignores hypothesis/data/)
+DEFAULT_LIBRARY = Path(__file__).resolve().parents[1] / "data" / "library.sqlite"
 
 
 @dataclass(frozen=True)
@@ -38,7 +39,7 @@ class BuildReport:
     version: int
     papers: int
     lacking_abstract: int
-    found: dict[str, int]  # topic -> PMIDs its search returned
+    found_per_topic: dict[str, int]  # topic -> PMIDs its search returned
     missing: int  # PMIDs a search returned that efetch had no usable record for
 
 
@@ -57,10 +58,10 @@ def build_library(
 ) -> BuildReport:
     """Search, fetch and store; return what the new library version holds."""
     found_by: dict[str, list[tuple[str, int]]] = {}  # PMID -> (topic, rank), first-found order
-    found: dict[str, int] = {}
+    found_per_topic: dict[str, int] = {}
     for topic in topics:
         pmids = pubmed.search(topic.query, topic.max_papers)
-        found[topic.name] = len(pmids)
+        found_per_topic[topic.name] = len(pmids)
         progress(f"{topic.name}: {len(pmids)} papers")
         for rank, pmid in enumerate(pmids, start=1):
             found_by.setdefault(pmid, []).append((topic.name, rank))
@@ -74,7 +75,7 @@ def build_library(
         version=version,
         papers=len(papers),
         lacking_abstract=sum(1 for p in papers if p.abstract is None),
-        found=found,
+        found_per_topic=found_per_topic,
         missing=len(found_by) - len(papers),
     )
 

@@ -11,8 +11,8 @@ from replay import ReplayTransport
 from test_rate_limit import FakeClock, _most_in_any_second
 
 from hypothesis_engine.build import build_library
-from hypothesis_engine.library import Library, LibraryError
-from hypothesis_engine.pubmed import PubMed, PubMedError, RateLimiter, TransientError
+from hypothesis_engine.library import Library, LibraryError, write_build
+from hypothesis_engine.pubmed import Paper, PubMed, PubMedError, RateLimiter, TransientError
 from hypothesis_engine.topics import DEFAULT_TOPICS, load_topics
 
 FOLDER = Path(__file__).parent / "fixtures" / "build"
@@ -94,6 +94,33 @@ def test_the_first_build_is_version_1_and_each_rebuild_adds_one(tmp_path):
     with Library.open(path) as library:
         assert library.version == 2
         assert library.built_at == "2026-11-22T09:30:00+00:00"
+
+
+def _paper(pmid: str, title: str) -> Paper:
+    return Paper(pmid, title, "An abstract.", None, None, None, 2020)
+
+
+def test_a_paper_a_later_build_drops_stays_readable_in_the_version_that_had_it(tmp_path):
+    # an output records the library version it used (spec H6); its citations must stay checkable
+    path = tmp_path / "library.sqlite"
+    old, kept, new = _paper("1", "Old"), _paper("2", "Kept"), _paper("3", "New")
+    write_build(
+        path, [old, kept], {"1": [("PFS", 1)], "2": [("PFS", 2)]}, "sha-a", "2026-11-01T00:00:00+00:00"
+    )
+    write_build(
+        path, [kept, new], {"2": [("PFS", 1)], "3": [("PAS", 1)]}, "sha-b", "2026-12-01T00:00:00+00:00"
+    )
+    with Library.open(path) as library:
+        assert library.version == 2
+        assert [p.pmid for p in library.papers()] == ["2", "3"]
+        assert library.count() == 2
+        assert library.paper("1") is None
+        assert library.paper("1", version=1) == old
+        assert library.paper("3", version=1) is None
+        assert library.paper("2", version=1) == kept
+        assert library.topics("1") == []
+        assert library.topics("1", version=1) == ["PFS"]
+        assert library.topics("3") == ["PAS"]
 
 
 def test_requests_stay_under_three_a_second(tmp_path):
