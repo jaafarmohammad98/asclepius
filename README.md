@@ -10,7 +10,7 @@ Asclepius is a research tool. It does not diagnose and does not give treatment a
 |---|---|---|
 | `extractor/` | Reads DUTCH hormone report PDFs into anonymised records | Working on the classic report layout; see limits below |
 | Analysis engine | Group comparisons, enzyme-activity ratios, subgroups | Not started |
-| Hypothesis engine | Literature search plus LLM reasoning, with verified citations | Not started |
+| `hypothesis/` | Literature search plus LLM reasoning, with verified citations | Paper library from PubMed; no hypotheses yet |
 | Patient platform | Consented upload and symptom questionnaire | Not started |
 
 ## Extractor
