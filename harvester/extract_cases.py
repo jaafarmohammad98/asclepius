@@ -114,6 +114,11 @@ def load_salt() -> bytes:
 
 GONE = {"", "[deleted]", "[removed]"}
 
+def author_key(author, salt):
+    """Stable pseudonymous key for a username, or None for a deleted account."""
+    author = str(author or "")
+    return None if author in ("", "[deleted]") else hmac.new(salt, author.encode(), hashlib.sha256).hexdigest()[:16]
+
 def normalize(obj, salt):
     """Submissions have title+selftext, comments have body. Drop usernames (de-identify)."""
     if "body" in obj:
@@ -125,15 +130,14 @@ def normalize(obj, salt):
         text = f"{obj.get('title','')}\n\n{'' if body in GONE else body}".strip()
     if not text:
         return None
-    author = str(obj.get("author") or "")
+    author = obj.get("author")
     return {
         "id": obj.get("name") or obj.get("id"),
         "subreddit": obj.get("subreddit"),
         "created_utc": obj.get("created_utc"),
         "kind": "comment" if "body" in obj else "submission",
         # stable pseudonymous author key so one person's posts can be linked, never the name itself
-        "author_key": None if author in ("", "[deleted]")
-                      else hmac.new(salt, author.encode(), hashlib.sha256).hexdigest()[:16],
+        "author_key": author_key(author, salt),
         "text": text,
     }
 
@@ -299,20 +303,21 @@ def sanitize(case):
         case["current_meds"] = []; ok = False
     return case, ok
 
+def _norm(s):
+    s = s.lower().translate(str.maketrans("\u2018\u2019\u201c\u201d\u2013\u2014", "''\"\"--"))
+    s = re.sub(r"[*_>`]|&amp;|&gt;|&lt;", "", s)  # markdown / html escapes in Reddit text
+    return re.sub(r"\s+", " ", s).strip()
+
+def quote_in(quote, text):
+    """True when `quote` appears in `text` (ignoring case, markdown and quote styles). The model often
+    joins two real quotes with "..."; each piece must appear."""
+    src = _norm(text)
+    return all(not p.strip() or p.strip() in src for p in re.split(r"\.\.\.|\u2026", _norm(quote)))
+
 def evidence_ok(case, text):
     """Cheap hallucination check: every evidence quote must actually appear in the source."""
-    def norm(s):
-        s = s.lower().translate(str.maketrans("\u2018\u2019\u201c\u201d\u2013\u2014", "''\"\"--"))
-        s = re.sub(r"[*_>`]|&amp;|&gt;|&lt;", "", s)  # markdown / html escapes in Reddit text
-        return re.sub(r"\s+", " ", s).strip()
-    src = norm(text)
-    for key in LIST_KEYS:
-        for item in case.get(key, []):
-            ev = item.get("evidence")
-            # the model often joins two real quotes with "..."; each piece must appear
-            if ev and any(p.strip() and p.strip() not in src for p in re.split(r"\.\.\.|\u2026", norm(ev))):
-                return False
-    return True
+    return all(quote_in(item["evidence"], text) for key in LIST_KEYS for item in case.get(key, [])
+               if item.get("evidence"))
 
 def cmd_extract(a):
     import anthropic
