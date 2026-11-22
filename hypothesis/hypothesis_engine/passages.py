@@ -77,7 +77,7 @@ def _pieces(text: str, line: _Span) -> list[_Span]:
     for unit in units[1:]:
         last = pieces[-1]
         if last.words + unit.words <= MAX_WORDS:
-            pieces[-1] = _Span(last.start, unit.end, last.words + unit.words)
+            pieces[-1] = _join(last, unit)
         else:
             pieces.append(unit)
     return pieces

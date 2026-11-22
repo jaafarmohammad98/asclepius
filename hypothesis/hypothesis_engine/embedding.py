@@ -14,7 +14,6 @@ from pathlib import Path
 import numpy as np
 
 MODEL = "BAAI/bge-small-en-v1.5"
-# small batches pad less: about 28 passages a second on an 11-core laptop CPU, whatever the thread count
 DEFAULT_MODELS = Path(__file__).resolve().parents[1] / "data" / "models"
 
 
@@ -41,14 +40,18 @@ class LocalEmbedder:
             ) from error
 
     def passages(self, texts: Sequence[str]) -> np.ndarray:
+        """One unit vector per text, as rows."""
+        # small batches pad less: about 28 passages a second on an 11-core laptop CPU, whatever the thread count
         return np.array(list(self._model.passage_embed(list(texts), batch_size=8)), dtype=np.float32)
 
     def query(self, text: str) -> np.ndarray:
+        """The query's unit vector (bge adds its search instruction to queries, not passages)."""
         (vector,) = self._model.query_embed(text)
         return np.asarray(vector, dtype=np.float32)
 
 
 def model_downloaded(models: Path = DEFAULT_MODELS) -> bool:
+    """Whether the model loads from `models` without the network."""
     try:
         LocalEmbedder(models)
     except ModelMissing:

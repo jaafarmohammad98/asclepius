@@ -28,14 +28,15 @@ from typing import Protocol
 
 import numpy as np
 
-from hypothesis_engine.library import DEFAULT_LIBRARY, Library
+from hypothesis_engine.fulltext import batches
+from hypothesis_engine.library import DEFAULT_LIBRARY, Library, _run
 from hypothesis_engine.passages import Passage, split
 
 DEFAULT_INDEX = DEFAULT_LIBRARY.with_name("index.sqlite")
 
 SCHEMA_VERSION = 1
 FUSION_K = 60  # the usual constant for reciprocal rank fusion
-EMBED_BATCH = 64
+EMBED_BATCH = 64  # passages per call to the embedder, so progress can be reported
 
 _SCHEMA = """
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -134,13 +135,12 @@ def build_index(
     vectors = {sha: known[sha] for sha in shas if sha in known}
     missing = [i for i, sha in enumerate(shas) if sha not in vectors]
     progress(f"{len(passages)} passages, {len(missing)} to embed")
-    for start in range(0, len(missing), EMBED_BATCH):
-        batch = missing[start : start + EMBED_BATCH]
-        embedded = embedder.passages([_embedding_text(passages[i]) for i in batch])
-        for i, vector in zip(batch, embedded, strict=True):
+    for number, batch in enumerate(batches(missing, EMBED_BATCH)):
+        batch_vectors = embedder.passages([_embedding_text(passages[i]) for i in batch])
+        for i, vector in zip(batch, batch_vectors, strict=True):
             vectors[shas[i]] = np.asarray(vector, dtype=np.float32).tobytes()
-        if start and start % (EMBED_BATCH * 20) == 0:
-            progress(f"embedded {start} of {len(missing)}")
+        if number and number % 20 == 0:
+            progress(f"embedded {number * EMBED_BATCH} of {len(missing)}")
 
     index.parent.mkdir(parents=True, exist_ok=True)
     partial = index.with_name(index.name + ".partial")
@@ -148,9 +148,7 @@ def build_index(
     db = sqlite3.connect(partial)
     try:
         with db:
-            for statement in _SCHEMA.split(";"):
-                if statement.strip():
-                    db.execute(statement)
+            _run(db, _SCHEMA)
             db.executemany(
                 "INSERT INTO meta VALUES (?, ?)",
                 [
