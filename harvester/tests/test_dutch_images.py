@@ -82,7 +82,7 @@ class Checks(unittest.TestCase):
 
     def test_known_markers_come_from_the_samples(self):
         known = d.known_markers(d.SAMPLES)
-        self.assertIn("5a_dht", known); self.assertIn("cortisol_a_waking", known)
+        self.assertEqual((known["5a_dht"], known["creatinine_a_waking"]), ("ng/mg", "mg/ml"))
 
 
 JAN_2024 = 1704100000   # 2024-01-01 UTC
@@ -109,7 +109,8 @@ NO = {"on_hormones_at_test": "no", "quote": None}
 def assemble(items, pages, cases=(case(),), hormones=None):
     if hormones is None:
         hormones = {i["id"]: NO for i in items}
-    return d.assemble(items, pages, hormones, list(cases), {"testosterone", "estradiol_e2"})
+    return d.assemble(items, pages, hormones, list(cases),
+                      {"testosterone": "ng/mg", "estradiol_e2": "ng/mg", "creatinine_a_waking": "mg/ml"})
 
 
 class Assemble(unittest.TestCase):
@@ -163,6 +164,25 @@ class Assemble(unittest.TestCase):
     def test_check_failures_and_parse_problems_are_attached(self):
         [r] = assemble([item("t3_a")], {"img1": page(marker(value=500))})
         self.assertTrue(any("marked" in f for f in r["failures"]))
+
+    def test_unknown_or_unitless_markers_are_dropped_with_a_warning(self):
+        pages = {"img1": page(marker(), marker("Cortisol (U1) - Waking", 30, lo=None, hi=None),
+                              marker("Cortisol Clearance Rate (CCR)", 2.0, unit="", lo=None, hi=None))}
+        [r] = assemble([item("t3_a")], pages)
+        self.assertEqual([m["id"] for m in r["markers"]], ["testosterone"])
+        self.assertEqual(r["failures"], [])
+        self.assertTrue(any("Cortisol (U1) - Waking" in w and "Cortisol Clearance Rate" in w for w in r["warnings"]))
+
+    def test_a_known_marker_in_another_unit_is_dropped_and_case_is_normalised(self):
+        pages = {"img1": page(marker(), marker("Estradiol(E2)", 1.1, unit="ug/gCR", lo=0.5, hi=2.2),
+                              marker("Creatinine A (Waking)", 0.9, unit="mg/mL", lo=0.3, hi=3))}
+        [r] = assemble([item("t3_a")], pages)
+        self.assertEqual([(m["id"], m["unit"]) for m in r["markers"]],
+                         [("testosterone", "ng/mg"), ("creatinine_a_waking", "mg/ml")])
+        self.assertTrue(any("Estradiol(E2)" in w for w in r["warnings"]))
+
+    def test_a_post_with_only_unknown_markers_makes_no_report(self):
+        self.assertEqual(assemble([item("t3_a")], {"img1": page(marker("Indican", 50, lo=0, hi=80))}), [])
 
     def test_a_report_without_a_hormone_answer_fails(self):
         [r] = assemble([item("t3_a")], {"img1": page()}, hormones={})

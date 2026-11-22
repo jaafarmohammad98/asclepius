@@ -109,11 +109,13 @@ def parse_page(raw):
 # ---------------------------------------------------------------- checks
 
 def known_markers(samples=SAMPLES):
-    """Marker ids the PDF extractor reads from the sample reports (committed expected.json files, plus
-    local extractor output when present)."""
-    known = set()
+    """marker id -> unit, for the markers the PDF extractor reads from the sample reports (committed
+    expected.json files, plus local extractor output when present)."""
+    known = {}
     for f in sorted(samples.glob("*/expected.json")) + sorted(samples.glob("*/out.json")):
-        known.update(m["id"] for m in json.loads(f.read_text()).get("markers", []) if m.get("id"))
+        for m in json.loads(f.read_text()).get("markers", []):
+            if m.get("id") and m.get("unit"):
+                known.setdefault(m["id"], m["unit"])
     if not known:
         raise SystemExit(f"no marker names found under {samples}: the known-name check needs samples/*/expected.json")
     return known
@@ -191,7 +193,9 @@ def assemble(items, pages, hormones, cases, known):
     `items`: dicts with id, author_key, created_utc and `images` (SHA-256 list); `pages`: sha256 -> parsed
     page (from `parse_page`, optionally with its `problems`); `hormones`: item id -> hormone answer.
     Authors without a first-person PSSD / PFS / PAS case are left out, and a repost by the same author
-    with identical numbers is dropped (the earliest post is kept)."""
+    with identical numbers is dropped (the earliest post is kept). Rows with a marker name the PDF
+    extractor does not know, or in a unit other than the extractor's for that marker, are left out of the
+    report with a warning."""
     joined = author_cases(cases)
     reports, seen = [], set()
     for it in sorted(items, key=lambda i: (int(i["created_utc"]), i["id"])):
@@ -203,7 +207,15 @@ def assemble(items, pages, hormones, cases, known):
             failures += [f"unreadable on the image: {x}" for x in p.get("problems", [])]
             if p.get("dropped"):
                 warnings.append(f"ratio rows left out: {', '.join(p['dropped'])}")
-            for m in p["markers"]:
+            # newer DUTCH layouts, add-on panels and other labs' tables: rows the PDF extractor cannot read
+            # yet, rows with no unit, or a known marker in another lab's unit. The rest is still checked.
+            usable = [dict(m, unit=known[m["id"]]) for m in p["markers"]
+                      if m["id"] in known and m["unit"].lower() == known[m["id"]].lower()]
+            if len(usable) < len(p["markers"]):
+                kept = {m["name"] for m in usable}
+                left = [f"{m['name']} ({m['unit'] or 'no unit'})" for m in p["markers"] if m["name"] not in kept]
+                warnings.append(f"left out, not a marker in a unit the PDF extractor reads: {', '.join(left)}")
+            for m in usable:
                 prev = markers.setdefault(m["id"], m)
                 if prev is not m and (prev["value"], prev["unit"], prev["comparator"]) != (m["value"], m["unit"], m["comparator"]):
                     failures.append(f"{m['name']}: two pages give different values ({prev['value']}, {m['value']})")

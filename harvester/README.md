@@ -73,10 +73,17 @@ record ids `rd001`…:
 
 - `default`: each author's earliest report that passes every check and was not taken on hormones
 - `hormones`: on hormones at test (`yes`). A `no` whose quote is not in the post counts as `unknown`
-- `failing`: a check failed (status disagrees with value and range, a unit not like `ng/mg`, a marker name
-  the PDF extractor does not know, a printed sum that does not add up, an unreadable row, two pages
-  disagreeing, or no hormone answer). May not load, since a bad unit is one of the failures
+- `failing`: a check failed (status disagrees with value and range, a printed sum that does not add up,
+  an unreadable row, two pages disagreeing, or no hormone answer)
 - `retests`: an author's later clean reports
+
+Rows the PDF extractor cannot read are left out of a report with a warning, not failed: marker names it
+does not know (most posts use a newer DUTCH layout, e.g. `Cortisol (U1) - Waking`, or add-on panels),
+a known marker in a unit other than the extractor's for it (another lab's panel, e.g. `ug/gCR`), rows
+with no unit, and the derived `ratio` rows. So newer-layout cortisol values are missing until the
+extractor learns that layout. Only pages with a printed result table are read: DUTCH's dial summary
+pages give nothing. Hormone use counts as `unknown` when the post does not say, and `unknown` stays in
+`default`: on r/DrWillPowers many posters are on hormone therapy, so treat that as a confounder.
 
 A repost by the same author with identical numbers is dropped. A report with no printed report month
 takes the post's month, with a warning. No export holds a Reddit id, URL, quote, image path or author
