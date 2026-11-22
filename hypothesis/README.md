@@ -82,7 +82,7 @@ private. Git ignores the folder and every PDF.
   PMC carry PMIDs only, and private papers have none.
 - Anything the engine sends to an LLM (from M4-04) must first pass
   `hypothesis_engine.privacy.PrivateTextGuard.check(request)`. It finds the runs of 8 or
-  more words the request shares with a private paper, refuses the request when one run is
+  more words the request shares with a private paper's title or text, refuses the request when one run is
   over 60 words or all of them together are over 200, and otherwise returns those passages
   so they can be shown to the researcher before sending.
 
