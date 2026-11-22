@@ -30,6 +30,13 @@ class ParsePage(unittest.TestCase):
         self.assertIsNone(page["report_month"]); self.assertIsNone(page["age_years"]); self.assertIsNone(page["sex"])
         self.assertEqual(len(problems), 4)
 
+    def test_ratio_rows_are_derived_and_dropped_like_the_pdf_extractor_does(self):
+        page, problems = d.parse_page({"label": "dutch_page", "markers": [
+            marker("2-OH / 16-OH-E1 Balance", 12.87, unit="ratio", lo=2.85, hi=9.88, status="Above range"), marker()]})
+        self.assertEqual([m["id"] for m in page["markers"]], ["testosterone"])
+        self.assertEqual(problems, [])
+        self.assertEqual(page["dropped"], ["2-OH / 16-OH-E1 Balance"])
+
     def test_unknown_label_is_not_lab(self):
         page, problems = d.parse_page({"label": "selfie"})
         self.assertEqual(page["label"], "not_lab"); self.assertTrue(problems)

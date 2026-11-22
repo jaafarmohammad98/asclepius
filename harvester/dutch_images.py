@@ -69,7 +69,7 @@ def parse_page(raw):
         problems.append(f"unknown label {label!r}")
         label = "not_lab"
     page = {"label": label, "report_month": None, "collection_month": None, "age_years": None, "sex": None,
-            "markers": []}
+            "markers": [], "dropped": []}
     if label != "dutch_page":
         return page, problems
     for key in ("report_month", "collection_month"):
@@ -91,6 +91,10 @@ def parse_page(raw):
             problems.append(f"unreadable marker row {str(m)[:80]!r}")
             continue
         name = re.sub(r"\s+", " ", m["name"]).strip()
+        if str(m.get("unit") or "").strip().lower() == "ratio":
+            # derived "Metabolite Ratios" rows: the PDF extractor's unit pattern never reads them either
+            page["dropped"].append(name)
+            continue
         page["markers"].append({
             "id": marker_id(name), "name": name, "value": float(m["value"]),
             "comparator": m.get("comparator") if m.get("comparator") in COMPARATORS else None,
@@ -197,6 +201,8 @@ def assemble(items, pages, hormones, cases, known):
         markers, failures, warnings = {}, [], []
         for p in dutch:
             failures += [f"unreadable on the image: {x}" for x in p.get("problems", [])]
+            if p.get("dropped"):
+                warnings.append(f"ratio rows left out: {', '.join(p['dropped'])}")
             for m in p["markers"]:
                 prev = markers.setdefault(m["id"], m)
                 if prev is not m and (prev["value"], prev["unit"], prev["comparator"]) != (m["value"], m["unit"], m["comparator"]):
