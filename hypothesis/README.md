@@ -3,7 +3,8 @@
 The hypothesis engine (milestone 4). So far it builds the local library of papers the engine
 is allowed to cite: paper records (title, abstract, identifiers) downloaded from PubMed for
 the topics in the plan, the full text of those with an open-access copy, and the
-researcher's own private PDFs. Hypotheses come in later issues.
+researcher's own private PDFs, and a local search index over it. Hypotheses come in later
+issues.
 
 ```sh
 cd hypothesis
@@ -11,6 +12,8 @@ uv sync
 uv run asclepius-library build    # writes data/library.sqlite: records, then full text; prints coverage
 uv run asclepius-library fulltext # only the full-text step; continues an interrupted download
 uv run asclepius-library refresh  # monthly: new papers and the private folder, then their full text
+uv run asclepius-library index    # after each of those: the search index (downloads the model once)
+uv run asclepius-library search "allopregnanolone in cerebrospinal fluid" -k 5
 uv run pytest                     # tests; they replay recorded PubMed answers, no network
 uv run ruff check . && uv run ruff format --check . && uv run mypy
 ```
@@ -88,6 +91,43 @@ private. Git ignores the folder and every PDF.
   or more than 400 different words of one paper would have been sent during the run.
   Otherwise it returns the passages so they can be shown to the researcher before sending.
   It catches private text slipping into a request by mistake, not text disguised on purpose.
+
+## Search
+
+`index` splits every paper of the library's current version into passages and indexes them
+twice in `hypothesis/data/index.sqlite`: by keyword (SQLite FTS5, BM25, English stemming)
+and by meaning (vectors from a local embedding model). `search` ranks the passages both ways
+and merges the rankings (reciprocal rank fusion), so a passage both find comes first.
+
+```python
+from hypothesis_engine.search import search
+search("lower neurosteroids after finasteride", k=10)
+# [Hit(passage_id, paper_id, private, title, text, score, keyword_rank, meaning_rank)]
+```
+
+To search many times, open an `Index` once (`Index.open(index, library, LocalEmbedder())`);
+`index.passage("32317131:4")` reads one passage back.
+
+- **Passages.** Each line of a paper's text (a full-text paragraph, a section of a structured
+  abstract) starts one; one over 200 words is cut at sentence ends, and one under 25 words (a
+  heading) joins the next. A passage is a slice of the text character for character, so a quote
+  from it is found word for word in the paper. Its id is the paper's id and its number,
+  `32317131:4`; the same text always gives the same ids. A paper with no abstract is one
+  passage, its title. Private papers are indexed too, and their hits are marked `private`.
+- **The model.** [bge-small-en-v1.5](https://huggingface.co/BAAI/bge-small-en-v1.5) (MIT
+  licence, 64 MB), run on the CPU with ONNX Runtime through
+  [fastembed](https://github.com/qdrant/fastembed). `index` downloads it from Hugging Face into
+  `hypothesis/data/models/` the first time; after that nothing goes over the network, and
+  `search` never downloads it. It embeds about 28 passages a second on a laptop CPU, so the
+  first index of the full library (some 40,000 passages) takes about 25 minutes. Rebuilds embed
+  only passages not embedded before, so after a refresh it is quick.
+- **Versions.** The index records the library version and model it was built from, and
+  `search` refuses an index of another version: run `index` again after `build`, `fulltext`
+  or `refresh`. A new index replaces the old one only when complete.
+- **Relevance test.** `tests/test_relevance.py` asks eight questions, worded unlike the
+  papers, of twelve real papers (the recorded fixtures) with the network cut off, and checks
+  that each finds its known paper in the top three. It is skipped until the model is
+  downloaded.
 
 ## Topics
 

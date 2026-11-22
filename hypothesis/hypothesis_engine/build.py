@@ -14,6 +14,10 @@ stored yet, reads the private folder (`private.py`), and stores what is new as o
 copies of papers that had none a month ago. Running it twice in a row adds nothing the
 second time.
 
+`index` builds the local search index of the current version (`search.py`), downloading the
+embedding model the first time; `search` prints the passages most relevant to a question.
+Both run without the network once the model is downloaded.
+
 Set NCBI_API_KEY to an NCBI API key (free, from an NCBI account) to send 10 requests a
 second instead of 3. It is only ever sent to NCBI.
 """
@@ -30,8 +34,15 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from hypothesis_engine import europepmc
+from hypothesis_engine.embedding import DEFAULT_MODELS, LocalEmbedder, ModelMissing
 from hypothesis_engine.fulltext import describe, fetch_full_texts
-from hypothesis_engine.library import LibraryError, stored_pmids, write_build, write_refresh
+from hypothesis_engine.library import (
+    DEFAULT_LIBRARY,
+    LibraryError,
+    stored_pmids,
+    write_build,
+    write_refresh,
+)
 from hypothesis_engine.private import read_private_folder
 from hypothesis_engine.pubmed import (
     PubMed,
@@ -41,10 +52,9 @@ from hypothesis_engine.pubmed import (
     http_transport,
     rate_for,
 )
+from hypothesis_engine.search import DEFAULT_INDEX, Index, SearchIndexError, build_index
 from hypothesis_engine.topics import DEFAULT_TOPICS, Topic, TopicsError, load_topics
 
-# inside hypothesis/, whatever folder the command runs from (git ignores hypothesis/data/)
-DEFAULT_LIBRARY = Path(__file__).resolve().parents[1] / "data" / "library.sqlite"
 DEFAULT_PRIVATE = DEFAULT_LIBRARY.parent / "private"
 
 
@@ -171,7 +181,23 @@ def main(argv: Sequence[str] | None = None) -> int:
     refresh = commands.add_parser(
         "refresh", help="monthly update: add new papers and the private folder's PDFs, then their full text"
     )
-    for command in (build, fulltext, refresh):
+    index = commands.add_parser(
+        "index", help="build the local search index of the current version (downloads the model once)"
+    )
+    search = commands.add_parser("search", help="print the library passages most relevant to a question")
+    search.add_argument("query", help="the question or finding to search for")
+    search.add_argument("-k", type=int, default=10, help="how many passages (default 10)")
+    for command in (index, search):
+        command.add_argument(
+            "--index", type=Path, default=DEFAULT_INDEX, help=f"search index file (default {DEFAULT_INDEX})"
+        )
+        command.add_argument(
+            "--models",
+            type=Path,
+            default=DEFAULT_MODELS,
+            help=f"embedding model folder (default {DEFAULT_MODELS})",
+        )
+    for command in (build, fulltext, refresh, index, search):
         command.add_argument(
             "--library", type=Path, default=DEFAULT_LIBRARY, help=f"SQLite file (default {DEFAULT_LIBRARY})"
         )
@@ -188,6 +214,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     say = lambda message: print(message, file=sys.stderr)  # noqa: E731
+    if args.command in ("index", "search"):
+        return _index_or_search(args, say)
     downloading = args.command == "fulltext"
     try:
         api_key = os.environ.get("NCBI_API_KEY") or None
@@ -221,6 +249,32 @@ def main(argv: Sequence[str] | None = None) -> int:
         say(f"asclepius-library: {error}")
         if downloading and not isinstance(error, LibraryError):
             say("what was downloaded is kept; `asclepius-library fulltext` continues")
+        return 1
+    return 0
+
+
+def _index_or_search(args: argparse.Namespace, say: Callable[[str], None]) -> int:
+    try:
+        if args.command == "index":
+            report = build_index(args.library, args.index, LocalEmbedder(args.models, download=True), say)
+            say(
+                f"search index of library version {report.version} at {args.index}: "
+                f"{report.passages} passages, {report.embedded} newly embedded"
+            )
+            return 0
+        with Index.open(args.index, args.library, LocalEmbedder(args.models)) as index:
+            hits = index.search(args.query, args.k)
+        for rank, hit in enumerate(hits, start=1):
+            private = " (private)" if hit.private else ""
+            print(f"{rank}. {hit.passage_id}{private}  {hit.title}")
+            print(f"   {' '.join(hit.text.split())[:300]}")
+        if not hits:
+            say("nothing found")
+    except KeyboardInterrupt:
+        say("asclepius-library: stopped; the search index is as it was")
+        return 130
+    except (LibraryError, SearchIndexError, ModelMissing) as error:
+        say(f"asclepius-library: {error}")
         return 1
     return 0
 

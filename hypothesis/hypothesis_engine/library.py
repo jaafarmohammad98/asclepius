@@ -28,6 +28,9 @@ from types import TracebackType
 from hypothesis_engine.private import PrivatePaper
 from hypothesis_engine.pubmed import Paper
 
+# inside hypothesis/, whatever folder the command runs from (git ignores hypothesis/data/)
+DEFAULT_LIBRARY = Path(__file__).resolve().parents[1] / "data" / "library.sqlite"
+
 SCHEMA_VERSION = 3
 
 _OPEN_ACCESS = """
