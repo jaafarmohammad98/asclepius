@@ -4,7 +4,7 @@ Europe PMC's open-access lookups, then PubMed Central's article XML."""
 from __future__ import annotations
 
 import sqlite3
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -206,7 +206,10 @@ def test_a_run_stops_when_pmc_stops_answering(tmp_path):
 def test_a_library_from_before_full_text_is_upgraded_in_place(tmp_path):
     path = _library(tmp_path)
     db = sqlite3.connect(path)
-    db.executescript("DROP TABLE open_access; PRAGMA user_version = 1;")  # what M4-01a wrote
+    # what M4-01a wrote
+    db.executescript(
+        "DROP TABLE open_access; DROP TABLE private_versions; DROP TABLE private_papers; PRAGMA user_version = 1;"
+    )
     db.close()
     with pytest.raises(LibraryError, match="asclepius-library fulltext"):
         Library.open(path)
@@ -215,6 +218,26 @@ def test_a_library_from_before_full_text_is_upgraded_in_place(tmp_path):
     with Library.open(path) as library:
         assert library.count() == 5
         assert library.coverage().with_text == 3
+        assert library.private_papers() == []
+
+
+def test_a_library_from_before_versioned_text_keeps_its_text_in_the_current_version(tmp_path):
+    path = _library(tmp_path)
+    _fetch(path)
+    db = sqlite3.connect(path)
+    # what M4-01b wrote: no version column, no private papers
+    db.executescript(
+        """DROP TABLE private_versions; DROP TABLE private_papers;
+        CREATE TABLE old AS SELECT pmid, checked_at, pmcid, licence, fetched_at, text FROM open_access;
+        DROP TABLE open_access; ALTER TABLE old RENAME TO open_access;
+        DELETE FROM paper_topics WHERE version = 2; DELETE FROM builds WHERE version = 2;
+        PRAGMA user_version = 2;"""
+    )
+    db.close()
+    assert _fetch(path).version is None  # the upgrade happens here; nothing new to add
+    with Library.open(path) as library:
+        assert library.version == 1  # M4-01b stored the text under version 1
+        assert library.full_text("32317131") is not None
 
 
 def test_full_text_needs_a_built_library(tmp_path):
@@ -222,3 +245,33 @@ def test_full_text_needs_a_built_library(tmp_path):
     with pytest.raises(LibraryError, match="asclepius-library build"):
         _fetch(missing)
     assert not missing.exists()
+
+
+def test_downloaded_text_joins_the_library_in_one_new_version(tmp_path):
+    path = _library(tmp_path)  # version 1, no full text
+    report = _fetch(path)
+    assert report.version == 2
+    with Library.open(path) as library:
+        assert library.version == 2
+        assert library.full_text("32317131") is not None
+        assert library.full_text("32317131", version=1) is None  # version 1 is as it was
+        assert library.count() == 5
+    assert _fetch(path).version is None  # nothing new: no new version
+
+
+def test_a_paper_without_a_copy_is_looked_up_again_a_month_later(tmp_path):
+    path = _library(tmp_path)
+    _fetch(path)
+    found = b'{"resultList": {"result": [{"pmid": "19439893", "pmcid": "PMC99", "isOpenAccess": "Y"}]}}'
+
+    soon = Recorded()
+    fetch_full_texts(path, soon.europepmc, soon.pubmed, now=lambda: WHEN + timedelta(days=29))
+    assert soon.lookups == 0
+
+    later = Recorded(answer={"searchPOST#1": found, "99": b"<pmc-articleset/>"})
+    fetch_full_texts(
+        path, later.europepmc, later.pubmed, now=lambda: WHEN + timedelta(days=31), download_batch=2
+    )
+    assert later.lookups == 1  # the two papers without a copy, one batch
+    with sqlite3.connect(path) as db:
+        assert db.execute("SELECT pmcid FROM open_access WHERE pmid = ?", (NO_COPY,)).fetchone() == ("PMC99",)

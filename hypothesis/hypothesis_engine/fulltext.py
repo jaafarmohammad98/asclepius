@@ -13,6 +13,10 @@ an answer, is left for the next run; several batches failing in a row mean PMC i
 unreachable, so the run stops rather than wait on each. A lookup that still fails stops the
 run at once (the lookups before it are kept). A copy PMC sends without body text (some
 publishers do not allow the XML) counts as downloaded, without readable text.
+
+A paper found without a copy is looked up again after `RECHECK_AFTER` (a month), since
+papers become open access later. The text a run downloads joins the library as one new
+version at the end of the run, even one that stops part-way (`library.seal_texts`).
 """
 
 from __future__ import annotations
@@ -20,21 +24,31 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from hypothesis_engine.europepmc import EuropePMC
 from hypothesis_engine.jats import articles, jats_text, licence_in
-from hypothesis_engine.library import Coverage, Library, record_lookup, record_texts, to_download, unchecked
+from hypothesis_engine.library import (
+    Coverage,
+    Library,
+    record_lookup,
+    record_texts,
+    seal_texts,
+    to_download,
+    unchecked,
+)
 from hypothesis_engine.pubmed import PMC_BATCH, PubMed, PubMedError, TransientError
 
 FAILURES_IN_A_ROW = 3
+RECHECK_AFTER = timedelta(days=30)
 
 
 @dataclass(frozen=True)
 class FullTextReport:
     coverage: Coverage
     failed: int  # copies not downloaded this run because of a failure; the next run tries them again
+    version: int | None = None  # the version the new text joined; None when there was none
 
 
 def batches[T](items: Sequence[T], size: int) -> Iterator[Sequence[T]]:
@@ -54,7 +68,26 @@ def fetch_full_texts(
     """Look up and download what the library at `path` still lacks; return its coverage."""
     stamp = lambda: now().isoformat(timespec="seconds")  # noqa: E731
 
-    pmids = unchecked(path)
+    pmids = unchecked(path, (now() - RECHECK_AFTER).isoformat(timespec="seconds"))
+    try:
+        failed = _fetch(path, pmids, europepmc, pubmed, stamp, progress, download_batch, failures_in_a_row)
+    finally:
+        version = seal_texts(path, stamp())
+    with Library.open(path) as library:
+        return FullTextReport(library.coverage(), failed, version)
+
+
+def _fetch(
+    path: Path,
+    pmids: Sequence[str],
+    europepmc: EuropePMC,
+    pubmed: PubMed,
+    stamp: Callable[[], str],
+    progress: Callable[[str], None],
+    download_batch: int,
+    failures_in_a_row: int,
+) -> int:
+    """Look up `pmids`, then download every copy not downloaded yet; return how many failed."""
     if pmids:
         progress(f"looking up {len(pmids)} papers in Europe PMC")
     for batch in batches(pmids, europepmc.lookup_batch):
@@ -90,9 +123,7 @@ def fetch_full_texts(
         done += len(group)
         if done % 100 < download_batch:
             progress(f"downloaded {done} of {len(pending)}")
-
-    with Library.open(path) as library:
-        return FullTextReport(library.coverage(), failed)
+    return failed
 
 
 def describe(report: FullTextReport) -> str:
