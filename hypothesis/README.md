@@ -101,6 +101,7 @@ and merges the rankings (reciprocal rank fusion), so a passage both find comes f
 
 ```python
 from hypothesis_engine.search import search
+
 search("lower neurosteroids after finasteride", k=10)
 # [Hit(passage_id, paper_id, private, title, text, score, keyword_rank, meaning_rank)]
 ```
