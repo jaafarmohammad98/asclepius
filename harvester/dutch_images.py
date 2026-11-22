@@ -3,7 +3,7 @@
 Turns public DUTCH report screenshots into the extractor's lab-report CSV, which the analysis loads
 with `load_lab_reports`. Run from harvester/, after `topic_filter.py` and the case extraction:
 
-    .venv/bin/python dutch_images.py fetch    --raw data/DrWillPowers_topic_raw.jsonl
+    .venv/bin/python dutch_images.py fetch    --raw data/DrWillPowers_raw.jsonl data/PSSD_raw.jsonl
     ANTHROPIC_API_KEY=... .venv/bin/python dutch_images.py extract
     ANTHROPIC_API_KEY=... .venv/bin/python dutch_images.py hormones
     .venv/bin/python dutch_images.py export   --cases data/cases_merged_clean.jsonl
@@ -25,7 +25,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
-from extract_cases import DATA, author_key, iter_ndjson, load_salt
+from extract_cases import DATA, author_key, iter_ndjson, load_salt, quote_in
 
 MODEL = "claude-haiku-5-5"
 PRICES = {"claude-haiku-5-5": (0.10, 0.50), "claude-sonnet-5-5": (2.00, 10.00)}  # $ / MTok in, out
@@ -371,7 +371,18 @@ def read_jsonl(path):
 
 def cmd_fetch(a):
     salt = load_salt()
-    items = [it for o in iter_ndjson(Path(a.raw)) if (it := dutch_item(o, salt))]
+    items = [it for raw in a.raw for o in iter_ndjson(Path(raw)) if (it := dutch_item(o, salt))]
+    # a comment's thread post often says whether the author was on hormones: keep it when it is theirs
+    wanted = {it["post_id"] for it in items if it["kind"] == "comment"}
+    parents = {}
+    for raw in a.raw if wanted else []:
+        for o in iter_ndjson(Path(raw)):
+            name = o.get("name") or f"t3_{o.get('id')}"
+            if "body" not in o and name in wanted:
+                parents[name] = (author_key(o.get("author"), salt), _text(o).strip())
+    for it in items:
+        key, text = parents.get(it["post_id"], (None, None)) if it["kind"] == "comment" else (None, None)
+        it["parent_text"] = text if key and key == it["author_key"] else None
     with open(ITEMS, "w", encoding="utf-8") as out:
         for it in items:
             out.write(json.dumps(it) + "\n")
@@ -400,6 +411,11 @@ def cmd_fetch(a):
                 print(f"  {n}/{len(todo)} {dict(counts)}")
             time.sleep(a.delay)
     print(f"done: {dict(counts)} -> {IMAGE_DIR}  (dead links are in {IMAGES.name})")
+
+
+def image_files():
+    """sha256 -> file name in IMAGE_DIR, for every downloaded image"""
+    return {r["sha256"]: r["file"] for r in image_index().values() if r["status"] == "ok"}
 
 
 def image_index():
@@ -466,7 +482,7 @@ progesterone, DHEA, pregnenolone, hCG, clomiphene or enclomiphene, aromatase inh
 on_hormones_at_test: "yes" if the text says so, "no" if it says they were not, "unknown" if it does not say.
 quote: a short exact quote from the text that supports the answer, or null for "unknown".
 
-<post>
+{parent}<post>
 {text}
 </post>"""
 
@@ -528,7 +544,7 @@ def cmd_extract(a):
     import anthropic
     client = anthropic.Anthropic()
     done = {r["sha256"] for r in read_jsonl(PAGES) if r["model"] == a.model}
-    files = {r["sha256"]: r["file"] for r in image_index().values() if r["status"] == "ok"}
+    files = image_files()
     todo = [s for s in files if s not in done]
     if a.limit:
         todo = todo[:a.limit]
@@ -574,11 +590,6 @@ def load_items():
     return items
 
 
-def quote_found(quote, text):
-    from extract_cases import evidence_ok
-    return evidence_ok({"labs": [{"evidence": quote}]}, text)
-
-
 def cmd_hormones(a):
     import anthropic
     client = anthropic.Anthropic()
@@ -589,7 +600,9 @@ def cmd_hormones(a):
     print(f"{len(todo)} posts to read for hormone use with {a.model} ({len(done)} cached)")
 
     def call(it):
-        raw, error, usage = ask(client, a.model, HORMONE_PROMPT.format(text=it["text"][:12000]),
+        parent = (f"The thread this comment answers, also written by the author:\n<thread>\n"
+                  f"{it['parent_text'][:8000]}\n</thread>\n\n" if it.get("parent_text") else "")
+        raw, error, usage = ask(client, a.model, HORMONE_PROMPT.format(parent=parent, text=it["text"][:12000]),
                                 HORMONE_SCHEMA, it["id"])
         if raw is None and error is None:
             return None
@@ -597,7 +610,8 @@ def cmd_hormones(a):
             raw = {"on_hormones_at_test": "unknown", "quote": None}
         quote = raw.get("quote") or None
         return {"id": it["id"], "model": a.model, "on_hormones_at_test": raw["on_hormones_at_test"],
-                "quote": quote, "quote_ok": bool(quote) and quote_found(quote, it["text"]), "error": error,
+                "quote": quote, "quote_ok": bool(quote) and quote_in(quote, f"{it['text']}\n{it.get('parent_text') or ''}"),
+                "error": error,
                 "usage": usage}
 
     run_calls(todo, call, HORMONES, a.workers, a.model)
@@ -639,7 +653,7 @@ REVIEW_COLUMNS = ("review_id", "marker_id", "marker_name", "comparator", "value"
 def cmd_review(a):
     reports = build_reports(a)
     sample = random.Random(a.seed).sample(reports, min(a.n, len(reports)))
-    files = {r["sha256"]: r["file"] for r in image_index().values() if r["status"] == "ok"}
+    files = image_files()
     e = html.escape
     parts = ["<!doctype html><meta charset=utf-8><title>DUTCH review</title><style>body{font:14px sans-serif;"
              "margin:16px}section{border-top:2px solid #888;padding:12px 0}img{max-width:100%;border:1px solid #ccc}"
@@ -696,7 +710,7 @@ def cmd_score(a):
 def main():
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     s = p.add_subparsers(dest="cmd", required=True)
-    x = s.add_parser("fetch"); x.add_argument("--raw", required=True); x.add_argument("--delay", type=float, default=1.0)
+    x = s.add_parser("fetch"); x.add_argument("--raw", nargs="+", required=True); x.add_argument("--delay", type=float, default=1.0)
     x = s.add_parser("extract"); x.add_argument("--model", default=MODEL); x.add_argument("--limit", type=int, default=0)
     x.add_argument("--workers", type=int, default=4)
     x = s.add_parser("hormones"); x.add_argument("--model", default=MODEL); x.add_argument("--vision-model", default=MODEL)

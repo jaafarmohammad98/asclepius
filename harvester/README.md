@@ -45,12 +45,15 @@ source. Extraction cost about $7.50.
 
 People on r/DrWillPowers post screenshots of their DUTCH reports. `dutch_images.py` reads the printed
 result tables into the extractor's lab-report CSV, which the analysis loads with `load_lab_reports`.
-r/DrWillPowers is mostly about hormone therapy, so run `topic_filter.py` on its raw download first and
-extract its cases like r/PSSD's (`cases_merged_clean.jsonl` holds both subreddits).
+Authors are joined to their cases by `author_key`, so most of them need r/DrWillPowers cases too:
+download it, keep the PSSD / PFS / PAS material with `topic_filter.py` (it is mostly about hormone
+therapy), and run `load`, `filter`, `extract` and `clean_cases.py` over both subreddits into
+`cases_merged_clean.jsonl`, the default `--cases`. `fetch` reads the unfiltered raw files: the author
+join decides who is in, and a "my DUTCH results" post often names no condition.
 
 ```sh
 .venv/bin/python topic_filter.py --inp data/DrWillPowers_raw.jsonl --out data/DrWillPowers_topic_raw.jsonl
-.venv/bin/python dutch_images.py fetch --raw data/DrWillPowers_topic_raw.jsonl   # downloads, resumable
+.venv/bin/python dutch_images.py fetch --raw data/DrWillPowers_raw.jsonl data/PSSD_raw.jsonl  # resumable
 ANTHROPIC_API_KEY=... .venv/bin/python dutch_images.py extract                 # 1 vision call per image
 ANTHROPIC_API_KEY=... .venv/bin/python dutch_images.py hormones                # 1 text call per post
 .venv/bin/python dutch_images.py export   # -> data/dutch_export/
@@ -62,7 +65,7 @@ ANTHROPIC_API_KEY=... .venv/bin/python dutch_images.py hormones                #
 |---|---|---|
 | `fetch` | finds posts and comments naming DUTCH with images (galleries, i.redd.it, preview.redd.it, imgur) and downloads them one at a time; dead links are logged in `data/dutch_images.jsonl` | free |
 | `extract` | Claude Haiku 5.5 labels each image `dutch_page`, `other_lab` or `not_lab` and copies a DUTCH page's table rows, report month, collection month, age and sex. Cached by image SHA-256 and model | ~$1–2 (Haiku), ~$5–10 (Sonnet) |
-| `hormones` | reads from the post text whether the author was on hormones when tested (`yes` / `no` / `unknown`, with a quote) | cents |
+| `hormones` | reads from the post text (and, for a comment, its thread post when the same author wrote it) whether the author was on hormones when tested (`yes` / `no` / `unknown`, with a quote) | cents |
 | `export` | one report per post or comment, joined to the author's earliest first-person PSSD / PFS / PAS case (group, first causal drug, tier C), checked, and sorted into files | free |
 
 `export` writes `dutch_<file>.csv` and `dutch_<file>_metadata.csv` (`record_id, group, tier, drug`), with
@@ -99,4 +102,5 @@ lab values. Use the data to rank questions, never to say what works.
 - `data/` is git-ignored and must never be committed or uploaded. It is real people's health posts.
 - `data/.author_salt` makes author keys unlinkable to usernames. Losing it means new runs produce
   different keys; leaking it lets anyone with the subreddit's author list reverse them.
-- Hand data to a researcher or data holder directly, as the `export/` tables only.
+- Hand data to a researcher or data holder directly, as the `export/` and `dutch_export/` tables only.
+  Never share `images/`, the `dutch_*.jsonl` work files or the DUTCH review page.
