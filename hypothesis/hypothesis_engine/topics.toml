@@ -1,0 +1,48 @@
+# Topic searches for the paper library (spec.md, "Literature library").
+#
+# `query` is PubMed search syntax (https://pubmed.ncbi.nlm.nih.gov/help/): [tiab] is title or
+# abstract, [mh] a MeSH heading. `max_papers` keeps that many of the most relevant results.
+# A paper found by several topics is stored once and listed under each.
+#
+# No acronym is searched on its own: in PubMed "PFS" mostly means progression-free survival,
+# and "PSSD" also names a nerve-testing device (Pressure-Specified Sensory Device).
+
+[[topic]]
+name = "PSSD"
+query = '"post-SSRI sexual dysfunction"[tiab] OR (PSSD[tiab] AND (sexual[tiab] OR antidepressant*[tiab] OR SSRI*[tiab])) OR ((persistent[tiab] OR persisting[tiab] OR enduring[tiab] OR "post-treatment"[tiab]) AND "sexual dysfunction"[tiab] AND (antidepressant*[tiab] OR SSRI*[tiab] OR SNRI*[tiab] OR "serotonin uptake inhibitors"[mh]))'
+max_papers = 600
+
+[[topic]]
+name = "PFS"
+query = '"post-finasteride syndrome"[tiab] OR "post finasteride syndrome"[tiab] OR (finasteride[tiab] AND (persistent[tiab] OR persistence[tiab] OR "adverse effects"[tiab]) AND (sexual[tiab] OR depress*[tiab] OR cognitive[tiab] OR neuro*[tiab]))'
+max_papers = 500
+
+[[topic]]
+name = "PAS"
+query = '"post-accutane syndrome"[tiab] OR "post-isotretinoin"[tiab] OR (isotretinoin[tiab] AND (persistent[tiab] OR "sexual dysfunction"[tiab] OR depress*[tiab] OR psychiatric[tiab]))'
+max_papers = 500
+
+[[topic]]
+name = "neurosteroids"
+query = 'neurosteroids[mh] OR neurosteroid*[tiab] OR "neuroactive steroid"[tiab] OR "neuroactive steroids"[tiab] OR allopregnanolone[tiab]'
+max_papers = 800
+
+[[topic]]
+name = "steroid metabolism enzymes"
+query = '("5-alpha reductase"[tiab] OR "5α-reductase"[tiab] OR "3-oxo-5-alpha-steroid 4-dehydrogenase"[mh] OR aromatase[tiab] OR "3alpha-hydroxysteroid dehydrogenase"[tiab] OR "3α-hydroxysteroid dehydrogenase"[tiab] OR AKR1C*[tiab] OR SRD5A*[tiab] OR CYP19A1[tiab]) AND (brain[tiab] OR "nervous system"[tiab] OR sexual[tiab] OR neuro*[tiab])'
+max_papers = 600
+
+[[topic]]
+name = "serotonin and sexual function"
+query = '(serotonin[mh] OR serotonin[tiab] OR "serotonin uptake inhibitors"[mh] OR SSRI*[tiab]) AND ("sexual dysfunction, physiological"[mh] OR "sexual behavior"[mh] OR "sexual function"[tiab] OR "sexual dysfunction"[tiab] OR libido[tiab] OR genital*[tiab])'
+max_papers = 800
+
+[[topic]]
+name = "small-fibre neuropathy"
+query = '"small fiber neuropathy"[mh] OR "small fiber neuropathy"[tiab] OR "small fibre neuropathy"[tiab] OR "small-fiber neuropathy"[tiab] OR "small-fibre neuropathy"[tiab]'
+max_papers = 500
+
+[[topic]]
+name = "epigenetic effects of drugs"
+query = '("epigenesis, genetic"[mh] OR epigenetic*[tiab] OR "DNA methylation"[tiab] OR histone*[tiab]) AND (antidepressant*[tiab] OR "antidepressive agents"[mh] OR "serotonin uptake inhibitors"[mh] OR SSRI*[tiab] OR finasteride[tiab] OR isotretinoin[tiab])'
+max_papers = 500

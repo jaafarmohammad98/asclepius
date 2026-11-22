@@ -1,0 +1,17 @@
+# A small topic list for the recorded build test. Two topics overlap on purpose, and one finds
+# letters, which have no abstract.
+
+[[topic]]
+name = "PFS"
+query = '"post-finasteride syndrome"[tiab]'
+max_papers = 4
+
+[[topic]]
+name = "steroid metabolism enzymes"
+query = '"5α-reductase"[tiab] AND "post-finasteride syndrome"[tiab]'
+max_papers = 4
+
+[[topic]]
+name = "letters"
+query = 'finasteride[tiab] AND letter[pt] NOT hasabstract'
+max_papers = 2

@@ -18,3 +18,7 @@ analysis/.venv/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+
+# the built paper library: local only
+hypothesis/data/
+hypothesis/.venv/
