@@ -1,4 +1,4 @@
-"""Recorded PubMed responses, so the suite never touches the network.
+"""Recorded PubMed and Europe PMC responses, so the suite never touches the network.
 
 Each response is a file named after its request. `record_responses.py` makes them.
 """
@@ -18,7 +18,7 @@ def request_key(endpoint: str, params: dict[str, str]) -> str:
 
 
 def response_path(folder: Path, endpoint: str, params: dict[str, str]) -> Path:
-    suffix = ".json" if endpoint == "esearch" else ".xml"
+    suffix = ".json" if endpoint in ("esearch", "searchPOST") else ".xml"
     return folder / f"{request_key(endpoint, params)}{suffix}"
 
 

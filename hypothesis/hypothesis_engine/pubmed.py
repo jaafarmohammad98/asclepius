@@ -18,7 +18,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
 RATE_WITHOUT_KEY = 3
@@ -157,6 +157,7 @@ def parse_pubmed_xml(body: bytes) -> list[Paper]:
 BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
 TOOL = "asclepius"
 FETCH_BATCH = 200  # NCBI's suggested ids per efetch request
+PMC_BATCH = 20  # full articles per efetch request; each is 30-400 kB of XML
 RETRIES = 3
 TIMEOUT = 120.0  # seconds; a 200-record efetch answer can be several megabytes
 
@@ -195,6 +196,25 @@ def http_transport(api_key: str | None = None) -> Transport:
     return send
 
 
+def send_politely(
+    transport: Transport,
+    endpoint: str,
+    params: dict[str, str],
+    limiter: RateLimiter,
+    sleep: Callable[[float], None],
+) -> bytes:
+    """Send one request through `transport` within `limiter`'s rate, retrying a transient failure."""
+    for attempt in range(RETRIES + 1):
+        limiter.wait()
+        try:
+            return transport(endpoint, params)
+        except TransientError:
+            if attempt == RETRIES:
+                raise
+            sleep(2.0 * 2**attempt)  # 2, 4, 8 seconds
+    raise AssertionError("unreachable")
+
+
 class PubMed:
     """Searches and fetches through `transport`, waiting on `limiter` before every request."""
 
@@ -211,15 +231,7 @@ class PubMed:
         self._fetch_batch = fetch_batch
 
     def _request(self, endpoint: str, params: dict[str, str]) -> bytes:
-        for attempt in range(RETRIES + 1):
-            self._limiter.wait()
-            try:
-                return self._transport(endpoint, params)
-            except TransientError:
-                if attempt == RETRIES:
-                    raise
-                self._sleep(2.0 * 2**attempt)  # 2, 4, 8 seconds
-        raise AssertionError("unreachable")
+        return send_politely(self._transport, endpoint, params, self._limiter, self._sleep)
 
     def search(self, query: str, max_papers: int) -> list[str]:
         """PMIDs of the `max_papers` most relevant results for `query`."""
@@ -250,3 +262,11 @@ class PubMed:
             except ET.ParseError as error:
                 raise PubMedError(f"efetch: unreadable XML for ids {batch[0]}..{batch[-1]}") from error
         return papers
+
+    def fetch_pmc(self, pmcids: Sequence[str]) -> bytes:
+        """The JATS XML of these PubMed Central articles ("PMC7253896"...), one `<pmc-articleset>`.
+
+        Fetch only open-access articles: for others PMC sends no body text.
+        """
+        ids = ",".join(pmcid.removeprefix("PMC") for pmcid in pmcids)
+        return self._request("efetch", {"db": "pmc", "id": ids})
