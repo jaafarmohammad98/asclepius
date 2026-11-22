@@ -41,7 +41,8 @@ def test_a_long_run_of_private_text_is_refused():
 
 
 def test_many_short_quotes_that_add_up_to_too_much_are_refused():
-    request = " and next, ".join(f'"{s}"' for s in SENTENCES)  # each under the limit, together over it
+    # each under the limit, together over it
+    request = " Then, in another place entirely: ".join(f'"{s}"' for s in SENTENCES)
     with pytest.raises(PrivateTextLeak, match="60 words"):
         GUARD.check(request)
 
@@ -58,3 +59,26 @@ def test_a_private_title_is_guarded_too():
         "Title: Allopregnanolone stayed low for eighteen months in one man"
     )
     assert quote.paper_ids == {"private-1"}
+
+
+def test_a_private_paper_shorter_than_a_run_is_guarded_whole():
+    short = PrivatePaper("private-2", "b.pdf", "Note", "Dose halved, symptoms gone.")
+    (quote,) = PrivateTextGuard([short]).check("They wrote: note. Dose halved, symptoms gone.")
+    assert quote.paper_ids == {"private-2"}
+
+
+def test_a_long_passage_broken_by_inserted_words_is_still_one_passage():
+    words = " ".join(SENTENCES[:4]).split()
+    # a citation marker every 30 words: each piece is under the limit, the passage is not
+    broken = " ".join(w + (" [12]" if i % 30 == 29 else "") for i, w in enumerate(words))
+    with pytest.raises(PrivateTextLeak, match="40 words"):
+        GUARD.check(broken)
+
+
+def test_one_guard_counts_what_has_been_sent_of_a_paper_across_requests():
+    guard = PrivateTextGuard([PAPER], max_quote_words=40, max_total_words=60, max_paper_words=50)
+    guard.check(f'"{SENTENCES[0]}" and "{SENTENCES[1]}"')
+    guard.check(f'"{SENTENCES[0]}"')  # sent before: counts once
+    with pytest.raises(PrivateTextLeak, match="50 words of private-0123456789abcdef"):
+        guard.check(f'"{SENTENCES[2]}" and "{SENTENCES[3]}"')
+    guard.check(f'"{SENTENCES[1]}"')  # a refused request was not counted as sent

@@ -4,12 +4,14 @@ private folder's PDFs join the library. The version goes up only when something 
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from functools import partial
 from pathlib import Path
 
 import pytest
 from pdf_fixture import write_pdf
 
 from hypothesis_engine.build import refresh_library
+from hypothesis_engine.fulltext import fetch_full_texts
 from hypothesis_engine.library import Library, LibraryError, write_build
 from hypothesis_engine.pubmed import Paper
 from hypothesis_engine.topics import Topic
@@ -147,3 +149,48 @@ def test_a_renamed_pdf_is_the_same_paper_under_its_new_name(tmp_path):
     assert _refresh(path, pubmed, folder).version is None
     with Library.open(path) as library:
         assert [p.file_name for p in library.private_papers()] == ["final.pdf"]
+
+
+class FakeEverything(FakePubMed):
+    """Searches and records from FakePubMed; full text from the recorded PubMed Central answers."""
+
+    def __init__(self, results: dict[str, list[str]], recorded) -> None:
+        super().__init__(results)
+        self.fetch_pmc = recorded.pubmed.fetch_pmc
+
+
+def test_the_refresh_command_run_twice_adds_nothing_the_second_time(tmp_path, monkeypatch, capsys):
+    from fulltext_fixture import DOWNLOAD_BATCH, PMIDS, make_library
+    from test_fulltext import Recorded
+
+    from hypothesis_engine import build
+
+    path = tmp_path / "library.sqlite"
+    make_library(path)  # version 1: five papers, no full text
+    folder = tmp_path / "private"
+    folder.mkdir()
+    write_pdf(folder / "cohort.pdf", [[QUOTE]])
+    topics = tmp_path / "topics.toml"
+    topics.write_text('[[topic]]\nname = "PSSD"\nquery = "pssd"\nmax_papers = 10\n')
+
+    def run() -> tuple[Recorded, FakeEverything, str]:
+        recorded = Recorded()
+        pubmed = FakeEverything({"pssd": PMIDS}, recorded)
+        monkeypatch.setattr(build, "PubMed", lambda *_args, **_kwargs: pubmed)
+        monkeypatch.setattr(build.europepmc, "EuropePMC", lambda *_args, **_kwargs: recorded.europepmc)
+        # the recorded downloads were made in batches of DOWNLOAD_BATCH
+        monkeypatch.setattr(
+            build, "fetch_full_texts", partial(fetch_full_texts, download_batch=DOWNLOAD_BATCH)
+        )
+        args = ["refresh", "--library", str(path), "--topics", str(topics), "--private", str(folder)]
+        assert build.main(args) == 0
+        return recorded, pubmed, capsys.readouterr().err
+
+    _recorded, _pubmed, first = run()
+    assert "library version 2" in first  # the private PDF
+    assert "library version 3" in first  # the full text downloaded after it
+    recorded, pubmed, second = run()
+    assert (pubmed.fetched, recorded.lookups, recorded.downloads) == ([], 0, [])
+    assert "nothing new" in second and "library version" not in second
+    with Library.open(path) as library:
+        assert library.version == 3

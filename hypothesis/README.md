@@ -81,10 +81,13 @@ private. Git ignores the folder and every PDF.
 - Private papers are never looked up or downloaded anywhere: requests to PubMed and Europe
   PMC carry PMIDs only, and private papers have none.
 - Anything the engine sends to an LLM (from M4-04) must first pass
-  `hypothesis_engine.privacy.PrivateTextGuard.check(request)`. It finds the runs of 8 or
-  more words the request shares with a private paper's title or text, refuses the request when one run is
-  over 60 words or all of them together are over 200, and otherwise returns those passages
-  so they can be shown to the researcher before sending.
+  `hypothesis_engine.privacy.PrivateTextGuard.check(request)`, one guard per run. It finds
+  the passages the request shares with a private paper's title or text (8 or more words in
+  a row, or the whole of a shorter paper; runs at most 3 words apart are one passage). It
+  refuses the request when one passage is over 60 words, all of them together are over 200,
+  or more than 400 different words of one paper would have been sent during the run.
+  Otherwise it returns the passages so they can be shown to the researcher before sending.
+  It catches private text slipping into a request by mistake, not text disguised on purpose.
 
 ## Topics
 
