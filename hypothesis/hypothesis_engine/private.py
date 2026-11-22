@@ -24,6 +24,8 @@ ID_PREFIX = "private-"
 
 @dataclass(frozen=True)
 class PrivatePaper:
+    """One of the researcher's PDFs as text; `id` follows its words (see the module docstring)."""
+
     id: str
     file_name: str
     title: str
@@ -32,6 +34,8 @@ class PrivatePaper:
 
 @dataclass(frozen=True)
 class PrivateFolder:
+    """What the folder held: the papers read, and the PDFs skipped with the reason."""
+
     papers: list[PrivatePaper] = field(default_factory=list)
     skipped: list[tuple[str, str]] = field(default_factory=list)  # (file name, reason)
 

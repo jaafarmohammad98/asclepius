@@ -59,6 +59,8 @@ class BuildReport:
 
 @dataclass(frozen=True)
 class RefreshReport:
+    """What a refresh changed in the library, and which private PDFs it could not read."""
+
     version: int | None  # the new version, None when nothing was new
     new_papers: int
     private_added: int
@@ -142,16 +144,17 @@ def refresh_library(
     stamp = now().isoformat(timespec="seconds")
     change = write_refresh(path, papers, found_by, _fingerprint(topics), stamp, folder.papers)
     return RefreshReport(
-        change.version,
-        change.new_papers,
-        change.private_added,
-        change.private_removed,
-        len(folder.papers),
-        folder.skipped,
+        version=change.version,
+        new_papers=change.new_papers,
+        private_added=change.private_added,
+        private_removed=change.private_removed,
+        private_papers=len(folder.papers),
+        skipped=folder.skipped,
     )
 
 
 def describe_refresh(report: RefreshReport, path: Path) -> str:
+    """One line for the researcher: what the refresh added, or that nothing was new."""
     private = f"{report.private_papers} private"
     if report.private_added or report.private_removed:
         private += f" ({report.private_added} added, {report.private_removed} removed)"
@@ -206,8 +209,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
         downloading = True
         lookup = europepmc.EuropePMC(europepmc.http_transport(), RateLimiter(europepmc.RATE))
-        text = fetch_full_texts(args.library, lookup, pubmed, progress=say)
-        say(describe(text) + (f"; library version {text.version}" if text.version else ""))
+        full_text = fetch_full_texts(args.library, lookup, pubmed, progress=say)
+        say(describe(full_text) + (f"; library version {full_text.version}" if full_text.version else ""))
     except KeyboardInterrupt:
         if downloading:
             say("asclepius-library: stopped; `asclepius-library fulltext` continues the download")

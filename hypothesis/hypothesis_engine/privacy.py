@@ -33,12 +33,16 @@ class PrivateTextLeak(Exception):
 
 @dataclass(frozen=True)
 class Quote:
+    """A run of words a request shares with private papers, for the researcher to see."""
+
     text: str  # as it stands in the request
     words: int
     paper_ids: set[str]
 
 
 class PrivateTextGuard:
+    """Checks outgoing text against the private papers' titles and text."""
+
     def __init__(
         self,
         papers: Iterable[PrivatePaper],
@@ -47,7 +51,7 @@ class PrivateTextGuard:
     ) -> None:
         self._runs: dict[tuple[str, ...], set[str]] = {}
         for paper in papers:
-            words = [w.casefold() for w in _WORD.findall(paper.text)]
+            words = [w.casefold() for w in _WORD.findall(f"{paper.title}\n{paper.text}")]
             for start in range(len(words) - RUN + 1):
                 self._runs.setdefault(tuple(words[start : start + RUN]), set()).add(paper.id)
         self.max_quote_words = max_quote_words

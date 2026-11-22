@@ -48,3 +48,13 @@ def test_many_short_quotes_that_add_up_to_too_much_are_refused():
 
 def test_a_guard_without_private_papers_lets_everything_through():
     assert PrivateTextGuard([]).check(" ".join(SENTENCES)) == []
+
+
+def test_a_private_title_is_guarded_too():
+    paper = PrivatePaper(
+        "private-1", "a.pdf", "Allopregnanolone stayed low for eighteen months in one man", "Body."
+    )
+    (quote,) = PrivateTextGuard([paper]).check(
+        "Title: Allopregnanolone stayed low for eighteen months in one man"
+    )
+    assert quote.paper_ids == {"private-1"}

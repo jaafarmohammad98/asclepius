@@ -363,16 +363,17 @@ def write_refresh(
         ]
         before = _private_ids(db, previous)
         after = {p.id for p in private}
+        # a renamed file is not a change, but the stored name follows it
+        db.executemany(
+            "UPDATE private_papers SET file_name = ? WHERE id = ?", [(p.file_name, p.id) for p in private]
+        )
         if not new_pairs and before == after:
             return Change(None, 0, 0, 0)
         in_previous = {pmid for pmid, _topic in pairs}
         new_pmids = {pmid for pmid, _topic, _rank in new_pairs} - in_previous
         version = _add_version(db, built_at, topics_sha256, len(in_previous | new_pmids))
         _store_papers(db, [p for p in papers if p.pmid in new_pmids], version)
-        db.execute(
-            "INSERT INTO paper_topics SELECT ?, pmid, topic, rank FROM paper_topics WHERE version = ?",
-            (version, previous),
-        )
+        _carry_forward(db, previous, version, private=False)
         db.executemany(
             "INSERT INTO paper_topics VALUES (?, ?, ?, ?)", [(version, *pair) for pair in new_pairs]
         )
@@ -406,14 +407,7 @@ def seal_texts(path: Path, at: str) -> int | None:
             "SELECT topics_sha256, papers FROM builds WHERE version = ?", (previous,)
         ).fetchone()
         version = _add_version(db, at, sha, papers)
-        db.execute(
-            "INSERT INTO paper_topics SELECT ?, pmid, topic, rank FROM paper_topics WHERE version = ?",
-            (version, previous),
-        )
-        db.execute(
-            "INSERT INTO private_versions SELECT ?, id FROM private_versions WHERE version = ?",
-            (version, previous),
-        )
+        _carry_forward(db, previous, version)
         db.execute(
             "UPDATE open_access SET version = ? WHERE text IS NOT NULL AND version IS NULL", (version,)
         )
@@ -527,7 +521,6 @@ def _write(
     if _check_schema(db, path, allow_new=True):
         _run(db, _SCHEMA)
         db.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
-    (last,) = db.execute("SELECT coalesce(max(version), 0) FROM builds").fetchone()
     version = _add_version(db, built_at, topics_sha256, len(papers))
     _store_papers(db, papers, version)
     db.executemany(
@@ -537,11 +530,24 @@ def _write(
     if private is not None:
         _store_private(db, private, version)
     else:
+        _carry_forward(db, version - 1, version, topics=False)
+    return version
+
+
+def _carry_forward(
+    db: sqlite3.Connection, previous: int, version: int, topics: bool = True, private: bool = True
+) -> None:
+    """Copy the previous version's papers (`topics`) and its private papers into `version`."""
+    if topics:
+        db.execute(
+            "INSERT INTO paper_topics SELECT ?, pmid, topic, rank FROM paper_topics WHERE version = ?",
+            (version, previous),
+        )
+    if private:
         db.execute(
             "INSERT INTO private_versions SELECT ?, id FROM private_versions WHERE version = ?",
-            (version, last),
+            (version, previous),
         )
-    return version
 
 
 def _add_version(db: sqlite3.Connection, built_at: str, topics_sha256: str, papers: int) -> int:

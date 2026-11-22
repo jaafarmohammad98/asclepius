@@ -134,3 +134,16 @@ def test_skipped_pdfs_are_reported(tmp_path):
 def test_refresh_needs_a_built_library(tmp_path):
     with pytest.raises(LibraryError, match="asclepius-library build"):
         _refresh(tmp_path / "library.sqlite", FakePubMed({"pssd": [], "pfs": []}), tmp_path)
+
+
+def test_a_renamed_pdf_is_the_same_paper_under_its_new_name(tmp_path):
+    path = _library(tmp_path)
+    folder = tmp_path / "private"
+    folder.mkdir()
+    write_pdf(folder / "draft.pdf", [[QUOTE]])
+    pubmed = FakePubMed({"pssd": ["100"], "pfs": []})
+    _refresh(path, pubmed, folder)
+    (folder / "draft.pdf").rename(folder / "final.pdf")
+    assert _refresh(path, pubmed, folder).version is None
+    with Library.open(path) as library:
+        assert [p.file_name for p in library.private_papers()] == ["final.pdf"]
