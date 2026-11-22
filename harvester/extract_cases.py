@@ -114,6 +114,11 @@ def load_salt() -> bytes:
 
 GONE = {"", "[deleted]", "[removed]"}
 
+def author_key(author, salt):
+    """Stable pseudonymous key for a username, or None for a deleted account."""
+    author = str(author or "")
+    return None if author in ("", "[deleted]") else hmac.new(salt, author.encode(), hashlib.sha256).hexdigest()[:16]
+
 def normalize(obj, salt):
     """Submissions have title+selftext, comments have body. Drop usernames (de-identify)."""
     if "body" in obj:
@@ -125,15 +130,14 @@ def normalize(obj, salt):
         text = f"{obj.get('title','')}\n\n{'' if body in GONE else body}".strip()
     if not text:
         return None
-    author = str(obj.get("author") or "")
+    author = obj.get("author")
     return {
         "id": obj.get("name") or obj.get("id"),
         "subreddit": obj.get("subreddit"),
         "created_utc": obj.get("created_utc"),
         "kind": "comment" if "body" in obj else "submission",
         # stable pseudonymous author key so one person's posts can be linked, never the name itself
-        "author_key": None if author in ("", "[deleted]")
-                      else hmac.new(salt, author.encode(), hashlib.sha256).hexdigest()[:16],
+        "author_key": author_key(author, salt),
         "text": text,
     }
 

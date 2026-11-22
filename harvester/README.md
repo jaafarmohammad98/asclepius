@@ -41,6 +41,53 @@ Full r/PSSD run (Oct 2014 to Nov 2026): 408,464 posts and comments, 13,604 after
 10,354 first-person cases from about 3,272 authors, 96% of records with all quotes found in the
 source. Extraction cost about $7.50.
 
+## DUTCH values from Reddit images
+
+People on r/DrWillPowers post screenshots of their DUTCH reports. `dutch_images.py` reads the printed
+result tables into the extractor's lab-report CSV, which the analysis loads with `load_lab_reports`.
+r/DrWillPowers is mostly about hormone therapy, so run `topic_filter.py` on its raw download first and
+extract its cases like r/PSSD's (`cases_merged_clean.jsonl` holds both subreddits).
+
+```sh
+.venv/bin/python topic_filter.py --inp data/DrWillPowers_raw.jsonl --out data/DrWillPowers_topic_raw.jsonl
+.venv/bin/python dutch_images.py fetch --raw data/DrWillPowers_topic_raw.jsonl   # downloads, resumable
+ANTHROPIC_API_KEY=... .venv/bin/python dutch_images.py extract                 # 1 vision call per image
+ANTHROPIC_API_KEY=... .venv/bin/python dutch_images.py hormones                # 1 text call per post
+.venv/bin/python dutch_images.py export   # -> data/dutch_export/
+.venv/bin/python dutch_images.py review   # -> data/dutch_review.html + dutch_review.csv (20 reports)
+.venv/bin/python dutch_images.py score    # per-marker error rate from the filled-in review sheet
+```
+
+| Step | What it does | Cost |
+|---|---|---|
+| `fetch` | finds posts and comments naming DUTCH with images (galleries, i.redd.it, preview.redd.it, imgur) and downloads them one at a time; dead links are logged in `data/dutch_images.jsonl` | free |
+| `extract` | Claude Haiku 5.5 labels each image `dutch_page`, `other_lab` or `not_lab` and copies a DUTCH page's table rows, report month, collection month, age and sex. Cached by image SHA-256 and model | ~$1–2 (Haiku), ~$5–10 (Sonnet) |
+| `hormones` | reads from the post text whether the author was on hormones when tested (`yes` / `no` / `unknown`, with a quote) | cents |
+| `export` | one report per post or comment, joined to the author's earliest first-person PSSD / PFS / PAS case (group, first causal drug, tier C), checked, and sorted into files | free |
+
+`export` writes `dutch_<file>.csv` and `dutch_<file>_metadata.csv` (`record_id, group, tier, drug`), with
+record ids `rd001`…:
+
+- `default`: each author's earliest report that passes every check and was not taken on hormones
+- `hormones`: on hormones at test (`yes`). A `no` whose quote is not in the post counts as `unknown`
+- `failing`: a check failed (status disagrees with value and range, a unit not like `ng/mg`, a marker name
+  the PDF extractor does not know, a printed sum that does not add up, an unreadable row, two pages
+  disagreeing, or no hormone answer). May not load, since a bad unit is one of the failures
+- `retests`: an author's later clean reports
+
+A repost by the same author with identical numbers is dropped. A report with no printed report month
+takes the post's month, with a warning. No export holds a Reddit id, URL, quote, image path or author
+key. Images can show a name, date of birth and accession number: they stay in `data/images/` and no
+field in the schema can hold an identity. The hormone quotes appear only on the local review page.
+
+**Accuracy:** not measured yet. Hand-check the 20 reports from `review`, then publish the `score`
+result here. If more than 2% of markers are wrong, switch to Sonnet 5.5: `extract --model claude-sonnet-5-5`,
+`hormones --vision-model claude-sonnet-5-5` (asks only about posts not yet read), then `export` and
+`review` with `--model claude-sonnet-5-5`. Haiku readings stay cached.
+
+Tests: `.venv/bin/python -m unittest discover tests` (run with `../analysis/.venv/bin/python` to also
+check that the default export loads in the analysis).
+
 ## Limits
 
 These are self-reports from people who chose to post. There is no control group, posting is biased
