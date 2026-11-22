@@ -30,12 +30,11 @@ class ParsePage(unittest.TestCase):
         self.assertIsNone(page["report_month"]); self.assertIsNone(page["age_years"]); self.assertIsNone(page["sex"])
         self.assertEqual(len(problems), 4)
 
-    def test_ratio_rows_are_derived_and_dropped_like_the_pdf_extractor_does(self):
+    def test_ratio_rows_are_kept(self):
         page, problems = d.parse_page({"label": "dutch_page", "markers": [
             marker("2-OH / 16-OH-E1 Balance", 12.87, unit="ratio", lo=2.85, hi=9.88, status="Above range"), marker()]})
-        self.assertEqual([m["id"] for m in page["markers"]], ["testosterone"])
+        self.assertEqual([m["id"] for m in page["markers"]], ["2_oh_16_oh_e1_balance", "testosterone"])
         self.assertEqual(problems, [])
-        self.assertEqual(page["dropped"], ["2-OH / 16-OH-E1 Balance"])
 
     def test_unknown_label_is_not_lab(self):
         page, problems = d.parse_page({"label": "selfie"})
@@ -65,12 +64,12 @@ class Checks(unittest.TestCase):
     def test_a_value_given_as_a_limit_skips_the_status_rule(self):
         self.assertEqual(d.check_markers([page_marker(value=200, comparator="<")], KNOWN), [])
 
-    def test_unit_must_match_the_loader_pattern(self):
-        self.assertEqual(len(d.check_markers([page_marker(unit="ng/mg CR")], KNOWN)), 1)
-        self.assertEqual(len(d.check_markers([page_marker(unit="")], KNOWN)), 1)
+    def test_unknown_names_and_odd_units_are_not_failures(self):
+        self.assertEqual(d.check_markers([page_marker(name="Cortisol (U1) - Waking", unit="ng/mg CR")], KNOWN), [])
 
-    def test_marker_name_must_be_one_the_pdf_extractor_knows(self):
-        self.assertEqual(len(d.check_markers([page_marker(name="Testosterone total")], KNOWN)), 1)
+    def test_l_and_h_flags_mean_below_and_above(self):
+        self.assertEqual(d.check_markers([page_marker(value=10, status="L"), page_marker(value=200, status="H")], KNOWN), [])
+        self.assertEqual(len(d.check_markers([page_marker(value=10, status="H")], KNOWN)), 1)
 
     def test_daily_cortisol_must_add_up_to_the_printed_total(self):
         parts = [page_marker(name=n, value=v, lo=None, hi=None, status=None) for n, v in
@@ -165,24 +164,33 @@ class Assemble(unittest.TestCase):
         [r] = assemble([item("t3_a")], {"img1": page(marker(value=500))})
         self.assertTrue(any("marked" in f for f in r["failures"]))
 
-    def test_unknown_or_unitless_markers_are_dropped_with_a_warning(self):
+    def test_rows_the_pdf_extractor_does_not_read_are_kept_and_flagged(self):
         pages = {"img1": page(marker(), marker("Cortisol (U1) - Waking", 30, lo=None, hi=None),
                               marker("Cortisol Clearance Rate (CCR)", 2.0, unit="", lo=None, hi=None))}
         [r] = assemble([item("t3_a")], pages)
-        self.assertEqual([m["id"] for m in r["markers"]], ["testosterone"])
+        got = [(m["id"], m["extractor"], m["loadable"]) for m in r["markers"]]
+        self.assertEqual(got, [("testosterone", True, True), ("cortisol_u1_waking", False, True),
+                               ("cortisol_clearance_rate_ccr", False, False)])
         self.assertEqual(r["failures"], [])
-        self.assertTrue(any("Cortisol (U1) - Waking" in w and "Cortisol Clearance Rate" in w for w in r["warnings"]))
 
-    def test_a_known_marker_in_another_unit_is_dropped_and_case_is_normalised(self):
+    def test_a_known_marker_in_another_unit_gets_its_own_id_and_case_is_normalised(self):
         pages = {"img1": page(marker(), marker("Estradiol(E2)", 1.1, unit="ug/gCR", lo=0.5, hi=2.2),
                               marker("Creatinine A (Waking)", 0.9, unit="mg/mL", lo=0.3, hi=3))}
         [r] = assemble([item("t3_a")], pages)
         self.assertEqual([(m["id"], m["unit"]) for m in r["markers"]],
-                         [("testosterone", "ng/mg"), ("creatinine_a_waking", "mg/ml")])
-        self.assertTrue(any("Estradiol(E2)" in w for w in r["warnings"]))
+                         [("testosterone", "ng/mg"), ("estradiol_e2_ug_gcr", "ug/gCR"), ("creatinine_a_waking", "mg/ml")])
 
-    def test_a_post_with_only_unknown_markers_makes_no_report(self):
-        self.assertEqual(assemble([item("t3_a")], {"img1": page(marker("Indican", 50, lo=0, hi=80))}), [])
+    def test_a_new_marker_in_two_units_keeps_the_common_unit_and_the_other_gets_its_own_id(self):
+        dhea = lambda unit: marker("DHEA", 5, unit=unit, lo=None, hi=None)
+        pages = {"p1": page(dhea("ng/mg")), "p2": page(dhea("ng/mg")), "p3": page(dhea("ng/mL"))}
+        reports = assemble([item("t3_a", images=["p1"]), item("t3_b", author="a2", images=["p2"]),
+                            item("t3_c", author="a3", images=["p3"])], pages,
+                           cases=[case(), case(author="a2"), case(author="a3")])
+        self.assertEqual([r["markers"][0]["id"] for r in reports], ["dhea", "dhea", "dhea_ng_ml"])
+
+    def test_a_post_with_only_new_markers_still_makes_a_report(self):
+        [r] = assemble([item("t3_a")], {"img1": page(marker("Indican", 50, lo=0, hi=80))})
+        self.assertEqual(r["markers"][0]["id"], "indican")
 
     def test_a_report_without_a_hormone_answer_fails(self):
         [r] = assemble([item("t3_a")], {"img1": page()}, hormones={})
@@ -195,7 +203,8 @@ def report(id, author="a1", month="2024-01", hormones="no", failures=(), when=JA
             "group": "PSSD", "tier": "C", "drug": "sertraline", "sex": "male", "age_years": 30,
             "collection_month": None, "report_month": month, "on_hormones_at_test": hormones,
             "hormone_quote": "I was on 100mg test cyp" if hormones == "yes" else None,
-            "markers": [page_marker(**kw)], "failures": list(failures), "warnings": []}
+            "markers": [dict(page_marker(**kw), extractor=True, loadable=True)], "failures": list(failures),
+            "warnings": []}
 
 
 class Select(unittest.TestCase):
@@ -224,16 +233,24 @@ class Export(unittest.TestCase):
                         report("t1_secretcommentid", author="5ecre7auth0rkey", month="2025-01"),
                         report("t3_hrtpostid", author="0therauth0rkey1", hormones="yes")]
         self.reports[0]["images"] = ["https://i.redd.it/secretimage.png"]
+        ratio = dict(page_marker(name="2-OH / 16-OH-E1 Balance", value=12.87, unit="ratio", lo=2.85, hi=9.88,
+                                 status="Above range"), extractor=False, loadable=False)
+        self.reports[0]["markers"].append(ratio)
         d.write_export(d.select(self.reports), self.dir)
 
     def test_files_per_bucket_with_extractor_columns_and_metadata(self):
         import csv
         names = sorted(p.name for p in self.dir.iterdir())
-        self.assertEqual(names, ["dutch_default.csv", "dutch_default_metadata.csv", "dutch_hormones.csv",
+        self.assertEqual(names, ["dutch_default.csv", "dutch_default_metadata.csv", "dutch_default_other_units.csv",
+                                 "dutch_hormones.csv",
                                  "dutch_hormones_metadata.csv", "dutch_retests.csv", "dutch_retests_metadata.csv"])
         rows = list(csv.DictReader(open(self.dir / "dutch_default.csv")))
         self.assertEqual(tuple(rows[0]), d.COLUMNS)
         self.assertEqual((rows[0]["record_id"], rows[0]["marker_id"], rows[0]["value"]), ("rd001", "testosterone", "46.8"))
+        other = list(csv.DictReader(open(self.dir / "dutch_default_other_units.csv")))
+        self.assertEqual([(r["record_id"], r["marker_id"], r["unit"]) for r in other],
+                         [("rd001", "2_oh_16_oh_e1_balance", "ratio")])
+        self.assertNotIn("ratio", {r["unit"] for r in rows})
         meta = list(csv.DictReader(open(self.dir / "dutch_default_metadata.csv")))
         self.assertEqual(meta, [{"record_id": "rd001", "group": "PSSD", "tier": "C", "drug": "sertraline"}])
 
@@ -278,6 +295,15 @@ class FindImages(unittest.TestCase):
         self.assertEqual((it["id"], it["urls"], it["author_key"]), ("t1_c", ["https://i.redd.it/q.jpg"],
                                                                      d.author_key("x", salt)))
         self.assertIsNone(d.dutch_item({"body": "DUTCH https://i.redd.it/q.jpg", "author": "[deleted]"}, salt))
+
+
+class ReviewSample(unittest.TestCase):
+    def test_a_saved_sample_is_reused_so_checked_reports_never_change(self):
+        path = Path(tempfile.mkdtemp()) / "sample.json"
+        reports = [report(f"t3_{i}") for i in range(30)]
+        first, _ = d.review_sample(reports, 5, seed=0, path=path)
+        again, _ = d.review_sample([report("t3_new")] + reports, 5, seed=1, path=path)
+        self.assertEqual([r["item_id"] for r in again], [r["item_id"] for r in first])
 
 
 class Score(unittest.TestCase):

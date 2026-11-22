@@ -64,12 +64,14 @@ ANTHROPIC_API_KEY=... .venv/bin/python dutch_images.py hormones                #
 | Step | What it does | Cost |
 |---|---|---|
 | `fetch` | finds posts and comments naming DUTCH with images (galleries, i.redd.it, preview.redd.it, imgur) and downloads them one at a time; dead links are logged in `data/dutch_images.jsonl` | free |
-| `extract` | Claude Haiku 5.5 labels each image `dutch_page`, `other_lab` or `not_lab` and copies a DUTCH page's table rows, report month, collection month, age and sex. Cached by image SHA-256 and model | ~$1–2 (Haiku), ~$5–10 (Sonnet) |
+| `extract` | Claude Haiku 5.5 labels each image `dutch_page`, `other_lab` or `not_lab` and copies a DUTCH page's table rows, report month, collection month, age and sex. Cached by image SHA-256 and model | $0.37 for 461 images (Haiku); ~$5–10 with Sonnet |
 | `hormones` | reads from the post text (and, for a comment, its thread post when the same author wrote it) whether the author was on hormones when tested (`yes` / `no` / `unknown`, with a quote) | cents |
 | `export` | one report per post or comment, joined to the author's earliest first-person PSSD / PFS / PAS case (group, first causal drug, tier C), checked, and sorted into files | free |
 
 `export` writes `dutch_<file>.csv` and `dutch_<file>_metadata.csv` (`record_id, group, tier, drug`), with
-record ids `rd001`…:
+record ids `rd001`…. Rows whose unit the analysis loader does not accept (the `ratio` rows, rows with no
+unit, `ng/mg Creat/Day`) go in `dutch_<file>_other_units.csv`, same columns, so nothing read is lost; that
+file does not load with `load_lab_reports`. The files are:
 
 - `default`: each author's earliest report that passes every check and was not taken on hormones
 - `hormones`: on hormones at test (`yes`). A `no` whose quote is not in the post counts as `unknown`
@@ -77,11 +79,12 @@ record ids `rd001`…:
   an unreadable row, two pages disagreeing, or no hormone answer)
 - `retests`: an author's later clean reports
 
-Rows the PDF extractor cannot read are left out of a report with a warning, not failed: marker names it
-does not know (most posts use a newer DUTCH layout, e.g. `Cortisol (U1) - Waking`, or add-on panels),
-a known marker in a unit other than the extractor's for it (another lab's panel, e.g. `ug/gCR`), rows
-with no unit, and the derived `ratio` rows. So newer-layout cortisol values are missing until the
-extractor learns that layout. Only pages with a printed result table are read: DUTCH's dial summary
+Every row read is kept, including markers the PDF extractor does not read: most posts use a newer DUTCH
+layout (e.g. `Cortisol (U1) - Waking`) or add-on panels, and some pages are other labs' tables. Those
+markers keep their own ids, named from the printed name; nothing is merged into the extractor's ids.
+Each marker id has one unit across all reports (the loader requires it): the extractor's unit for a
+marker it knows, else the most common one, and a row in another unit gets the unit added to its id
+(`estradiol_e2_ug_gcr`). Only pages with a printed result table are read: DUTCH's dial summary
 pages give nothing. Hormone use counts as `unknown` when the post does not say, and `unknown` stays in
 `default`: on r/DrWillPowers many posters are on hormone therapy, so treat that as a confounder.
 
@@ -90,8 +93,11 @@ takes the post's month, with a warning. No export holds a Reddit id, URL, quote,
 key. Images can show a name, date of birth and accession number: they stay in `data/images/` and no
 field in the schema can hold an identity. The hormone quotes appear only on the local review page.
 
-**Accuracy:** not measured yet. Hand-check the 20 reports from `review`, then publish the `score`
-result here. If more than 2% of markers are wrong, switch to Sonnet 5.5: `extract --model claude-sonnet-5-5`,
+**Accuracy:** 20 reports (538 values) hand-checked against their images on 2026-11-22: 0 wrong, 0
+missed, a per-marker error rate of 0% with Claude Haiku 5.5. The 323 rows in those reports that the PDF
+extractor does not read were added to the export afterwards; they are marked `new = yes` in the review
+sheet and not yet checked. `review` keeps the same 20 reports (`data/dutch_review_sample.json`), with
+rows already checked marked `y`. If more than 2% of markers are wrong, switch to Sonnet 5.5: `extract --model claude-sonnet-5-5`,
 `hormones --vision-model claude-sonnet-5-5` (asks only about posts not yet read), then `export` and
 `review` with `--model claude-sonnet-5-5`. Haiku readings stay cached.
 

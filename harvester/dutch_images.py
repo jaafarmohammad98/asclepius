@@ -69,7 +69,7 @@ def parse_page(raw):
         problems.append(f"unknown label {label!r}")
         label = "not_lab"
     page = {"label": label, "report_month": None, "collection_month": None, "age_years": None, "sex": None,
-            "markers": [], "dropped": []}
+            "markers": []}
     if label != "dutch_page":
         return page, problems
     for key in ("report_month", "collection_month"):
@@ -91,10 +91,6 @@ def parse_page(raw):
             problems.append(f"unreadable marker row {str(m)[:80]!r}")
             continue
         name = re.sub(r"\s+", " ", m["name"]).strip()
-        if str(m.get("unit") or "").strip().lower() == "ratio":
-            # derived "Metabolite Ratios" rows: the PDF extractor's unit pattern never reads them either
-            page["dropped"].append(name)
-            continue
         page["markers"].append({
             "id": marker_id(name), "name": name, "value": float(m["value"]),
             "comparator": m.get("comparator") if m.get("comparator") in COMPARATORS else None,
@@ -134,19 +130,17 @@ SUM_RULES = [
 
 
 def check_markers(markers, known):
-    """Return one failure message per broken rule: status vs value and range, unit pattern, known name,
-    and the report's printed sums."""
+    """Return one failure message per broken rule: status vs value and range, and the report's printed
+    sums. Marker names and units are not checked here: rows the PDF extractor does not read are kept and
+    flagged (see `assemble`)."""
     failures = []
     for m in markers:
-        if m["id"] not in known:
-            failures.append(f"{m['name']}: not a marker name the PDF extractor knows")
-        if not UNIT.match(m["unit"]):
-            failures.append(f"{m['name']}: unit {m['unit']!r} is not written like ng/mg")
         lo, hi, s = m["ref_low"], m["ref_high"], (m["status"] or "").lower()
         if s and lo is not None and hi is not None and not m["comparator"]:
-            # the lab compares unrounded values, so a printed value may equal the limit
-            ok = (m["value"] >= hi if s.startswith("above") else m["value"] <= lo if s.startswith("below")
-                  else lo <= m["value"] <= hi)
+            # the lab compares unrounded values, so a printed value may equal the limit; other labs print
+            # a bare L or H
+            above, below = s.startswith("above") or s == "h", s.startswith("below") or s == "l"
+            ok = m["value"] >= hi if above else m["value"] <= lo if below else lo <= m["value"] <= hi
             if not ok:
                 failures.append(f"{m['name']}: {m['value']} is marked {m['status']!r} against {lo}-{hi}")
     for name, total_re, part_re, min_parts, count in SUM_RULES:
@@ -193,9 +187,12 @@ def assemble(items, pages, hormones, cases, known):
     `items`: dicts with id, author_key, created_utc and `images` (SHA-256 list); `pages`: sha256 -> parsed
     page (from `parse_page`, optionally with its `problems`); `hormones`: item id -> hormone answer.
     Authors without a first-person PSSD / PFS / PAS case are left out, and a repost by the same author
-    with identical numbers is dropped (the earliest post is kept). Rows with a marker name the PDF
-    extractor does not know, or in a unit other than the extractor's for that marker, are left out of the
-    report with a warning."""
+    with identical numbers is dropped (the earliest post is kept).
+
+    Every row is kept. Each marker carries `extractor` (the PDF extractor reads this marker in this unit)
+    and `loadable` (its unit is one the analysis loader accepts, like ng/mg). A marker id has one unit
+    across all reports: the extractor's for a known marker, else the most common one, and a row in
+    another unit gets the unit added to its id (`estradiol_e2_ug_gcr`)."""
     joined = author_cases(cases)
     reports, seen = [], set()
     for it in sorted(items, key=lambda i: (int(i["created_utc"]), i["id"])):
@@ -205,23 +202,14 @@ def assemble(items, pages, hormones, cases, known):
         markers, failures, warnings = {}, [], []
         for p in dutch:
             failures += [f"unreadable on the image: {x}" for x in p.get("problems", [])]
-            if p.get("dropped"):
-                warnings.append(f"ratio rows left out: {', '.join(p['dropped'])}")
-            # newer DUTCH layouts, add-on panels and other labs' tables: rows the PDF extractor cannot read
-            # yet, rows with no unit, or a known marker in another lab's unit. The rest is still checked.
-            usable = [dict(m, unit=known[m["id"]]) for m in p["markers"]
-                      if m["id"] in known and m["unit"].lower() == known[m["id"]].lower()]
-            if len(usable) < len(p["markers"]):
-                kept = {m["name"] for m in usable}
-                left = [f"{m['name']} ({m['unit'] or 'no unit'})" for m in p["markers"] if m["name"] not in kept]
-                warnings.append(f"left out, not a marker in a unit the PDF extractor reads: {', '.join(left)}")
-            for m in usable:
-                prev = markers.setdefault(m["id"], m)
+            for m in p["markers"]:
+                prev = markers.setdefault((m["id"], m["unit"].lower()), m)
                 if prev is not m and (prev["value"], prev["unit"], prev["comparator"]) != (m["value"], m["unit"], m["comparator"]):
                     failures.append(f"{m['name']}: two pages give different values ({prev['value']}, {m['value']})")
         if not markers:
             continue
-        signature = (it["author_key"], frozenset((m["id"], m["value"], m["comparator"]) for m in markers.values()))
+        signature = (it["author_key"], frozenset((m["id"], m["unit"].lower(), m["value"], m["comparator"])
+                                                 for m in markers.values()))
         if signature in seen:
             continue
         seen.add(signature)
@@ -245,7 +233,37 @@ def assemble(items, pages, hormones, cases, known):
             "on_hormones_at_test": h["on_hormones_at_test"], "hormone_quote": h.get("quote"),
             "markers": marker_list, "failures": failures + check_markers(marker_list, known), "warnings": warnings,
         })
+    _one_unit_per_marker(reports, known)
     return reports
+
+
+def _one_unit_per_marker(reports, known):
+    """Give each marker id one unit across all reports (the analysis loader requires it) and flag the rows
+    the PDF extractor reads. The unit is the extractor's for a known marker, else the most common one;
+    a row in any other unit gets the unit added to its id."""
+    counts = defaultdict(lambda: defaultdict(int))
+    for r in reports:
+        for m in r["markers"]:
+            counts[m["id"]][m["unit"]] += 1
+    unit_of = {}
+    for mid, units in counts.items():
+        if mid in known:
+            unit_of[mid] = known[mid]
+        else:
+            by_lower = defaultdict(int)
+            for u, n in units.items():
+                by_lower[u.lower()] += n
+            common = min(by_lower, key=lambda u: (-by_lower[u], u))
+            unit_of[mid] = max((u for u in units if u.lower() == common), key=lambda u: (units[u], u))
+    for r in reports:
+        for m in r["markers"]:
+            same = m["unit"].lower() == unit_of[m["id"]].lower()
+            m["extractor"] = m["id"] in known and same
+            if same:
+                m["unit"] = unit_of[m["id"]]
+            else:
+                m["id"] = f"{m['id']}_{marker_id(m['unit']) or 'no_unit'}"
+            m["loadable"] = bool(UNIT.match(m["unit"]))
 
 
 # ---------------------------------------------------------------- export
@@ -283,9 +301,11 @@ def _cell(v):
 
 
 def write_export(buckets, out_dir):
-    """Write `dutch_<bucket>.csv` (extractor columns) and `dutch_<bucket>_metadata.csv` for each
-    non-empty bucket. Record ids run rd001... across all files, in time order within each file, and
-    carry no link to the post: no Reddit id, URL, quote, image or author key is written."""
+    """Write `dutch_<bucket>.csv` (extractor columns), `dutch_<bucket>_metadata.csv` and, for rows whose
+    unit the analysis loader does not accept (ratios, no unit, `ng/mg Creat/Day`), the same columns in
+    `dutch_<bucket>_other_units.csv`, for each non-empty bucket. Record ids run rd001... across all
+    files, in time order within each file, and carry no link to the post: no Reddit id, URL, quote,
+    image or author key is written."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     for old in out_dir.glob("dutch_*.csv"):
@@ -295,18 +315,23 @@ def write_export(buckets, out_dir):
     for bucket in BUCKETS:
         if not buckets[bucket]:
             continue
-        with open(out_dir / f"dutch_{bucket}.csv", "w", newline="", encoding="utf-8") as fh, \
-                open(out_dir / f"dutch_{bucket}_metadata.csv", "w", newline="", encoding="utf-8") as mh:
-            w, mw = csv.writer(fh), csv.writer(mh)
-            w.writerow(COLUMNS); mw.writerow(META_COLUMNS)
-            for r in buckets[bucket]:
-                n += 1
-                rid = f"rd{n:03d}"
-                for m in r["markers"]:
-                    w.writerow([_cell(v) for v in (rid, r["sex"], r["age_years"], r["collection_month"],
-                                r["report_month"], m["id"], m["name"], m["category"], m["comparator"],
-                                m["value"], m["unit"], m["ref_low"], m["ref_high"], m["status"])])
-                mw.writerow([rid, r["group"], r["tier"], r["drug"] or ""])
+        rows = {True: [], False: []}
+        meta = []
+        for r in buckets[bucket]:
+            n += 1
+            rid = f"rd{n:03d}"
+            for m in r["markers"]:
+                rows[m["loadable"]].append([_cell(v) for v in (
+                    rid, r["sex"], r["age_years"], r["collection_month"], r["report_month"], m["id"], m["name"],
+                    m["category"], m["comparator"], m["value"], m["unit"], m["ref_low"], m["ref_high"], m["status"])])
+            meta.append([rid, r["group"], r["tier"], r["drug"] or ""])
+        for name, header, body in ((f"dutch_{bucket}.csv", COLUMNS, rows[True]),
+                                   (f"dutch_{bucket}_other_units.csv", COLUMNS, rows[False]),
+                                   (f"dutch_{bucket}_metadata.csv", META_COLUMNS, meta)):
+            if body:
+                with open(out_dir / name, "w", newline="", encoding="utf-8") as fh:
+                    w = csv.writer(fh)
+                    w.writerow(header); w.writerows(body)
         written[bucket] = len(buckets[bucket])
     return written
 
@@ -665,28 +690,44 @@ def cmd_export(a):
 # ---------------------------------------------------------------- review and score
 
 REVIEW_COLUMNS = ("review_id", "marker_id", "marker_name", "comparator", "value", "unit", "ref_low", "ref_high",
-                  "status", "correct", "note")
+                  "status", "new", "correct", "note")
+REVIEW_SAMPLE = DATA / "dutch_review_sample.json"  # which reports were sampled, and the rows already checked
+
+
+def review_sample(reports, n, seed, path=REVIEW_SAMPLE):
+    """The reports to hand-check: the saved sample when there is one, so a re-run never changes what was
+    already checked, else a new random one (saved). Returns (reports, rows already marked correct)."""
+    if path.exists():
+        saved = json.loads(path.read_text())
+        by_id = {r["item_id"]: r for r in reports}
+        return [by_id[i] for i in saved["item_ids"] if i in by_id], {tuple(c) for c in saved.get("checked", [])}
+    sample = random.Random(seed).sample(reports, min(n, len(reports)))
+    path.write_text(json.dumps({"item_ids": [r["item_id"] for r in sample], "checked": []}))
+    return sample, set()
 
 
 def cmd_review(a):
     reports = build_reports(a)
-    sample = random.Random(a.seed).sample(reports, min(a.n, len(reports)))
+    sample, checked = review_sample(reports, a.n, a.seed)
     files = image_files()
     e = html.escape
     parts = ["<!doctype html><meta charset=utf-8><title>DUTCH review</title><style>body{font:14px sans-serif;"
              "margin:16px}section{border-top:2px solid #888;padding:12px 0}img{max-width:100%;border:1px solid #ccc}"
              ".cols{display:grid;grid-template-columns:3fr 2fr;gap:16px}table{border-collapse:collapse}"
-             "td,th{border:1px solid #ccc;padding:2px 6px;text-align:left}.bad{color:#b00}</style>",
+             "td,th{border:1px solid #ccc;padding:2px 6px;text-align:left}.bad{color:#b00}"
+             "tr.new td{background:#fff3b0;color:#000}</style>",
              "<h1>DUTCH values read from Reddit images</h1><p>Local only: these images can identify people. "
              f"Mark each row in <code>{e(str(Path(a.sheet).name))}</code>: correct = y or n, and add a row with "
-             "correct = missed for any table value on the image that is not listed.</p>"]
+             "correct = missed for any table value on the image that is not listed. "
+             "<span style='background:#fff3b0;color:#000'>Highlighted rows</span> are markers the PDF extractor does "
+             "not read (new = yes in the sheet); rows already checked are marked y in the sheet.</p>"]
     with open(a.sheet, "w", newline="", encoding="utf-8") as fh:
         w = csv.writer(fh)
         w.writerow(REVIEW_COLUMNS)
         for i, r in enumerate(sample, 1):
             rid = f"rv{i:02d}"
             imgs = "".join(f'<img src="images/{e(files[s])}" loading=lazy>' for s in r["images"] if s in files)
-            rows = "".join(f"<tr><td>{e(m['name'])}</td><td>{e(m['comparator'] or '')}{m['value']:g}</td>"
+            rows = "".join(f"<tr{' class=new' if not m['extractor'] else ''}><td>{e(m['name'])}</td><td>{e(m['comparator'] or '')}{m['value']:g}</td>"
                            f"<td>{e(m['unit'])}</td><td>{_cell(m['ref_low'])}-{_cell(m['ref_high'])}</td>"
                            f"<td>{e(m['status'] or '')}</td></tr>" for m in r["markers"])
             notes = "".join(f"<li class=bad>{e(f)}</li>" for f in r["failures"]) + \
@@ -697,8 +738,10 @@ def cmd_review(a):
                          f"<ul>{notes}</ul><div class=cols><div>{imgs}</div><table><tr><th>marker<th>value<th>unit"
                          f"<th>range<th>status</tr>{rows}</table></div></section>")
             for m in r["markers"]:
+                done = (rid, m["id"], m["value"]) in checked
                 w.writerow([rid, m["id"], m["name"], m["comparator"] or "", _cell(m["value"]), m["unit"],
-                            _cell(m["ref_low"]), _cell(m["ref_high"]), m["status"] or "", "", ""])
+                            _cell(m["ref_low"]), _cell(m["ref_high"]), m["status"] or "",
+                            "" if m["extractor"] else "yes", "y" if done else "", "checked earlier" if done else ""])
     Path(a.out).write_text("\n".join(parts), encoding="utf-8")
     print(f"{len(sample)} reports -> {a.out} (open in a browser), check sheet -> {a.sheet}")
 
