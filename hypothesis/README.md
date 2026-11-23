@@ -3,8 +3,9 @@
 The hypothesis engine (milestone 4). So far it builds the local library of papers the engine
 is allowed to cite: paper records (title, abstract, identifiers) downloaded from PubMed for
 the topics in the plan, the full text of those with an open-access copy, and the
-researcher's own private PDFs, and a local search index over it, and gathers the passages
-it finds for each analysis finding. Hypotheses come in later issues.
+researcher's own private PDFs, and a local search index over it, gathers the passages
+it finds for each analysis finding, and has the LLM turn them into hypotheses in a fixed
+format. Citation checks, treatment candidates and the web app come in later issues.
 
 ```sh
 cd hypothesis
@@ -15,6 +16,7 @@ uv run asclepius-library refresh  # monthly: new papers and the private folder, 
 uv run asclepius-library index    # after each of those: the search index (downloads the model once)
 uv run asclepius-library search "allopregnanolone in cerebrospinal fluid" -k 5
 uv run asclepius-library evidence findings.csv --out evidence.json  # passages for each finding
+uv run asclepius-library hypotheses findings.csv --out hypotheses.json  # evidence, then the LLM
 uv run asclepius-library llm-check # checks your LLM key or local model with one short question
 uv run pytest                     # tests; they replay recorded PubMed answers, no network
 uv run ruff check . && uv run ruff format --check . && uv run mypy
@@ -172,6 +174,47 @@ bundles[0].as_dict()  # finding, labels, queries, supporting, contradicting, ver
   its title is not offered, since it has nothing to quote.
 - **Versions.** Each bundle records the analysis tool, the dataset fingerprint and run
   date, the library version and the search model.
+
+## Hypotheses
+
+`hypotheses` gathers the evidence as `evidence` does, then asks the configured LLM (below)
+to turn each bundle into a hypothesis, and writes `{"hypotheses": [...], "failed": [...]}`:
+
+```python
+from hypothesis_engine.hypotheses import generate_hypotheses
+
+results = generate_hypotheses(bundles, llm)  # a Hypothesis or a Failure per bundle, in order
+results[0].as_dict()  # finding, mechanism, supporting, contradicting, test, record
+```
+
+Every hypothesis has the five sections of the spec:
+
+1. **finding**: written by the engine from the bundle, never by the LLM: one line
+   (`Androsterone lower in PSSD than in healthy control (male): effect size -0.90 (95% CI
+   -0.98 to -0.79), q 0.023, n 28 and 28; suggestive`), its strength label, its labels, its
+   group statistics and the analysis tool, dataset fingerprint and run date it came from.
+   A self-report finding's labels start with "based on self-reports, no controls" (spec H7).
+2. **mechanism**: claims, each with the id of the bundle passage behind it and a quote.
+3. **supporting** and 4. **contradicting**: bundle passages the LLM judged to support or
+   contradict, with paper id, title, quote and why. The bundle's stance is only offered: the
+   LLM files each passage itself, in one section at most. Contradicting may be empty.
+5. **test**: ways to test it, each naming its kind of measure (`lab test`, `physical
+   examination`, `imaging`, ..., `self-report`). For a self-report finding at least one
+   test must use a measure other than `self-report`.
+
+- **The reply.** The LLM answers in JSON. A reply that is not that JSON, leaves a section
+  out or empty, cites a passage not in the bundle, files a passage both ways, names an
+  unknown measure, or tests a self-report finding by self-reports only is sent back with
+  what was wrong. After 3 replies, or on an LLM error, the finding is reported as failed,
+  with the reason of each attempt. Quotes are checked word for word against the paper in
+  M4-06 (spec H1), not here.
+- **The record** (spec H6): the model that answered, the back end and its settings (no
+  key), the library version, the search model, the analysis tool, `prompt_version`
+  (`hypothesis-1`; it changes whenever the prompt does) and how many attempts it took.
+- **What is sent.** The finding's group statistics and labels, and the bundle's public
+  passages. Private papers' passages are left out of the prompt for now, so a finding whose
+  only evidence is private fails without the LLM being asked. A finding with no passage
+  at all fails the same way.
 
 ## The LLM
 
