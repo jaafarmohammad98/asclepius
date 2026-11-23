@@ -89,7 +89,7 @@ def run_example(kind: str) -> None:
         fail(f"{kind}: hypotheses ended {written['state']}: {written.get('message')}")
     hypotheses = written["hypotheses"]
     if not hypotheses:
-        fail(f"{kind}: no hypothesis written ({written.get('message')}; failures: {written.get('failures')})")
+        fail(f"{kind}: no hypothesis written ({written.get('message')}; failed: {json.dumps(written.get('failed'))[:2000]})")
     first = hypotheses[0]
     claim = first["mechanism"][0]
     source = written["sources"][claim["passage_id"]]
