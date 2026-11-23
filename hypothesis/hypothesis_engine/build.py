@@ -18,6 +18,9 @@ second time.
 embedding model the first time; `search` prints the passages most relevant to a question.
 Both run without the network once the model is downloaded.
 
+`evidence` reads an analysis findings export and writes, for each strong or suggestive
+finding, the library passages that may support or contradict it (`evidence.py`).
+
 `llm-check` sends one short question to the configured LLM (`llm.py`) and prints which model
 answered, so a researcher can check their key or local model before a long run.
 
@@ -29,6 +32,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import os
 import sys
 from collections.abc import Callable, Sequence
@@ -38,6 +42,7 @@ from pathlib import Path
 
 from hypothesis_engine import europepmc
 from hypothesis_engine.embedding import DEFAULT_MODELS, LocalEmbedder, ModelMissing
+from hypothesis_engine.evidence import FindingsError, gather_evidence, read_findings
 from hypothesis_engine.fulltext import describe, fetch_full_texts
 from hypothesis_engine.library import (
     DEFAULT_LIBRARY,
@@ -191,6 +196,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     search = commands.add_parser("search", help="print the library passages most relevant to a question")
     search.add_argument("query", help="the question or finding to search for")
     search.add_argument("-k", type=int, default=10, help="how many passages (default 10)")
+    evidence = commands.add_parser(
+        "evidence", help="gather library passages for each strong or suggestive finding of an analysis export"
+    )
+    evidence.add_argument("findings", type=Path, help="the analysis web app's findings.csv")
+    evidence.add_argument(
+        "--out", type=Path, required=True, help="JSON file to write the evidence bundles to"
+    )
+    evidence.add_argument("-k", type=int, default=5, help="passages each way per finding (default 5)")
     llm_check = commands.add_parser("llm-check", help="ask the configured LLM one short question")
     llm_check.add_argument(
         "--settings",
@@ -198,7 +211,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=DEFAULT_SETTINGS,
         help=f"LLM settings file (default {DEFAULT_SETTINGS})",
     )
-    for command in (index, search):
+    for command in (index, search, evidence):
         command.add_argument(
             "--index", type=Path, default=DEFAULT_INDEX, help=f"search index file (default {DEFAULT_INDEX})"
         )
@@ -208,7 +221,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             default=DEFAULT_MODELS,
             help=f"embedding model folder (default {DEFAULT_MODELS})",
         )
-    for command in (build, fulltext, refresh, index, search):
+    for command in (build, fulltext, refresh, index, search, evidence):
         command.add_argument(
             "--library", type=Path, default=DEFAULT_LIBRARY, help=f"SQLite file (default {DEFAULT_LIBRARY})"
         )
@@ -229,6 +242,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _llm_check(args.settings, say)
     if args.command in ("index", "search"):
         return _index_or_search(args, say)
+    if args.command == "evidence":
+        return _evidence(args, say)
     downloading = args.command == "fulltext"
     try:
         api_key = os.environ.get("NCBI_API_KEY") or None
@@ -289,6 +304,27 @@ def _index_or_search(args: argparse.Namespace, say: Callable[[str], None]) -> in
     except (LibraryError, SearchIndexError, ModelMissing) as error:
         say(f"asclepius-library: {error}")
         return 1
+    return 0
+
+
+def _evidence(args: argparse.Namespace, say: Callable[[str], None]) -> int:
+    try:
+        findings = read_findings(args.findings)
+        with Index.open(args.index, args.library, LocalEmbedder(args.models)) as index:
+            bundles = gather_evidence(findings, index, args.k)
+    except KeyboardInterrupt:
+        say("asclepius-library: stopped; nothing was written")
+        return 130
+    except (FindingsError, LibraryError, SearchIndexError, ModelMissing) as error:
+        say(f"asclepius-library: {error}")
+        return 1
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    text = json.dumps([b.as_dict() for b in bundles], indent=2, ensure_ascii=False, allow_nan=False)
+    args.out.write_text(text + "\n", encoding="utf-8")
+    say(
+        f"{len(bundles)} of {len(findings)} findings worth testing (strong or suggestive), "
+        f"evidence written to {args.out}"
+    )
     return 0
 
 
