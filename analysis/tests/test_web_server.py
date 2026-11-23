@@ -121,3 +121,108 @@ def test_a_malformed_run_request_is_answered_in_plain_words(app, headers, body):
     status, content = call(app + "/api/run", "POST", body, headers)
     assert status == 400
     assert "error" in json.loads(content)
+
+
+# ------------------------------------------------------------------ hypotheses (M4-09)
+
+
+@pytest.fixture
+def hypothesis_app(tmp_path):
+    from test_web_hypotheses import build_library, engine
+
+    (tmp_path / "library").mkdir()
+    folder = build_library(tmp_path / "library")
+    server = make_server(
+        tmp_path / "work",
+        port=0,
+        settings=Settings(permutations=999, bootstrap=200),
+        engine=engine(folder, settings="none"),
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    yield f"http://127.0.0.1:{server.server_address[1]}"
+    server.shutdown()
+    server.server_close()
+
+
+KEY = "sk-ant-server-test-key"
+
+
+def test_the_settings_screen_stores_a_key_it_never_sends_back(hypothesis_app):
+    status, shown = api(hypothesis_app, "/api/settings")
+    assert status == 200 and shown["active"] is None
+    form = {"backend": "anthropic", "anthropic": {"api_key": KEY, "model": "claude-opus-5-5"}}
+    status, content = call(
+        hypothesis_app + "/api/settings",
+        "POST",
+        json.dumps(form).encode(),
+        {"Content-Type": "application/json"},
+    )
+    assert status == 200 and KEY.encode() not in content
+    assert json.loads(content)["anthropic"]["key_set"] is True
+    status, answer = api(
+        hypothesis_app, "/api/settings", "POST", {"backend": "local", "local": {"model": ""}}
+    )
+    assert status == 400 and "no model is named" in answer["error"]
+
+
+def test_a_finding_leads_to_its_hypothesis_and_its_quoted_source(hypothesis_app, tmp_path):
+    app = hypothesis_app
+    out = synthetic.write_lab_reports(
+        tmp_path / "lab",
+        groups={"PSSD": 40, "healthy control": 40},
+        seed=1,
+        planted=[synthetic.PlantedDifference("androsterone", 0.4)],
+    )
+    api(app, "/api/clear", "POST")
+    upload(app, "reports", "reports.csv", out.reports.read_bytes())
+    upload(app, "metadata", "metadata.csv", out.metadata.read_bytes())
+    api(app, "/api/load", "POST")
+    assert api(app, "/api/hypotheses", "POST")[0] == 400  # no run yet
+    api(app, "/api/run", "POST", {"group_a": "PSSD", "group_b": "healthy control"})
+    deadline = time.monotonic() + 120
+    while api(app, "/api/status")[1]["state"] == "running":
+        assert time.monotonic() < deadline
+        time.sleep(0.05)
+    local = {"backend": "local", "local": {"model": "llama3.1:8b"}}
+    assert api(app, "/api/settings", "POST", local)[0] == 200
+    assert api(app, "/api/settings/check", "POST")[1]["model"] == "fake-1"
+
+    status, started = api(app, "/api/hypotheses", "POST")
+    assert status == 202 and started["state"] == "running"
+    while (view := api(app, "/api/hypotheses")[1])["state"] == "running":
+        assert time.monotonic() < deadline
+        time.sleep(0.05)
+    assert view["state"] == "finished", view["message"]
+
+    # finding -> hypothesis -> quoted source
+    sections = api(app, "/api/findings")[1]["sections"]
+    keys = {
+        "|".join(
+            v or ""
+            for v in (
+                s["kind"],
+                f["comparison"],
+                f["marker_id"],
+                f.get("sex"),
+                f.get("group_a"),
+                f.get("group_b"),
+            )
+        )
+        for s in sections
+        for f in s["findings"]
+    }
+    hypothesis = view["hypotheses"][0]
+    assert hypothesis["key"] in keys
+    claim = hypothesis["mechanism"][0]
+    source = view["sources"][claim["passage_id"]]
+    assert claim["quote"] in source["text"] and source["links"][0]["url"].startswith(
+        "https://pubmed.ncbi.nlm.nih.gov/"
+    )
+
+    with urllib.request.urlopen(f"{app}/api/export/hypotheses.html") as response:
+        assert response.headers["Content-Type"].startswith("text/html")
+        assert response.headers["Content-Disposition"].startswith(
+            'attachment; filename="asclepius-hypotheses-'
+        )
+        assert 'id="run-record"' in response.read().decode()

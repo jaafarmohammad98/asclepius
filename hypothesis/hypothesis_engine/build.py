@@ -22,7 +22,7 @@ Both run without the network once the model is downloaded.
 finding and each ranked intervention, the library passages that may support or contradict it
 (`evidence.py`).
 
-`hypotheses` does what `evidence` does, then has the configured LLM turn each bundle into a
+`hypotheses` (`pipeline.py`, shared with the web app) does what `evidence` does, then has the configured LLM turn each bundle into a
 hypothesis in the fixed five sections (`hypotheses.py`), every quote checked against the paper
 it cites (`citations.py`), every intervention named a candidate for study with its known risks,
 and writes them with the findings it gave no usable hypothesis for, under the researchers-only
@@ -51,19 +51,19 @@ from pathlib import Path
 
 from hypothesis_engine import europepmc
 from hypothesis_engine.embedding import DEFAULT_MODELS, LocalEmbedder, ModelMissing
-from hypothesis_engine.evidence import FindingsError, gather_evidence, is_intervention, read_findings
+from hypothesis_engine.evidence import FindingsError, gather_evidence, read_findings
 from hypothesis_engine.fulltext import describe, fetch_full_texts
-from hypothesis_engine.hypotheses import Failure, Hypothesis, export, generate_hypotheses
+from hypothesis_engine.hypotheses import Failure, Hypothesis, export
 from hypothesis_engine.library import (
     DEFAULT_LIBRARY,
-    Library,
     LibraryError,
     stored_pmids,
     write_build,
     write_refresh,
 )
 from hypothesis_engine.llm import DEFAULT_SETTINGS, LLMError, LLMNotConfigured, connect, load_settings
-from hypothesis_engine.privacy import PrivateTextGuard, PrivateTextLeak, Quote
+from hypothesis_engine.pipeline import run_hypotheses
+from hypothesis_engine.privacy import PrivateTextLeak
 from hypothesis_engine.private import read_private_folder
 from hypothesis_engine.pubmed import (
     PubMed,
@@ -350,19 +350,18 @@ def _evidence(args: argparse.Namespace, say: Callable[[str], None]) -> int:
 
 
 def _hypotheses(args: argparse.Namespace, say: Callable[[str], None]) -> int:
-    quoted: list[Quote] = []  # what of the private papers was sent
     try:
         settings = load_settings(os.environ, args.settings)
         findings = read_findings(args.findings)
-        interventions = [f.marker_name for f in findings if is_intervention(f)]
-        with (
-            Index.open(args.index, args.library, LocalEmbedder(args.models)) as index,
-            Library.open(args.library) as library,
-        ):
-            guard = PrivateTextGuard.from_library(library)
-            llm = connect(settings, on_request=lambda request: quoted.extend(guard.check(request.text())))
-            bundles = gather_evidence(findings, index, args.k)
-            results = generate_hypotheses(bundles, llm, library, index, interventions=interventions)
+        made = run_hypotheses(
+            findings,
+            settings,
+            args.library,
+            args.index,
+            LocalEmbedder(args.models),
+            k=args.k,
+            connect_llm=connect,
+        )
     except KeyboardInterrupt:
         say("asclepius-library: stopped; nothing was written")
         return 130
@@ -372,18 +371,18 @@ def _hypotheses(args: argparse.Namespace, say: Callable[[str], None]) -> int:
     except (LLMNotConfigured, FindingsError, LibraryError, SearchIndexError, ModelMissing) as error:
         say(f"asclepius-library: {error}")
         return 1
-    made = [r for r in results if isinstance(r, Hypothesis)]
-    failed = [r for r in results if isinstance(r, Failure)]
+    hypotheses = [r for r in made.results if isinstance(r, Hypothesis)]
+    failed = [r for r in made.results if isinstance(r, Failure)]
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    text = json.dumps(export(results), indent=2, ensure_ascii=False, allow_nan=False)
+    text = json.dumps(export(made.results), indent=2, ensure_ascii=False, allow_nan=False)
     args.out.write_text(text + "\n", encoding="utf-8")
     say(
-        f"{len(bundles)} of {len(findings)} findings worth testing (strong or suggestive, or ranked interventions): "
-        f"{len(made)} hypotheses, {len(failed)} failed, written to {args.out}"
+        f"{len(made.bundles)} of {len(findings)} findings worth testing (strong or suggestive, or ranked interventions): "
+        f"{len(hypotheses)} hypotheses, {len(failed)} failed, written to {args.out}"
     )
     for failure in failed:
         say(f"  failed: {failure.finding.statement}: {failure.reasons[-1]}")
-    for quote in quoted:
+    for quote in made.quoted:
         say(f"  sent from {', '.join(sorted(quote.paper_ids))} ({quote.words} words): {quote.text}")
     return 0
 

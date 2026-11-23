@@ -6,8 +6,9 @@ the topics in the plan, the full text of those with an open-access copy, and the
 researcher's own private PDFs, and a local search index over it, gathers the passages
 it finds for each analysis finding, has the LLM turn them into hypotheses in a fixed
 format, checks every quote against the paper it cites, and marks every intervention a
-hypothesis names as a candidate for study with its known risks. The web app comes in a later
-issue.
+hypothesis names as a candidate for study with its known risks. The analysis web app
+(`../analysis`, `uv run asclepius-app`) shows the hypotheses beside the findings and has a
+settings screen for the LLM.
 
 ```sh
 cd hypothesis
@@ -268,6 +269,12 @@ Every hypothesis has the five sections of the spec:
   check, the hypothesis's own sentences (its claims, public quotes and titles, reasons, tests). Private papers' passages are left out of the prompt for now, so a finding whose
   only evidence is private fails without the LLM being asked. A finding with no passage
   at all fails the same way.
+
+The run itself is `hypothesis_engine.pipeline.run_hypotheses`, which the command and the web app
+share: it opens the index and library, checks every request with one `PrivateTextGuard`, reports
+progress per finding, and returns each bundle's result with `sources`, the text and paper record
+(DOI, PMCID, journal, year) of every passage cited, so a reader can be shown the quote in its
+passage (`citations.quote_span` finds where) and a link to the paper.
 
 ## The LLM
 
