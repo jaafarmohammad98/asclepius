@@ -26,7 +26,9 @@ finding and each ranked intervention, the library passages that may support or c
 hypothesis in the fixed five sections (`hypotheses.py`), every quote checked against the paper
 it cites (`citations.py`), every intervention named a candidate for study with its known risks,
 and writes them with the findings it gave no usable hypothesis for, under the researchers-only
-notice when any intervention is in the file.
+notice when any intervention is in the file. Every request it sends goes through the library's
+`PrivateTextGuard` (`privacy.py`) first: one holding more private-paper text than short quotes
+stops the run before it leaves, and nothing is written.
 
 `llm-check` sends one short question to the configured LLM (`llm.py`) and prints which model
 answered, so a researcher can check their key or local model before a long run.
@@ -61,6 +63,7 @@ from hypothesis_engine.library import (
     write_refresh,
 )
 from hypothesis_engine.llm import DEFAULT_SETTINGS, LLMError, LLMNotConfigured, connect, load_settings
+from hypothesis_engine.privacy import PrivateTextGuard, PrivateTextLeak, Quote
 from hypothesis_engine.private import read_private_folder
 from hypothesis_engine.pubmed import (
     PubMed,
@@ -347,19 +350,25 @@ def _evidence(args: argparse.Namespace, say: Callable[[str], None]) -> int:
 
 
 def _hypotheses(args: argparse.Namespace, say: Callable[[str], None]) -> int:
+    quoted: list[Quote] = []  # what of the private papers was sent
     try:
-        llm = connect(load_settings(os.environ, args.settings))
+        settings = load_settings(os.environ, args.settings)
         findings = read_findings(args.findings)
         interventions = [f.marker_name for f in findings if is_intervention(f)]
         with (
             Index.open(args.index, args.library, LocalEmbedder(args.models)) as index,
             Library.open(args.library) as library,
         ):
+            guard = PrivateTextGuard.from_library(library)
+            llm = connect(settings, on_request=lambda request: quoted.extend(guard.check(request.text())))
             bundles = gather_evidence(findings, index, args.k)
             results = generate_hypotheses(bundles, llm, library, index, interventions=interventions)
     except KeyboardInterrupt:
         say("asclepius-library: stopped; nothing was written")
         return 130
+    except PrivateTextLeak as error:
+        say(f"asclepius-library: stopped before sending {error}; nothing was written")
+        return 1
     except (LLMNotConfigured, FindingsError, LibraryError, SearchIndexError, ModelMissing) as error:
         say(f"asclepius-library: {error}")
         return 1
@@ -374,6 +383,8 @@ def _hypotheses(args: argparse.Namespace, say: Callable[[str], None]) -> int:
     )
     for failure in failed:
         say(f"  failed: {failure.finding.statement}: {failure.reasons[-1]}")
+    for quote in quoted:
+        say(f"  sent from {', '.join(sorted(quote.paper_ids))} ({quote.words} words): {quote.text}")
     return 0
 
 

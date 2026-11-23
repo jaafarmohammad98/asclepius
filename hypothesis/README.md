@@ -97,6 +97,8 @@ private. Git ignores the folder and every PDF.
   or more than 400 different words of one paper would have been sent during the run.
   Otherwise it returns the passages so they can be shown to the researcher before sending.
   It catches private text slipping into a request by mistake, not text disguised on purpose.
+  The `hypotheses` command checks every request with one guard: a refused request stops the
+  run before it is sent and nothing is written; the passages that were sent are printed at the end.
 
 ## Search
 
@@ -319,6 +321,28 @@ up; a misspelt setting or an unknown `effort` is refused the same way.
   with a copy of every request just before it is sent; raising stops the request. Tests use it to see
   exactly what would leave the machine, and the privacy checks (`PrivateTextGuard`, M4-08)
   hook in there. The body is the JSON sent; headers, and so the key, are not part of it.
+
+## Privacy test
+
+Only group-level findings are sent to the LLM (spec H5). `tests/test_outgoing_requests.py`
+runs the `hypotheses` command on the findings the analysis app exported from two synthetic
+datasets, a lab-report one and a self-report one, with a private paper in the library and a
+fake model that answers every kind of request usably, so each is sent. Through the request
+hook it checks that no request holds a record id, case id, author key or individual value of
+either dataset, nor any run of the private paper's words, and that a request carrying more of
+the private paper than short quotes is refused before it reaches the model. A test adds one
+record's id and value to the prompt and confirms the check finds them. It looks for ids and
+lab values exactly as the datasets hold them: a value rounded before it is sent, or a field
+too ordinary to search for (an age, a dose, a month), would not be caught.
+
+To make a leak show, the datasets' record ids read `pt-...-x` and every lab value carries five
+digits of its own after the decimal point (`1140.0000123`); the lab groups are of even size,
+so no median is one record's value. They are in `tests/fixtures/privacy/` with their findings
+exports; after a change to either engine's findings, write them again with the analysis
+engine's environment: `uv run --project ../analysis python tests/privacy_fixture.py`. The
+analysis engine's suite does the same into a temporary folder
+(`analysis/tests/test_privacy_fixture.py`) and fails when the result differs from the committed
+files (the run date aside), so a change to its export cannot leave them stale.
 
 ## Topics
 
