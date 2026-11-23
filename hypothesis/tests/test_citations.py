@@ -23,7 +23,7 @@ from test_hypotheses import (
 from test_search import WordEmbedder
 
 from hypothesis_engine import build
-from hypothesis_engine.citations import quoted
+from hypothesis_engine.citations import quote_span, quoted
 from hypothesis_engine.evidence import Passage
 from hypothesis_engine.hypotheses import Failure, Hypothesis, generate_hypotheses
 from hypothesis_engine.llm import LLMError, connect
@@ -67,6 +67,30 @@ def test_a_ligature_from_pdf_text_reads_as_its_letters():
 )
 def test_a_quote_must_be_the_text_word_for_word(quote):
     assert not quoted(quote, TEXT)
+
+
+@pytest.mark.parametrize(
+    ("quote", "found"),
+    [
+        ("androsterone  was lower", "Androsterone was lower"),
+        ("5α-reductase", "5α-reduc-\ntase"),
+        ("post finasteride syndrome.", "post-finasteride syndrome."),
+    ],
+)
+def test_the_span_is_where_the_text_holds_the_quote(quote, found):
+    start, end = quote_span(quote, TEXT)
+    assert TEXT[start:end] == found
+
+
+def test_a_quote_not_in_the_text_has_no_span():
+    assert quote_span("Androsterone was higher", TEXT) is None
+
+
+def test_a_span_counts_characters_of_the_text_as_written():
+    # "ﬁ" is one character in the text and two once read as letters: the span is the text's
+    text = "post-ﬁnasteride lowered androsterone"
+    start, end = quote_span("lowered androsterone", text)
+    assert text[start:end] == "lowered androsterone"
 
 
 # --- what happens to citations that fail ---------------------------------------------------

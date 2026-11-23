@@ -42,6 +42,7 @@ from asclepius.web.findings import (
     shown,
 )
 from asclepius.web.findings import SYNDROMES as SYNDROMES_KIND
+from asclepius.web.hypotheses import Busy, Engine, HypothesisRun
 
 NO_SEX = "not given"
 ROLES = ("reports", "metadata", "export")  # extractor CSVs, the metadata file, a harvester export's tables
@@ -98,7 +99,7 @@ def shown_parts(parts: pd.Series) -> pd.Series:
 class Workspace:
     """The files picked, the dataset loaded from them, and the latest run."""
 
-    def __init__(self, folder: str | Path) -> None:
+    def __init__(self, folder: str | Path, engine: Engine | None = None) -> None:
         self.folder = Path(folder)
         self.folder.mkdir(parents=True, exist_ok=True)
         self.files: dict[str, list[Path]] = {role: [] for role in ROLES}
@@ -108,12 +109,14 @@ class Workspace:
         self.record: dict[str, object] | None = None  # the latest run's record (spec S7)
         self._lock = threading.Lock()
         self._thread: threading.Thread | None = None
+        self.hypotheses = HypothesisRun(engine or Engine())  # written from the latest run's findings
 
     def clear(self) -> None:
         """Forget the files picked and the dataset loaded from them."""
         with self._lock:
             if self.running():
                 raise LoadError("A run is in progress; wait for it to finish.")
+            self._forget_hypotheses(LoadError)
             for role in ROLES:
                 shutil.rmtree(self.folder / role, ignore_errors=True)
                 self.files[role] = []
@@ -144,6 +147,7 @@ class Workspace:
         with self._lock:
             if self.running():
                 raise LoadError("A run is in progress; wait for it to finish before loading other files.")
+            self._forget_hypotheses(LoadError)
             self.data = None
             self.steps, self.results, self.record = [], {}, None
         reports, metadata, export = (self.files[role] for role in ROLES)
@@ -181,6 +185,7 @@ class Workspace:
                 raise RunError("Load a dataset before running the analysis.")
             if self.running():
                 raise RunError("A run is already in progress.")
+            self._forget_hypotheses(RunError)
             if isinstance(self.data, SelfReportDataset):
                 steps, groups = self_report_steps(self.data, settings), []
             else:
@@ -259,6 +264,37 @@ class Workspace:
                 entry["record"] = made
             entries.append(entry)
         return findings_view(data, steps, results), {**record, "steps": entries}
+
+    def _forget_hypotheses(self, error: type[ValueError]) -> None:
+        """The hypotheses are of the run they were written from: a new dataset or run drops them."""
+        try:
+            self.hypotheses.reset()
+        except Busy as busy:
+            raise error(str(busy)) from None
+
+    def start_hypotheses(self) -> None:
+        """Write hypotheses from the finished run's findings, in the background (`asclepius.web.hypotheses`);
+        `hypotheses_status()` follows them. Raises `RunError` until a run has finished."""
+        view, record = self._exported()
+        try:  # the run checks it is not already writing, and starts, under its own lock
+            self.hypotheses.start(export.findings_csv(view, record), record, self.folder / "hypotheses")
+        except Busy as busy:
+            raise RunError(str(busy)) from None
+
+    def hypotheses_status(self) -> dict[str, object]:
+        """The hypotheses' state and progress (`HypothesisRun.status`)."""
+        return self.hypotheses.status()
+
+    def hypotheses_view(self) -> dict[str, object]:
+        """The hypotheses as the page shows them (`HypothesisRun.view`)."""
+        return self.hypotheses.view()
+
+    def export_hypotheses(self) -> str:
+        """The finished hypotheses as one HTML file, with the run records. Raises `RunError` before."""
+        try:
+            return self.hypotheses.report()
+        except ValueError as error:
+            raise RunError(str(error)) from None
 
     def status(self) -> dict[str, object]:
         """The latest run: its state (`idle`, `running`, `finished`), and each step's state and message."""

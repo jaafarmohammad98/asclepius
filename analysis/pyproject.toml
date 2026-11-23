@@ -4,7 +4,11 @@ version = "0.1.0"
 description = "Analysis engine: loads extractor and r/PSSD harvester datasets for group statistics"
 license = "AGPL-3.0-or-later"
 requires-python = ">=3.12"
-dependencies = ["numpy>=1.26", "pandas>=2.2"]
+dependencies = [
+    "asclepius-hypothesis",
+    "numpy>=1.26",
+    "pandas>=2.2",
+]
 
 [project.scripts]
 asclepius-app = "asclepius.web.server:main"
@@ -36,3 +40,6 @@ ignore = ["E501"]  # ruff format sets line length
 [tool.mypy]
 packages = ["asclepius"]
 ignore_missing_imports = true
+
+[tool.uv.sources]
+asclepius-hypothesis = { path = "../hypothesis", editable = true }

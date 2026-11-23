@@ -32,7 +32,7 @@ from __future__ import annotations
 import json
 import re
 import tomllib
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import asdict, dataclass
 from functools import cache
 from pathlib import Path
@@ -306,14 +306,23 @@ def generate_hypotheses(
     searcher: Searcher,
     attempts: int = ATTEMPTS,
     interventions: Iterable[str] = (),
+    progress: Callable[[int, int], None] | None = None,
 ) -> list[Hypothesis | Failure]:
     """One hypothesis, or one failure, per bundle, in order; quotes checked against `library`,
     candidates' risks searched for with `searcher`. `interventions`: names of the findings
     export's interventions, each marked a candidate wherever a hypothesis mentions it; the
-    bundles' own interventions are added."""
+    bundles' own interventions are added. `progress(done, total)` is told before the first and
+    after each one."""
     bundles = list(bundles)
     known = [*vocabulary(), *interventions]
-    return [generate_hypothesis(b, llm, library, searcher, attempts, known) for b in bundles]
+    results: list[Hypothesis | Failure] = []
+    if progress:
+        progress(0, len(bundles))
+    for bundle in bundles:
+        results.append(generate_hypothesis(bundle, llm, library, searcher, attempts, known))
+        if progress:
+            progress(len(results), len(bundles))
+    return results
 
 
 @cache

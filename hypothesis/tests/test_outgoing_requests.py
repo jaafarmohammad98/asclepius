@@ -21,7 +21,7 @@ import pytest
 from test_evidence import PAPERS
 from test_search import WordEmbedder
 
-from hypothesis_engine import build, hypotheses
+from hypothesis_engine import build, hypotheses, pipeline
 from hypothesis_engine.evidence import EvidenceBundle, gather_evidence
 from hypothesis_engine.library import write_build
 from hypothesis_engine.llm import LLM, OutgoingRequest, Settings, connect
@@ -155,7 +155,7 @@ def run_hypotheses(
         monkeypatch.setattr(build, "LocalEmbedder", lambda *_args, **_kwargs: WordEmbedder())
         monkeypatch.setattr(build, "load_settings", lambda *_args: LOCAL)
         monkeypatch.setattr(build, "connect", connecting)
-        monkeypatch.setattr(build, "gather_evidence", gathering)
+        monkeypatch.setattr(pipeline, "gather_evidence", gathering)
         out = tmp_path / f"{kind}.json"
         done.code = build.main(["hypotheses", str(FINDINGS[kind]), *library_files, "--out", str(out)])
         done.printed = capsys.readouterr().err

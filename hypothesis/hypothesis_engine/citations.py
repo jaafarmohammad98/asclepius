@@ -74,6 +74,30 @@ def quoted(quote: str, text: str) -> bool:
     or hyphenated in one and not the other ("post-finasteride", "post finasteride",
     "postfinasteride") still matches. Words split or joined differently ("in creased") do not.
     """
+    pattern = _pattern(quote)
+    return pattern is not None and re.search(pattern, _folded(text)) is not None
+
+
+def quote_span(quote: str, text: str) -> tuple[int, int] | None:
+    """Where in `text` the quote is, as `quoted` finds it: `text[start:end]` is the passage as the
+    paper writes it (hyphens, line breaks and all), for showing the quote in its context."""
+    pattern = _pattern(quote)
+    if pattern is None:
+        return None
+    # fold the text one character at a time, remembering which character each folded one came from
+    folded, origin = [], []
+    for i, c in enumerate(text):
+        f = _folded(c)
+        folded.append(f)
+        origin += [i] * len(f)
+    match = re.search(pattern, "".join(folded))
+    if match is None or match.end() == match.start():
+        return None
+    return origin[match.start()], origin[match.end() - 1] + 1
+
+
+def _pattern(quote: str) -> str | None:
+    """The regular expression `quoted` looks for in folded text; None for a quote with no word."""
     # runs of word characters, and the gaps (white space, hyphens) between them
     pieces = re.findall(_PIECE, _folded(quote))
     while pieces and _is_gap(pieces[0]):
@@ -81,7 +105,7 @@ def quoted(quote: str, text: str) -> bool:
     while pieces and _is_gap(pieces[-1]):
         pieces.pop()
     if not pieces:
-        return False
+        return None
     pattern = ""
     for piece in pieces:
         if not _is_gap(piece):
@@ -95,7 +119,7 @@ def quoted(quote: str, text: str) -> bool:
         pattern = r"(?<!\w)" + pattern
     if pieces[-1][-1].isalnum():
         pattern += r"(?!\w)"
-    return re.search(pattern, _folded(text)) is not None
+    return pattern
 
 
 def _is_gap(piece: str) -> bool:

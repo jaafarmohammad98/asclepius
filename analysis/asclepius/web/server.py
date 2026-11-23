@@ -12,6 +12,12 @@ The page (`index.html`) talks to a small JSON API over `asclepius.web.workspace.
 | `GET /api/findings` | each step's findings, sizes, labels and plots (`asclepius.web.findings`) |
 | `GET /api/export/findings.csv` | the finished run's findings as a CSV file (`asclepius.web.export`) |
 | `GET /api/export/report.html` | the finished run's report, with its plots and run record, as an HTML file |
+| `POST /api/hypotheses` | start writing hypotheses from the finished run's findings (`asclepius.web.hypotheses`) |
+| `GET /api/hypotheses` | their state and, once finished, each hypothesis with its finding, citations and sources |
+| `GET /api/export/hypotheses.html` | the hypotheses as an HTML report with the run records |
+| `GET /api/settings` | the LLM settings (`asclepius.web.llm_settings`); the key only as whether one is stored |
+| `POST /api/settings` | save them, `{"backend": ..., "anthropic": {...}, "local": {...}}`; 400 when the engine would refuse them |
+| `POST /api/settings/check` | ask the LLM one short question; which model answered |
 
 The server listens on 127.0.0.1 and refuses requests naming another host or coming from another
 site's page, so no other web page open in the browser can read the data or start a run. Picked
@@ -32,6 +38,9 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
 from asclepius.run import Settings
+from asclepius.web import llm_settings
+from asclepius.web.hypotheses import Engine
+from asclepius.web.llm_settings import SettingsError
 from asclepius.web.workspace import ROLES, LoadError, RunError, Workspace
 
 PAGE = Path(__file__).parent / "index.html"
@@ -40,16 +49,18 @@ LOCAL_HOSTS = ("127.0.0.1", "localhost")
 EXPORTS = {  # path -> the file's suffix, its type and the workspace method that makes it
     "/api/export/findings.csv": ("csv", "text/csv; charset=utf-8", Workspace.export_csv),
     "/api/export/report.html": ("html", "text/html; charset=utf-8", Workspace.export_report),
+    "/api/export/hypotheses.html": ("html", "text/html; charset=utf-8", Workspace.export_hypotheses),
 }
 
 
 class App(ThreadingHTTPServer):
     daemon_threads = True
 
-    def __init__(self, port: int, workspace: Workspace, settings: Settings | None) -> None:
+    def __init__(self, port: int, workspace: Workspace, settings: Settings | None, engine: Engine) -> None:
         super().__init__(("127.0.0.1", port), Handler)
         self.workspace = workspace
         self.settings = settings
+        self.engine = engine
         self.lock = threading.Lock()  # one load or upload at a time
 
 
@@ -71,6 +82,11 @@ class Handler(BaseHTTPRequestHandler):
             self._json(HTTPStatus.OK, self.server.workspace.status())
         elif path == "/api/findings":
             self._json(HTTPStatus.OK, self.server.workspace.findings())
+        elif path == "/api/hypotheses":
+            self._json(HTTPStatus.OK, self.server.workspace.hypotheses_view())
+        elif path == "/api/settings":
+            engine = self.server.engine
+            self._json(HTTPStatus.OK, llm_settings.read(engine.settings, engine.env))
         elif path in EXPORTS:
             self._export(path)
         else:
@@ -119,9 +135,24 @@ class Handler(BaseHTTPRequestHandler):
                     choice.get("group_a"), choice.get("group_b"), settings=self.server.settings
                 )
                 self._json(HTTPStatus.ACCEPTED, workspace.status())
+            elif path == "/api/hypotheses":
+                with self.server.lock:  # no load or clear while they start
+                    workspace.start_hypotheses()
+                self._json(HTTPStatus.ACCEPTED, workspace.hypotheses_status())
+            elif path == "/api/settings":
+                form = json.loads(body or b"{}")
+                if not isinstance(form, dict):
+                    raise SettingsError("The settings must be a JSON object.")
+                engine = self.server.engine
+                with self.server.lock:  # one save at a time
+                    saved = llm_settings.save(engine.settings, form, engine.env)
+                self._json(HTTPStatus.OK, saved)
+            elif path == "/api/settings/check":
+                engine = self.server.engine
+                self._json(HTTPStatus.OK, llm_settings.check(engine.settings, engine.env, engine.connect_llm))
             else:
                 self._json(HTTPStatus.NOT_FOUND, {"error": "Not found."})
-        except (LoadError, RunError) as error:
+        except (LoadError, RunError, SettingsError) as error:
             self._json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
         except json.JSONDecodeError:
             self._json(HTTPStatus.BAD_REQUEST, {"error": "The request was not valid JSON."})
@@ -185,10 +216,17 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(body)
 
 
-def make_server(folder: str | Path, port: int = DEFAULT_PORT, settings: Settings | None = None) -> App:
+def make_server(
+    folder: str | Path,
+    port: int = DEFAULT_PORT,
+    settings: Settings | None = None,
+    engine: Engine | None = None,
+) -> App:
     """The app, serving a workspace kept in `folder`, on 127.0.0.1:`port` (0 picks a free port).
-    `settings` replaces the default analysis settings (tests use faster ones)."""
-    return App(port, Workspace(folder), settings)
+    `settings` replaces the default analysis settings (tests use faster ones); `engine`, where the
+    hypothesis engine's library, index and LLM settings are (tests use their own)."""
+    engine = engine or Engine()
+    return App(port, Workspace(folder, engine), settings, engine)
 
 
 def main(argv: list[str] | None = None) -> None:

@@ -793,7 +793,39 @@ Each step's one-line statement is shown, and when the run finishes, its findings
    refusal messages say "fewer than 5" for a group or patient count below 5 (S11), on the page and
    in the exports.
 
+6. **Hypotheses** (milestone 4). Once a run has finished, **Write hypotheses** runs the hypothesis
+   engine (`../hypothesis`, an editable dependency of this project) on the run's findings export,
+   in the background, with a progress bar: evidence from the paper library for each strong or
+   suggestive finding and each ranked intervention, then the LLM set in **Settings**, every request
+   checked by the private-text guard first (`hypothesis_engine.pipeline`, which the
+   `asclepius-library hypotheses` command also uses). It needs the library and its index
+   (`asclepius-library build`, then `index`, in `../hypothesis`); the page says so when they are
+   missing. Each hypothesis is shown in the five sections: the finding with its strength label and
+   labels, the proposed mechanism, supporting and contradicting papers, and how to test it, with
+   any treatment candidates labelled "candidate for study" with their known risks under the
+   researchers-only notice. A finding row with a hypothesis links down to it, and the hypothesis
+   links back up (`key`, the same text for both). Every citation shows its quote, its paper (title,
+   journal, year) with links to PubMed, the open-access full text and the DOI, and the passage it is
+   from with the quote marked (`hypothesis_engine.citations.quote_span`). The findings that got no
+   hypothesis are listed with why, and the short private-paper passages sent, if any, are shown
+   on the page only. **Export hypotheses (HTML)** (`GET /api/export/hypotheses.html`) is one file
+   with every hypothesis and its sources, the failures, and the run records, shown and embedded as
+   JSON (`id="run-record"`): the analysis run's record, what wrote the hypotheses (library version
+   and build date, search model, LLM settings without the key, the date) and the engine's own
+   output with each hypothesis's record (prompt version, attempts, citations removed). A new load
+   or run drops the hypotheses, which were of the previous one.
+
+   **Settings** (at the top of the page) chooses the LLM: Claude with the researcher's own
+   Anthropic API key (model and effort optional), or a local model server (its model name and
+   address). It writes the engine's settings file, `hypothesis/data/llm.toml`, readable by its
+   owner only, so the app and the command share it; it refuses settings the engine would refuse,
+   leaving the file as it was. The key is never sent back to the page: a blank key keeps the
+   stored one, and it can be forgotten. Environment variables (`ANTHROPIC_API_KEY`,
+   `ASCLEPIUS_LLM_*`) still override the file, and the screen names any that do. **Check** asks
+   the model one short question, holding nothing from the dataset, and shows which model answered.
+
 A run of 100 PSSD, 40 PFS and 100 controls takes about 7 seconds; the full
 r/PSSD export loads (3,153 authors) and runs in about 3. The logic is
 `asclepius.web.workspace.Workspace` (files, review, run), with the findings view in
-`asclepius.web.findings` and the exports in `asclepius.web.export`; `asclepius.web.server` only serves them.
+`asclepius.web.findings`, the exports in `asclepius.web.export`, the hypotheses in
+`asclepius.web.hypotheses` and the settings screen in `asclepius.web.llm_settings`; `asclepius.web.server` only serves them.
