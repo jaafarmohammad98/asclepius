@@ -12,18 +12,20 @@ import json
 from typing import Any
 
 from test_evidence import SELF_REPORT, where
-from test_hypotheses import FIXTURES, LOCAL, LOWER, REPLY, FakeServer
+from test_hypotheses import FIXTURES, LOCAL, LOWER, REPLY, FakeServer, checking_mentions
 from test_search import WordEmbedder
 
 from hypothesis_engine import build
 from hypothesis_engine.evidence import REPORTED, EvidenceBundle, Passage, is_intervention, read_findings
 from hypothesis_engine.hypotheses import (
     CANDIDATE,
+    MENTION_SYSTEM,
     NO_RISKS,
     NOTICE,
     Failure,
     Hypothesis,
     export,
+    vocabulary,
 )
 from hypothesis_engine.llm import LLMError, connect
 
@@ -103,7 +105,7 @@ def test_an_llm_error_on_the_risks_says_they_were_not_checked(generate):
             raise LLMError("no local model server answered")
         return {"model": "m", "choices": [{"message": {"content": json.dumps(NAMING_BUPROPION)}}]}
 
-    [hypothesis] = generate(answers_once)
+    [hypothesis] = generate(checking_mentions(answers_once))
     [candidate] = hypothesis.candidates
     assert (
         candidate.risks_note == "risks not checked: the LLM did not answer (no local model server answered)"
@@ -217,7 +219,9 @@ def test_the_hypotheses_command_marks_candidates_and_writes_the_notice(built, tm
     monkeypatch.setattr(
         build,
         "connect",
-        lambda settings, **_kwargs: connect(settings, local_transport=answering_both_prompts),
+        lambda settings, **_kwargs: connect(
+            settings, local_transport=checking_mentions(answering_both_prompts)
+        ),
     )
     out = tmp_path / "hypotheses.json"
     assert build.main(["hypotheses", str(SELF_REPORT), *where(built), "--out", str(out)]) == 0
@@ -239,7 +243,9 @@ def test_a_lab_export_without_interventions_has_no_notice(built, tmp_path, monke
     monkeypatch.setattr(
         build,
         "connect",
-        lambda settings, **_kwargs: connect(settings, local_transport=answering_both_prompts),
+        lambda settings, **_kwargs: connect(
+            settings, local_transport=checking_mentions(answering_both_prompts)
+        ),
     )
     out = tmp_path / "hypotheses.json"
     assert (
@@ -254,3 +260,73 @@ def test_the_intervention_rows_of_the_fixture_are_read():
         "bupropion",
         "tadalafil",
     ]
+
+
+# --- the vocabulary and the second check: interventions named but not listed -----------------
+
+
+def test_an_intervention_of_the_vocabulary_named_but_not_listed_is_a_candidate(generate):
+    named = {
+        **REPLY,
+        "test": [{"design": "A trial of cabergoline measuring androsterone.", "measure": "lab test"}],
+    }
+    [hypothesis] = generate(FakeServer(named))  # nothing in the library names cabergoline: no risk request
+    [candidate] = hypothesis.candidates
+    assert (candidate.intervention, candidate.risks_note) == ("cabergoline", NO_RISKS)
+
+
+def test_the_vocabulary_leaves_out_causal_drugs_and_body_chemicals():
+    names = {n.casefold() for n in vocabulary()}
+    assert {"bupropion", "cabergoline", "pde5 inhibitor", "psilocybin"} <= names
+    assert not names & {
+        "paroxetine",
+        "sertraline",
+        "finasteride",
+        "isotretinoin",
+        "estradiol",
+        "gaba",
+        "time",
+    }
+
+
+def test_an_intervention_only_the_second_check_finds_is_a_candidate(generate):
+    named = {
+        **REPLY,
+        "test": [{"design": "Give compound XR-17 and measure androsterone.", "measure": "lab test"}],
+    }
+    server = FakeServer(named, mentions=({"interventions": ["compound XR-17"]},))
+    [hypothesis] = generate(server)
+    assert [c.intervention for c in hypothesis.candidates] == ["compound XR-17"]
+    [check] = server.mention_requests
+    sentences = json.loads(check["messages"][1]["content"])["sentences"]
+    assert "Give compound XR-17 and measure androsterone." in sentences
+    assert hypothesis.record["mention_check"]["prompt_version"] == "mentions-1"  # type: ignore[index]
+
+
+def test_a_name_the_second_check_invents_is_sent_back_then_dropped(generate):
+    invented = {"interventions": ["unobtainium"]}
+    server = FakeServer(REPLY, mentions=(invented, invented, invented))
+    [hypothesis] = generate(server)
+    assert isinstance(hypothesis, Hypothesis)
+    assert hypothesis.candidates == ()
+    assert len(server.mention_requests) == 3
+    assert "not found word for word" in server.mention_requests[1]["messages"][-1]["content"]
+    assert hypothesis.record["mention_check"]["names_dropped"] == ["unobtainium"]  # type: ignore[index]
+
+
+def test_a_hypothesis_the_second_check_cannot_be_run_on_is_reported_as_failed(generate):
+    server = FakeServer(REPLY, mentions=("not json", "not json", "not json"))
+    [failure] = generate(server)
+    assert isinstance(failure, Failure)
+    assert "interventions it names did not finish" in failure.reasons[-1]
+
+
+def test_an_llm_error_on_the_second_check_fails_the_hypothesis(generate):
+    def down_on_check(url: str, body: dict[str, Any]) -> dict[str, Any]:
+        if body["messages"][0]["content"] == MENTION_SYSTEM:
+            raise LLMError("no local model server answered")
+        return {"model": "m", "choices": [{"message": {"content": json.dumps(REPLY)}}]}
+
+    [failure] = generate(down_on_check)
+    assert isinstance(failure, Failure)
+    assert "no local model server answered" in failure.reasons[-1]

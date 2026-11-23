@@ -236,8 +236,17 @@ Every hypothesis has the five sections of the spec:
   (`hypothesis-3`; it changes whenever the prompt does) and how many attempts it took.
 - **Treatment candidates** (spec H3). The reply also lists in `candidates` every intervention
   (drug, supplement, procedure, therapy) it names. The engine adds an intervention finding's own
-  intervention, and any of the export's interventions the hypothesis mentions without listing
-  (whole words, case aside; the finding's causal drug is not looked for). Each is written with
+  intervention, and any name it finds in the hypothesis's text (whole words, case aside; the
+  finding's causal drug is not looked for) from the export's interventions or from
+  `hypothesis_engine/interventions.toml`: about 200 drugs, classes, supplements and therapies
+  from the r/PSSD harvest, cleaned by hand. That list leaves out the drugs that cause the
+  syndromes, hormones and body chemicals named as markers (estradiol, GABA, ...) and words with
+  another meaning ("time", "diet"), which would be matched where no treatment is named. Then a
+  second request (prompt `mentions-1`) gives the LLM the hypothesis's sentences and asks for
+  every intervention they name as something that could treat or change the condition; a name
+  not found word for word in them is sent back, then dropped (`record.mention_check`). A
+  hypothesis this check gets no usable answer for is reported as failed, since it may name an
+  intervention left unlabelled. Each is written with
   `"label": "candidate for study"` and its **known risks**: the library is searched for
   passages naming it (`adverse effects of bupropion`, `bupropion side effects`, ...; public
   passages only, at most 8), and the LLM lists the risks they state, each with a passage id
@@ -246,14 +255,15 @@ Every hypothesis has the five sections of the spec:
   another drug's risk); failing ones are sent back, then removed (`record.risks_removed`). With
   no risk left, or no passage naming it, `risks_note` is "risks not established in the library";
   when the LLM gave no usable answer it is "risks not checked: ..." with why. An intervention
-  named only in the LLM's prose, neither listed by it nor in the export, cannot be recognised. The prompts say an intervention may be named only as something to study.
+  in neither list that both LLM requests miss is still not recognised. The prompts say an intervention may be named only as something to study.
 - **The notice.** Every candidate, any hypothesis with one, any intervention's hypothesis or
   failure, and the file holding them start with `"notice"`: "For researchers only: treatment candidates
   are ideas for study, not treatment advice. No one should start, stop or change a treatment
   because of them." `Candidate.as_dict`, `Hypothesis.as_dict`, `Failure.as_dict` and `hypotheses.export` add it
   themselves, so nothing holding a candidate can be written without it.
 - **What is sent.** The finding's group statistics and labels, and the bundle's public
-  passages; for risks, the intervention's name and public passages naming it. Private papers' passages are left out of the prompt for now, so a finding whose
+  passages; for risks, the intervention's name and public passages naming it; for the second
+  check, the hypothesis's own sentences (its claims, public quotes and titles, reasons, tests). Private papers' passages are left out of the prompt for now, so a finding whose
   only evidence is private fails without the LLM being asked. A finding with no passage
   at all fails the same way.
 

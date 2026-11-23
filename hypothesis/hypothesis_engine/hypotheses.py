@@ -9,8 +9,10 @@
    one whose measure is not a self-report.
 
 Treatment candidates (spec H3) are the most dangerous output. Every intervention a hypothesis
-names is a `Candidate`, labelled "candidate for study": those the LLM lists, those of the
-findings export it mentions without listing, and an intervention finding's own. Each gets its
+names is a `Candidate`, labelled "candidate for study": an intervention finding's own, those the
+LLM lists, those of `interventions.toml` or of the findings export found in its text, and those a
+second LLM request finds in its text (`mentioned`); a hypothesis that check cannot be run on is a
+`Failure`. Each gets its
 known risks from the library (`risks_for`), every one with a verified citation, or "risks not
 established in the library". Any output holding a candidate or an intervention carries `NOTICE`:
 `Hypothesis.as_dict`, `Failure.as_dict` and `export` add it themselves, so it cannot be left out.
@@ -29,8 +31,11 @@ from __future__ import annotations
 
 import json
 import re
+import tomllib
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass
+from functools import cache
+from pathlib import Path
 from typing import Any
 
 from hypothesis_engine.citations import Problem, problem, quoted
@@ -51,6 +56,8 @@ from hypothesis_engine.llm import LLM, Completion, LLMError, Message
 
 PROMPT_VERSION = "hypothesis-3"  # 2: failing quotes are sent back; 3: interventions named are listed
 RISK_PROMPT_VERSION = "risks-1"
+MENTION_PROMPT_VERSION = "mentions-1"
+VOCABULARY = Path(__file__).with_name("interventions.toml")
 ATTEMPTS = 3
 SELF_REPORT_LABEL = "based on self-reports, no controls"  # section 1 of a self-report finding (H7)
 SELF_REPORT_MEASURE = "self-report"
@@ -115,6 +122,17 @@ Rules:
 - Cite only the given passages, and add no risk you know of from elsewhere.
 - Quotes are copied exactly from the passage, not reworded.
 - Say nothing about whether anyone should use it."""
+
+MENTION_SYSTEM = """You check a hypothesis written for a researcher for the interventions it
+names. You are given its sentences.
+
+Reply with one JSON object and nothing else: {"interventions": ["...", ...]}: every drug,
+supplement, herb, diet, procedure, device or therapy the sentences name as something that could
+treat, relieve or change the condition, or that a test would give to patients, each written
+exactly as it appears in the sentences. An empty list when none is named.
+
+Leave out a drug named only as the cause of the condition, and hormones, enzymes and other body
+chemicals named only as markers or as part of the mechanism."""
 
 SELF_REPORT_RULE = f"""
 - This finding comes from self-reports, with no controls. At least one test must not rely on self-reports:
@@ -294,8 +312,15 @@ def generate_hypotheses(
     export's interventions, each marked a candidate wherever a hypothesis mentions it; the
     bundles' own interventions are added."""
     bundles = list(bundles)
-    known = [*interventions, *(b.finding.marker_name for b in bundles if is_intervention(b.finding))]
+    known = [*vocabulary(), *interventions]
     return [generate_hypothesis(b, llm, library, searcher, attempts, known) for b in bundles]
+
+
+@cache
+def vocabulary() -> tuple[str, ...]:
+    """The intervention names of `interventions.toml`, looked for in every hypothesis."""
+    names = tomllib.loads(VOCABULARY.read_text(encoding="utf-8"))["names"]
+    return tuple(str(n) for n in names)
 
 
 def generate_hypothesis(
@@ -373,7 +398,12 @@ def generate_hypothesis(
     if not best.mechanism:
         reason = "no mechanism claim is left once unverified citations are removed (spec H1)"
         return Failure(section, (*reasons, reason), record)
-    named = candidate_names(bundle, best, interventions)
+    try:
+        checked_names = mentioned(_shown(best), llm, attempts, record)
+    except LLMError as error:
+        reason = f"the check for the interventions it names did not finish ({error}) (spec H3)"
+        return Failure(section, (*reasons, reason), record)
+    named = candidate_names(bundle, best, (*interventions, *checked_names))
     candidates = tuple(
         risks_for(name, llm, library, searcher, bundle.library_version, attempts) for name in named
     )
@@ -549,16 +579,25 @@ def _entries(
 # --- treatment candidates (spec H3) ------------------------------------------------------
 
 
+def _shown(checked: _Checked) -> list[str]:
+    """Everything a hypothesis shows beyond section 1, piece by piece."""
+    return (
+        [piece for c in checked.mechanism for piece in (c.text, c.quote)]
+        + [
+            piece
+            for c in (*checked.supporting, *checked.contradicting)
+            for piece in (c.title, c.quote, c.why)
+        ]
+        + [t.design for t in checked.tests]
+    )
+
+
 def candidate_names(bundle: EvidenceBundle, checked: _Checked, interventions: Iterable[str]) -> list[str]:
     """Every intervention the hypothesis names, once each (case aside), in this order: the
     finding's own when it is an intervention's, those the LLM listed, then those of
     `interventions` found anywhere in what the hypothesis shows but not listed. The finding's
     group names (the drug said to cause the condition) are not looked for."""
-    shown = " ".join(
-        [c.text + " " + c.quote for c in checked.mechanism]
-        + [f"{c.title} {c.quote} {c.why}" for c in (*checked.supporting, *checked.contradicting)]
-        + [t.design for t in checked.tests]
-    )
+    shown = " ".join(_shown(checked))
     groups = {g.casefold() for g in (bundle.finding.group_a, bundle.finding.group_b) if g}
     own = [bundle.finding.marker_name] if is_intervention(bundle.finding) else []
     found = [n for n in interventions if n.casefold() not in groups and _mentions(n, shown)]
@@ -572,6 +611,57 @@ def _mentions(name: str, text: str) -> bool:
     """Whether `text` names the intervention, as a whole word or words, case aside."""
     words = r"[\s_-]+".join(re.escape(w) for w in re.split(r"[\s_-]+", name.strip()) if w)
     return bool(words) and re.search(rf"(?<!\w){words}(?!\w)", text, re.IGNORECASE) is not None
+
+
+def mentioned(pieces: Sequence[str], llm: LLM, attempts: int, record: dict[str, object]) -> list[str]:
+    """The interventions a second LLM request finds named in `pieces` (the hypothesis's text), so
+    one neither listed by the first reply nor in the vocabulary is still a candidate. A name not
+    found word for word in the text is sent back, then dropped. Raises `LLMError` when no usable
+    reply comes, since a hypothesis left unchecked may name an unlabelled intervention."""
+    text = " ".join(pieces)
+    data = {"sentences": list(pieces)}
+    messages: list[Message] = [
+        {"role": "system", "content": MENTION_SYSTEM},
+        {"role": "user", "content": json.dumps(data, indent=1, ensure_ascii=False, allow_nan=False)},
+    ]
+    check: dict[str, object] = {"prompt_version": MENTION_PROMPT_VERSION, "attempts": 0, "names_dropped": []}
+    record["mention_check"] = check
+    best: list[str] | None = None
+    for attempt in range(1, attempts + 1):
+        check["attempts"] = attempt
+        completion = llm.complete(messages)
+        try:
+            names = _mention_names(completion.text)
+        except Malformed as error:
+            feedback = f"That reply cannot be used: {error}."
+        else:
+            best = [n for n in names if _mentions(n, text)]
+            missing = [n for n in names if not _mentions(n, text)]
+            check["names_dropped"] = missing
+            if not missing:
+                break
+            feedback = (
+                f"These names are not found word for word in the sentences: {', '.join(missing)}. "
+                "Write each intervention exactly as the sentences do."
+            )
+        messages = [
+            *messages,
+            {"role": "assistant", "content": completion.text},
+            {"role": "user", "content": f"{feedback} Reply again with only the JSON object."},
+        ]
+    if best is None:
+        raise LLMError("no usable reply listing the interventions named")
+    return best
+
+
+def _mention_names(reply: str) -> list[str]:
+    answer = _json_object(reply)
+    if set(answer) != {"interventions"}:
+        raise Malformed('the object must have exactly the key "interventions"')
+    names = answer["interventions"]
+    if not isinstance(names, list) or not all(isinstance(n, str) and n.strip() for n in names):
+        raise Malformed('"interventions" must be a list of names')
+    return [n.strip() for n in names]
 
 
 def risk_queries(name: str) -> list[str]:

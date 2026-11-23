@@ -1,0 +1,59 @@
+# Interventions a hypothesis may name (spec H3): any of these found in a hypothesis's text, as
+# whole words with case aside, is marked "candidate for study" with its known risks.
+#
+# Source: the intervention names reported in the r/PSSD harvest (Nov 2026), at least 5 reports
+# each, plus drug classes, cleaned by hand. Left out on purpose, since they would be matched where
+# a hypothesis does not name a treatment (the second LLM check in `hypotheses.py` still catches
+# them when one does):
+# - the drugs said to cause the syndromes (SSRIs, SNRIs, finasteride, dutasteride, isotretinoin);
+# - hormones and body chemicals a hypothesis names as markers or mechanism (estradiol,
+#   testosterone, progesterone, allopregnanolone, pregnenolone, DHEA, oxytocin, melatonin,
+#   cortisol, GABA, glycine, glutamine, taurine, choline, creatine, iron, inositol);
+# - words with another meaning ("time", "diet", "exercise", "same", "pea", "hops", "PCT") and
+#   vague ones ("supplements", "unspecified medication", "lifestyle changes").
+names = [
+  # prescription drugs
+  "agomelatine", "alprazolam", "amantadine", "amitriptyline", "amphetamine", "anastrozole",
+  "aripiprazole", "armodafinil", "atomoxetine", "baclofen", "bremelanotide", "brexpiprazole",
+  "bromantane", "bromocriptine", "bupropion", "buspirone", "cabergoline", "cariprazine",
+  "clomiphene", "clomipramine", "clonazepam", "clonidine", "cyproheptadine", "dapoxetine",
+  "diazepam", "diphenhydramine", "enclomiphene", "esketamine", "etifoxine", "exemestane",
+  "flibanserin", "gabapentin", "guanfacine", "hydroxyzine", "ketamine", "lamotrigine",
+  "levodopa", "L-dopa", "lisdexamfetamine", "lithium", "lorazepam", "low dose naltrexone",
+  "lurasidone", "memantine", "mesterolone", "metergoline", "methylphenidate", "mianserin",
+  "mirtazapine", "moclobemide", "modafinil", "naltrexone", "nortriptyline", "olanzapine",
+  "phenelzine", "pramipexole", "prednisone", "pregabalin", "promethazine", "propranolol",
+  "quetiapine", "rifaximin", "risperidone", "selegiline", "semaglutide", "sildenafil",
+  "tadalafil", "tamoxifen", "tianeptine", "tranylcypromine", "trazodone", "valproate",
+  "vilazodone", "vorinostat", "vortioxetine", "yohimbine", "zolpidem", "zopiclone",
+  "zuranolone", "brexanolone", "hydrocortisone", "testosterone replacement", "hCG",
+  "kisspeptin", "PT-141",
+  # drug classes
+  "PDE5 inhibitor", "phosphodiesterase 5 inhibitor", "dopamine agonist", "aromatase inhibitor",
+  "antihistamine", "benzodiazepine", "antipsychotic", "psychedelics", "stimulants",
+  # psychedelics and other substances tried as treatment
+  "psilocybin", "LSD", "MDMA", "ibogaine", "ayahuasca", "microdosing", "cannabidiol", "CBD",
+  "cannabis", "kratom", "phenibut",
+  # supplements and herbs
+  "5-HTP", "acetyl-L-carnitine", "L-carnitine", "alpha-GPC", "alpha-lipoic acid",
+  "ashwagandha", "benfotiamine", "berberine", "boron", "BPC-157", "coenzyme Q10", "CoQ10",
+  "cordyceps", "curcumin", "turmeric", "damiana", "fenugreek", "forskolin", "ginkgo biloba",
+  "ginseng", "horny goat weed", "L-arginine", "L-citrulline", "L-theanine", "L-tyrosine",
+  "lion's mane", "maca", "magnesium", "methylcobalamin", "vitamin B12", "methylene blue",
+  "methylfolate", "folinic acid", "folic acid", "mucuna pruriens", "muira puama",
+  "N-acetylcysteine", "omega-3", "fish oil", "palmitoylethanolamide", "probiotics",
+  "quercetin", "rhodiola", "saffron", "S-adenosylmethionine", "saw palmetto", "schisandra",
+  "selank", "semax", "selenium", "shilajit", "St John's wort", "hypericum", "sulbutiamine",
+  "tongkat ali", "tribulus", "vitamin B6", "vitamin C", "vitamin D", "vitamin E", "zinc",
+  "nattokinase", "oregano oil",
+  # procedures and therapies
+  "acupuncture", "cognitive behavioral therapy", "cognitive behavioural therapy",
+  "electroconvulsive therapy", "ECT", "EMDR", "fecal microbiota transplant",
+  "faecal microbiota transplant", "IVIG", "intravenous immunoglobulin", "plasmapheresis",
+  "neurofeedback", "pelvic floor physical therapy", "pelvic floor physiotherapy",
+  "pelvic floor exercises", "physiotherapy", "platelet-rich plasma", "psychotherapy",
+  "red light therapy", "sex therapy", "shockwave therapy", "transcranial magnetic stimulation",
+  "TMS", "transcranial direct current stimulation", "tDCS", "ketogenic diet",
+  "elimination diet", "intermittent fasting", "aerobic exercise", "strength training",
+  "yoga", "meditation", "mindfulness", "sauna",
+]
