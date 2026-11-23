@@ -9,9 +9,10 @@
    one whose measure is not a self-report.
 
 The LLM answers in JSON. A reply that is not the JSON asked for, cites a passage the bundle
-does not hold, or (self-report findings) tests only by self-reports is sent back with what was
-wrong, up to `ATTEMPTS` times in all; then the finding is reported as a `Failure`. Whether a
-quote is found word for word in its paper is checked later (M4-06, spec H1).
+does not hold, (self-report findings) tests only by self-reports, or quotes words not found
+word for word in the cited paper (`citations.py`, spec H1) is sent back with what was wrong,
+up to `ATTEMPTS` times in all. Then the best usable reply is kept with its failing citations
+removed, so no unverified citation is ever output; with none, the finding is a `Failure`.
 
 Only the finding's group statistics and the library's public passages are sent. Private
 papers' passages are left out of the prompt, so their text never reaches an LLM here.
@@ -24,6 +25,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass
 from typing import Any
 
+from hypothesis_engine.citations import Problem, problem
 from hypothesis_engine.evidence import (
     SELF_REPORT,
     EvidenceBundle,
@@ -32,9 +34,10 @@ from hypothesis_engine.evidence import (
     is_report,
     worth_testing,
 )
+from hypothesis_engine.library import Library
 from hypothesis_engine.llm import LLM, Completion, LLMError, Message
 
-PROMPT_VERSION = "hypothesis-1"
+PROMPT_VERSION = "hypothesis-2"  # 2: failing quotes are sent back
 ATTEMPTS = 3
 SELF_REPORT_LABEL = "based on self-reports, no controls"  # section 1 of a self-report finding (H7)
 SELF_REPORT_MEASURE = "self-report"
@@ -165,15 +168,22 @@ class Malformed(Exception):
 
 
 def generate_hypotheses(
-    bundles: Iterable[EvidenceBundle], llm: LLM, attempts: int = ATTEMPTS
+    bundles: Iterable[EvidenceBundle], llm: LLM, library: Library, attempts: int = ATTEMPTS
 ) -> list[Hypothesis | Failure]:
-    """One hypothesis, or one failure, per bundle, in order."""
-    return [generate_hypothesis(b, llm, attempts) for b in bundles]
+    """One hypothesis, or one failure, per bundle, in order; quotes checked against `library`."""
+    return [generate_hypothesis(b, llm, library, attempts) for b in bundles]
 
 
-def generate_hypothesis(bundle: EvidenceBundle, llm: LLM, attempts: int = ATTEMPTS) -> Hypothesis | Failure:
-    """The bundle's hypothesis; a reply that is not usable is sent back with what was wrong,
-    and after `attempts` replies (or an LLM error) the finding is reported as a `Failure`."""
+def generate_hypothesis(
+    bundle: EvidenceBundle, llm: LLM, library: Library, attempts: int = ATTEMPTS
+) -> Hypothesis | Failure:
+    """The bundle's hypothesis, every citation in it checked against the library (spec H1).
+
+    A reply that is not usable, or that has citations whose quote is not in their paper, is sent
+    back with what was wrong. After `attempts` replies (or an LLM error) the best usable reply
+    is kept: the one with the fewest failing citations, the later one on a tie. Its failing
+    citations are removed; left with no mechanism claim, or with no usable reply, the finding
+    is reported as a `Failure`."""
     section = finding_section(bundle)
     passages = {p.passage_id: p for p in (*bundle.supporting, *bundle.contradicting) if not p.private}
     record: dict[str, object] = {
@@ -193,28 +203,90 @@ def generate_hypothesis(bundle: EvidenceBundle, llm: LLM, attempts: int = ATTEMP
 
     messages = prompt(bundle, list(passages.values()))
     reasons: list[str] = []
+    best: _Checked | None = None
     for attempt in range(1, attempts + 1):
         try:
             completion = llm.complete(messages)
         except LLMError as error:
             reasons.append(str(error))
             break
-        record |= _answered_by(completion) | {"attempts": attempt}
         try:
-            mechanism, supporting, contradicting, tests = parse(completion.text, passages, bundle.self_report)
+            sections = parse(completion.text, passages, bundle.self_report)
         except Malformed as error:
             reasons.append(str(error))
-            messages = [
-                *messages,
-                {"role": "assistant", "content": completion.text},
-                {
-                    "role": "user",
-                    "content": f"That reply cannot be used: {error}. Reply again with only the JSON object.",
-                },
-            ]
-            continue
-        return Hypothesis(section, mechanism, supporting, contradicting, tests, record)
-    return Failure(section, tuple(reasons), record)
+            if best is None:
+                record |= _answered_by(completion)
+            feedback = f"That reply cannot be used: {error}."
+        else:
+            checked = _check(sections, library, bundle.library_version)
+            if best is None or len(checked.problems) <= len(best.problems):
+                best = checked
+                record |= _answered_by(completion) | {"attempts": attempt}
+            if not checked.problems:
+                break
+            reasons.append("; ".join(str(p) for p in checked.problems))
+            feedback = _quotes_not_found(checked.problems)
+        record["attempts"] = attempt
+        messages = [
+            *messages,
+            {"role": "assistant", "content": completion.text},
+            {"role": "user", "content": f"{feedback} Reply again with only the JSON object."},
+        ]
+    if best is None:
+        return Failure(section, tuple(reasons), record)
+    record["citations_removed"] = [str(p) for p in best.problems]
+    if not best.mechanism:
+        reason = "no mechanism claim is left once unverified citations are removed (spec H1)"
+        return Failure(section, (*reasons, reason), record)
+    return Hypothesis(section, best.mechanism, best.supporting, best.contradicting, best.tests, record)
+
+
+@dataclass(frozen=True)
+class _Checked:
+    """A usable reply's sections with the failing citations taken out, and those citations."""
+
+    mechanism: tuple[Claim, ...]
+    supporting: tuple[Citation, ...]
+    contradicting: tuple[Citation, ...]
+    tests: tuple[ProposedTest, ...]
+    problems: tuple[Problem, ...]
+
+
+def _check(
+    sections: tuple[tuple[Claim, ...], tuple[Citation, ...], tuple[Citation, ...], tuple[ProposedTest, ...]],
+    library: Library,
+    version: int,
+) -> _Checked:
+    mechanism, supporting, contradicting, tests = sections
+    problems: list[Problem] = []
+
+    def verified[C: (Claim, Citation)](cited: tuple[C, ...], what: str) -> tuple[C, ...]:
+        kept = []
+        for c in cited:
+            found = problem(c, what, library, version)
+            if found:
+                problems.append(found)
+            else:
+                kept.append(c)
+        return tuple(kept)
+
+    return _Checked(
+        verified(mechanism, "a mechanism claim"),
+        verified(supporting, "a supporting entry"),
+        verified(contradicting, "a contradicting entry"),
+        tests,
+        tuple(problems),
+    )
+
+
+def _quotes_not_found(problems: Sequence[Problem]) -> str:
+    """The message sending failing citations back, quotes included: the LLM wrote them."""
+    lines = [f'- {p.what} citing passage {p.passage_id}, quote "{p.quote}": it {p.why}' for p in problems]
+    return (
+        "These citations cannot be shown:\n"
+        + "\n".join(lines)
+        + "\nCopy each quote exactly from the text of the passage it cites, or leave the entry out."
+    )
 
 
 def _answered_by(completion: Completion) -> dict[str, object]:

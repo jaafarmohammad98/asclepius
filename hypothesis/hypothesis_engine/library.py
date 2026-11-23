@@ -96,6 +96,10 @@ CREATE TABLE paper_topics (
 
 _COLUMNS = "pmid, title, abstract, doi, pmcid, journal, year"
 _IN_VERSION = "pmid IN (SELECT pmid FROM paper_topics WHERE version = ?)"
+# a version's PubMed papers as (PMID, title, text): the full text when the version has it, else the abstract
+_DOCUMENTS = f"""SELECT p.pmid, p.title, coalesce(o.text, p.abstract, '') FROM papers p
+    LEFT JOIN open_access o ON o.pmid = p.pmid AND o.version <= ?
+    WHERE p.{_IN_VERSION}"""
 
 
 class LibraryError(Exception):
@@ -287,13 +291,22 @@ class Library:
     def documents(self, version: int | None = None) -> Iterator[Document]:
         """Every paper of that version as text: PubMed papers by PMID, then the private ones."""
         version = self._version(version)
-        sql = f"""SELECT p.pmid, p.title, coalesce(o.text, p.abstract, '') FROM papers p
-            LEFT JOIN open_access o ON o.pmid = p.pmid AND o.version <= ?
-            WHERE p.{_IN_VERSION} ORDER BY CAST(p.pmid AS INTEGER)"""
-        for pmid, title, text in self._db.execute(sql, (version, version)):
+        for pmid, title, text in self._db.execute(
+            _DOCUMENTS + " ORDER BY CAST(p.pmid AS INTEGER)", (version, version)
+        ):
             yield Document(pmid, title, text, private=False)
         for paper in self.private_papers(version):
             yield Document(paper.id, paper.title, paper.text, private=True)
+
+    def document(self, paper_id: str, version: int | None = None) -> Document | None:
+        """The paper as text (see `documents`), if that version (the current one) holds it."""
+        version = self._version(version)
+        row = self._db.execute(_DOCUMENTS + " AND p.pmid = ?", (version, version, paper_id)).fetchone()
+        if row:
+            pmid, title, text = row
+            return Document(pmid, title, text, private=False)
+        paper = self.private_paper(paper_id, version)
+        return Document(paper.id, paper.title, paper.text, private=True) if paper else None
 
     def find(self, passage: str, version: int | None = None) -> list[str]:
         """Ids of the papers whose title or text holds `passage` word for word (case and spacing aside)."""
