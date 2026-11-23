@@ -63,8 +63,9 @@ uv tool install --python 3.14 https://github.com/jaafarmohammad98/asclepius/rele
 ```
 
 If you were sent the file `asclepius-0.1.0-py3-none-any.whl` instead, put the path to that file
-in place of the web address. On a Mac you can type `uv tool install --python 3.14 ` (with the
-space at the end), drag the file onto the terminal window, and press Enter.
+in place of the web address. On a Mac or in Windows PowerShell you can type
+`uv tool install --python 3.14 ` (with the space at the end), drag the file onto the terminal
+window so its path appears, and press Enter.
 
 If it ends with a warning that a folder "is not on your PATH", run `uv tool update-shell`, then
 close the terminal and open a new one.
@@ -83,7 +84,9 @@ Together they take an hour or more the first time; you can leave them running. `
 the paper records and their open-access text, and ends with a line such as
 `full text for 732 of 3784 papers (19%)`. `index` makes those papers searchable (it downloads a
 64 MB search model once). Neither command sends
-anything about you. If one is interrupted, run it again: nothing already downloaded is lost.
+anything about you. If `build` stops partway (a lost connection, say) and says
+`asclepius-library fulltext` continues, run that command: what was downloaded is kept. Otherwise,
+or if `index` stops, run the same command again.
 
 You can skip this step if you only want the statistical findings. You need it for hypotheses.
 
@@ -117,8 +120,8 @@ The tiers say how far each record is trusted: **A** confirmed by a clinician, **
 **C** least trusted.
 
 **3. Run.** Choose the two groups to compare (here, PSSD with healthy control) and click
-**Run the full analysis**. Each step is ticked off as it finishes; on the example it takes a
-minute or two.
+**Run the full analysis**. A progress bar shows each step; on the example it takes a minute or
+two.
 
 ![Choosing the groups and starting the run](images/04-run.png)
 
@@ -201,12 +204,14 @@ with the internet switched off.
 
 ![The extractor page](images/07-extractor.png)
 
-It keeps sex, age in years, the month of collection and every result row. It never keeps name,
+It keeps sex, age in years, the month of collection, the month of the report and every result row. It never keeps name,
 date of birth, address, accession number, ordering physician or exact dates. Check each report's
 warnings, remove any duplicates, and download the batch as **CSV**.
 
-Supported: the classic DUTCH Complete layout (reports from about 2018 to 2021). Not supported yet:
-the 2025 layout, scanned or photographed reports, and DUTCH Plus or Cycle Mapping.
+It reads the classic DUTCH Complete layout (reports from about 2018 to 2021). It has been tested
+only on three public sample reports, and **its accuracy on real patient reports has not been
+measured yet**, so check its values against the PDF. It cannot read the 2025 layout or scanned
+or photographed reports; DUTCH Plus and Cycle Mapping are untested.
 
 ### Load it
 
@@ -216,7 +221,7 @@ CSV.
 
 | Column | Required | What to put |
 |---|---|---|
-| `record_id` | yes | the report's id from the extractor CSV: `r001`, `r002`… (with several extractor files, `2/r001` means `r001` of the second file) |
+| `record_id` | yes | the report's id from the extractor CSV: `r001`, `r002`… Only when you load several extractor files that each have an `r001` do you add the file's number: `2/r001` is `r001` of the second file |
 | `group` | yes | PSSD, PFS, PAS, SSRI-exposed control or healthy control; blank means not assigned |
 | `tier` | no | A (confirmed by a clinician), B or C; blank means B |
 | `drug` | no | the drug taken, as free text |
@@ -241,23 +246,25 @@ are not touched.
 
 ## Day to day
 
-**Your own papers.** Put PDFs you have (preprints, unpublished results) in the `private` folder
-inside the data folder (below) and run `asclepius-library refresh`, then
-`asclepius-library index`. They are read on your computer, never looked up online, and can be
-quoted in hypotheses.
+**Your own papers.** Make a folder named `private` inside the data folder (below), put PDFs you
+have in it (preprints, unpublished results), and run `asclepius-library refresh`, then
+`asclepius-library index`. They are read on your computer and never looked up online. They join
+your library's search (`asclepius-library search "your question"`), but their text is never sent
+to a language model, so hypotheses do not quote them.
 
 **Monthly refresh.** To add new papers from PubMed, run `asclepius-library refresh`, then
 `asclepius-library index`. Only new papers are downloaded.
 
 **The data folder** holds the library, its index, the search model and the LLM settings:
 
-- Mac: `~/Library/Application Support/Asclepius`
+- Mac: `~/Library/Application Support/Asclepius` (in Finder, choose Go > Go to Folder… and paste
+  this)
 - Windows: `%LOCALAPPDATA%\Asclepius`
 - Linux: `~/.local/share/asclepius`
 
-**Update** to a new version by running step 3 again with the new file (add `--force` if uv says it
-is already installed). **Remove** the tool with `uv tool uninstall asclepius`. Neither touches the
-data folder; delete that folder by hand if you want the library gone too.
+**Remove** the tool with `uv tool uninstall asclepius`. **Update** to a new version by removing it
+and then running step 3 with the new version's address or file. Neither touches the data folder,
+so your library and settings stay; delete that folder by hand if you want them gone too.
 
 ## Problems
 
@@ -267,7 +274,7 @@ data folder; delete that folder by hand if you want the library gone too.
 | `command not found: asclepius` | Run `uv tool update-shell`, then open a new terminal. |
 | `Cannot listen on port 8765` | The app is probably already running in another terminal window: use that one, or start this one with `asclepius --port 8766`. |
 | The browser does not open | Open `http://127.0.0.1:8765/` yourself. |
-| `build` stops with a network error | Run the same command again; it continues where it stopped. |
+| `build` stops with a network error | Run `asclepius-library fulltext`; it continues where `build` stopped. If `build` stopped before it printed that command, run `build` again. |
 | Hypotheses say the library or index is missing | Run step 4. |
 | Hypotheses fail with an error from the model | Open Settings and click **Check**: it shows what the model answered. A wrong or expired key, or a local model server that is not running, are the usual causes. |
 
