@@ -1,0 +1,1249 @@
+record_id,sex,age_years,collection_month,report_month,marker_id,marker_name,category,comparator,value,unit,ref_low,ref_high,status
+pt-001-x,male,49,2023-04,2023-05,testosterone,Testosterone,Androgens and Metabolites,,19.8000001,ng/mg,25,115,Below range
+pt-001-x,male,49,2023-04,2023-05,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,63.1000002,ng/mg,25,115,Within range
+pt-001-x,male,49,2023-04,2023-05,5a_dht,5a-DHT,Androgens and Metabolites,,8.8600003,ng/mg,5,25,Within range
+pt-001-x,male,49,2023-04,2023-05,androsterone,Androsterone,Androgens and Metabolites,,498.0000004,ng/mg,500,3000,Below range
+pt-001-x,male,49,2023-04,2023-05,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,1150.0000005,ng/mg,400,1500,Within range
+pt-001-x,male,49,2023-04,2023-05,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,29.0000006,ng/mg,30,250,Below range
+pt-001-x,male,49,2023-04,2023-05,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,89.7000007,ng/mg,40,250,Within range
+pt-001-x,male,49,2023-04,2023-05,dhea_s,DHEA-S,Androgens and Metabolites,,89.5000008,ng/mg,30,1500,Within range
+pt-001-x,male,49,2023-04,2023-05,estrone_e1,Estrone(E1),Estrogens and Metabolites,,25.9000009,ng/mg,4,16,Above range
+pt-001-x,male,49,2023-04,2023-05,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.1400010,ng/mg,0.5,2.2,Within range
+pt-001-x,male,49,2023-04,2023-05,estriol_e3,Estriol(E3),Estrogens and Metabolites,,3.5300011,ng/mg,2,8,Within range
+pt-001-x,male,49,2023-04,2023-05,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,1.0600012,ng/mg,0,5.9,Within range
+pt-001-x,male,49,2023-04,2023-05,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.1100013,ng/mg,0,0.8,Within range
+pt-001-x,male,49,2023-04,2023-05,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.1200014,ng/mg,0,1.2,Within range
+pt-001-x,male,49,2023-04,2023-05,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.4600015,ng/mg,0,2.8,Within range
+pt-001-x,male,49,2023-04,2023-05,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,64.2000016,ng/mg,20,130,Within range
+pt-001-x,male,49,2023-04,2023-05,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,156.0000017,ng/mg,75,400,Within range
+pt-001-x,male,49,2023-04,2023-05,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,491.0000018,ng/mg,175,700,Within range
+pt-001-x,male,49,2023-04,2023-05,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2540.0000019,ng/mg,1750,4000,Within range
+pt-001-x,male,49,2023-04,2023-05,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,3710.0000020,ng/mg,2350,5800,Within range
+pt-001-x,male,49,2023-04,2023-05,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,275.0000021,ng/mg,100,310,Within range
+pt-001-x,male,49,2023-04,2023-05,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,389.0000022,ng/mg,250,500,Within range
+pt-001-x,male,49,2023-04,2023-05,melatonin_waking,Melatonin (Waking),Melatonin,,22.1000023,ng/mg,10,85,Within range
+pt-001-x,male,49,2023-04,2023-05,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,8.9600024,ug/mg,4.8,19,Within range
+pt-001-x,male,49,2023-04,2023-05,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,5.4700025,ug/mg,2.8,8,Within range
+pt-001-x,male,49,2023-04,2023-05,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,7.4600026,ug/mg,3,7.5,Within range
+pt-002-x,male,26,2025-12,2026-01,testosterone,Testosterone,Androgens and Metabolites,,48.8000027,ng/mg,25,115,Within range
+pt-002-x,male,26,2025-12,2026-01,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,79.2000028,ng/mg,25,115,Within range
+pt-002-x,male,26,2025-12,2026-01,5a_dht,5a-DHT,Androgens and Metabolites,,7.7700029,ng/mg,5,25,Within range
+pt-002-x,male,26,2025-12,2026-01,androsterone,Androsterone,Androgens and Metabolites,,536.0000030,ng/mg,500,3000,Within range
+pt-002-x,male,26,2025-12,2026-01,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,1670.0000031,ng/mg,400,1500,Above range
+pt-002-x,male,26,2025-12,2026-01,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,119.0000032,ng/mg,30,250,Within range
+pt-002-x,male,26,2025-12,2026-01,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,104.0000033,ng/mg,40,250,Within range
+pt-002-x,male,26,2025-12,2026-01,dhea_s,DHEA-S,Androgens and Metabolites,,414.0000034,ng/mg,30,1500,Within range
+pt-002-x,male,26,2025-12,2026-01,estrone_e1,Estrone(E1),Estrogens and Metabolites,,2.9400035,ng/mg,4,16,Below range
+pt-002-x,male,26,2025-12,2026-01,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.5400036,ng/mg,0.5,2.2,Within range
+pt-002-x,male,26,2025-12,2026-01,estriol_e3,Estriol(E3),Estrogens and Metabolites,,2.8500037,ng/mg,2,8,Within range
+pt-002-x,male,26,2025-12,2026-01,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,0.3700038,ng/mg,0,5.9,Within range
+pt-002-x,male,26,2025-12,2026-01,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.2200039,ng/mg,0,0.8,Within range
+pt-002-x,male,26,2025-12,2026-01,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.4600040,ng/mg,0,1.2,Within range
+pt-002-x,male,26,2025-12,2026-01,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.4500041,ng/mg,0,2.8,Within range
+pt-002-x,male,26,2025-12,2026-01,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,30.5000042,ng/mg,20,130,Within range
+pt-002-x,male,26,2025-12,2026-01,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,175.0000043,ng/mg,75,400,Within range
+pt-002-x,male,26,2025-12,2026-01,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,344.0000044,ng/mg,175,700,Within range
+pt-002-x,male,26,2025-12,2026-01,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,3560.0000045,ng/mg,1750,4000,Within range
+pt-002-x,male,26,2025-12,2026-01,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,4390.0000046,ng/mg,2350,5800,Within range
+pt-002-x,male,26,2025-12,2026-01,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,186.0000047,ng/mg,100,310,Within range
+pt-002-x,male,26,2025-12,2026-01,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,430.0000048,ng/mg,250,500,Within range
+pt-002-x,male,26,2025-12,2026-01,melatonin_waking,Melatonin (Waking),Melatonin,,26.1000049,ng/mg,10,85,Within range
+pt-002-x,male,26,2025-12,2026-01,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,6.9000050,ug/mg,4.8,19,Within range
+pt-002-x,male,26,2025-12,2026-01,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,5.5300051,ug/mg,2.8,8,Within range
+pt-002-x,male,26,2025-12,2026-01,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,5.4400052,ug/mg,3,7.5,Within range
+pt-003-x,male,25,2024-01,2024-02,testosterone,Testosterone,Androgens and Metabolites,,39.5000053,ng/mg,25,115,Within range
+pt-003-x,male,25,2024-01,2024-02,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,58.6000054,ng/mg,25,115,Within range
+pt-003-x,male,25,2024-01,2024-02,5a_dht,5a-DHT,Androgens and Metabolites,,4.0200055,ng/mg,5,25,Below range
+pt-003-x,male,25,2024-01,2024-02,androsterone,Androsterone,Androgens and Metabolites,,839.0000056,ng/mg,500,3000,Within range
+pt-003-x,male,25,2024-01,2024-02,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,1460.0000057,ng/mg,400,1500,Within range
+pt-003-x,male,25,2024-01,2024-02,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,35.7000058,ng/mg,30,250,Within range
+pt-003-x,male,25,2024-01,2024-02,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,103.0000059,ng/mg,40,250,Within range
+pt-003-x,male,25,2024-01,2024-02,dhea_s,DHEA-S,Androgens and Metabolites,,81.1000060,ng/mg,30,1500,Within range
+pt-003-x,male,25,2024-01,2024-02,estrone_e1,Estrone(E1),Estrogens and Metabolites,,10.5000061,ng/mg,4,16,Within range
+pt-003-x,male,25,2024-01,2024-02,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,0.4900062,ng/mg,0.5,2.2,Below range
+pt-003-x,male,25,2024-01,2024-02,estriol_e3,Estriol(E3),Estrogens and Metabolites,,2.8900063,ng/mg,2,8,Within range
+pt-003-x,male,25,2024-01,2024-02,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,2.2700064,ng/mg,0,5.9,Within range
+pt-003-x,male,25,2024-01,2024-02,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.4300065,ng/mg,0,0.8,Within range
+pt-003-x,male,25,2024-01,2024-02,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.0500066,ng/mg,0,1.2,Within range
+pt-003-x,male,25,2024-01,2024-02,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.4300067,ng/mg,0,2.8,Within range
+pt-003-x,male,25,2024-01,2024-02,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,59.6000068,ng/mg,20,130,Within range
+pt-003-x,male,25,2024-01,2024-02,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,134.0000069,ng/mg,75,400,Within range
+pt-003-x,male,25,2024-01,2024-02,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,614.0000070,ng/mg,175,700,Within range
+pt-003-x,male,25,2024-01,2024-02,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2060.0000071,ng/mg,1750,4000,Within range
+pt-003-x,male,25,2024-01,2024-02,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,4010.0000072,ng/mg,2350,5800,Within range
+pt-003-x,male,25,2024-01,2024-02,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,130.0000073,ng/mg,100,310,Within range
+pt-003-x,male,25,2024-01,2024-02,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,453.0000074,ng/mg,250,500,Within range
+pt-003-x,male,25,2024-01,2024-02,melatonin_waking,Melatonin (Waking),Melatonin,,28.8000075,ng/mg,10,85,Within range
+pt-003-x,male,25,2024-01,2024-02,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,8.3800076,ug/mg,4.8,19,Within range
+pt-003-x,male,25,2024-01,2024-02,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,2.9900077,ug/mg,2.8,8,Within range
+pt-003-x,male,25,2024-01,2024-02,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,7.0300078,ug/mg,3,7.5,Within range
+pt-004-x,male,40,2026-09,2026-10,testosterone,Testosterone,Androgens and Metabolites,,71.9000079,ng/mg,25,115,Within range
+pt-004-x,male,40,2026-09,2026-10,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,83.5000080,ng/mg,25,115,Within range
+pt-004-x,male,40,2026-09,2026-10,5a_dht,5a-DHT,Androgens and Metabolites,,12.9000081,ng/mg,5,25,Within range
+pt-004-x,male,40,2026-09,2026-10,androsterone,Androsterone,Androgens and Metabolites,,457.0000082,ng/mg,500,3000,Below range
+pt-004-x,male,40,2026-09,2026-10,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,946.0000083,ng/mg,400,1500,Within range
+pt-004-x,male,40,2026-09,2026-10,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,56.2000084,ng/mg,30,250,Within range
+pt-004-x,male,40,2026-09,2026-10,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,190.0000085,ng/mg,40,250,Within range
+pt-004-x,male,40,2026-09,2026-10,dhea_s,DHEA-S,Androgens and Metabolites,,49.4000086,ng/mg,30,1500,Within range
+pt-004-x,male,40,2026-09,2026-10,estrone_e1,Estrone(E1),Estrogens and Metabolites,,6.4800087,ng/mg,4,16,Within range
+pt-004-x,male,40,2026-09,2026-10,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,0.9300088,ng/mg,0.5,2.2,Within range
+pt-004-x,male,40,2026-09,2026-10,estriol_e3,Estriol(E3),Estrogens and Metabolites,,4.3300089,ng/mg,2,8,Within range
+pt-004-x,male,40,2026-09,2026-10,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,2.0500090,ng/mg,0,5.9,Within range
+pt-004-x,male,40,2026-09,2026-10,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.0700091,ng/mg,0,0.8,Within range
+pt-004-x,male,40,2026-09,2026-10,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.0700092,ng/mg,0,1.2,Within range
+pt-004-x,male,40,2026-09,2026-10,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.6200093,ng/mg,0,2.8,Within range
+pt-004-x,male,40,2026-09,2026-10,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,91.0000094,ng/mg,20,130,Within range
+pt-004-x,male,40,2026-09,2026-10,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,239.0000095,ng/mg,75,400,Within range
+pt-004-x,male,40,2026-09,2026-10,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,378.0000096,ng/mg,175,700,Within range
+pt-004-x,male,40,2026-09,2026-10,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2470.0000097,ng/mg,1750,4000,Within range
+pt-004-x,male,40,2026-09,2026-10,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,3950.0000098,ng/mg,2350,5800,Within range
+pt-004-x,male,40,2026-09,2026-10,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,164.0000099,ng/mg,100,310,Within range
+pt-004-x,male,40,2026-09,2026-10,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,409.0000100,ng/mg,250,500,Within range
+pt-004-x,male,40,2026-09,2026-10,melatonin_waking,Melatonin (Waking),Melatonin,,18.9000101,ng/mg,10,85,Within range
+pt-004-x,male,40,2026-09,2026-10,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,10.0000102,ug/mg,4.8,19,Within range
+pt-004-x,male,40,2026-09,2026-10,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,4.5900103,ug/mg,2.8,8,Within range
+pt-004-x,male,40,2026-09,2026-10,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,5.3900104,ug/mg,3,7.5,Within range
+pt-005-x,male,22,2024-07,2024-08,testosterone,Testosterone,Androgens and Metabolites,,145.0000105,ng/mg,25,115,Above range
+pt-005-x,male,22,2024-07,2024-08,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,96.1000106,ng/mg,25,115,Within range
+pt-005-x,male,22,2024-07,2024-08,5a_dht,5a-DHT,Androgens and Metabolites,,20.7000107,ng/mg,5,25,Within range
+pt-005-x,male,22,2024-07,2024-08,androsterone,Androsterone,Androgens and Metabolites,,241.0000108,ng/mg,500,3000,Below range
+pt-005-x,male,22,2024-07,2024-08,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,1100.0000109,ng/mg,400,1500,Within range
+pt-005-x,male,22,2024-07,2024-08,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,62.3000110,ng/mg,30,250,Within range
+pt-005-x,male,22,2024-07,2024-08,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,128.0000111,ng/mg,40,250,Within range
+pt-005-x,male,22,2024-07,2024-08,dhea_s,DHEA-S,Androgens and Metabolites,,21.8000112,ng/mg,30,1500,Below range
+pt-005-x,male,22,2024-07,2024-08,estrone_e1,Estrone(E1),Estrogens and Metabolites,,12.1000113,ng/mg,4,16,Within range
+pt-005-x,male,22,2024-07,2024-08,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.5700114,ng/mg,0.5,2.2,Within range
+pt-005-x,male,22,2024-07,2024-08,estriol_e3,Estriol(E3),Estrogens and Metabolites,,2.5200115,ng/mg,2,8,Within range
+pt-005-x,male,22,2024-07,2024-08,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,0.6200116,ng/mg,0,5.9,Within range
+pt-005-x,male,22,2024-07,2024-08,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.1000117,ng/mg,0,0.8,Within range
+pt-005-x,male,22,2024-07,2024-08,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.2800118,ng/mg,0,1.2,Within range
+pt-005-x,male,22,2024-07,2024-08,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,1.0200119,ng/mg,0,2.8,Within range
+pt-005-x,male,22,2024-07,2024-08,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,136.0000120,ng/mg,20,130,Above range
+pt-005-x,male,22,2024-07,2024-08,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,159.0000121,ng/mg,75,400,Within range
+pt-005-x,male,22,2024-07,2024-08,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,459.0000122,ng/mg,175,700,Within range
+pt-005-x,male,22,2024-07,2024-08,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2730.0000123,ng/mg,1750,4000,Within range
+pt-005-x,male,22,2024-07,2024-08,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,5540.0000124,ng/mg,2350,5800,Within range
+pt-005-x,male,22,2024-07,2024-08,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,218.0000125,ng/mg,100,310,Within range
+pt-005-x,male,22,2024-07,2024-08,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,450.0000126,ng/mg,250,500,Within range
+pt-005-x,male,22,2024-07,2024-08,melatonin_waking,Melatonin (Waking),Melatonin,,16.2000127,ng/mg,10,85,Within range
+pt-005-x,male,22,2024-07,2024-08,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,8.9300128,ug/mg,4.8,19,Within range
+pt-005-x,male,22,2024-07,2024-08,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,3.8100129,ug/mg,2.8,8,Within range
+pt-005-x,male,22,2024-07,2024-08,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,6.7400130,ug/mg,3,7.5,Within range
+pt-006-x,male,23,2023-08,2023-09,testosterone,Testosterone,Androgens and Metabolites,,47.6000131,ng/mg,25,115,Within range
+pt-006-x,male,23,2023-08,2023-09,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,45.0000132,ng/mg,25,115,Within range
+pt-006-x,male,23,2023-08,2023-09,5a_dht,5a-DHT,Androgens and Metabolites,,13.6000133,ng/mg,5,25,Within range
+pt-006-x,male,23,2023-08,2023-09,androsterone,Androsterone,Androgens and Metabolites,,444.0000134,ng/mg,500,3000,Below range
+pt-006-x,male,23,2023-08,2023-09,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,906.0000135,ng/mg,400,1500,Within range
+pt-006-x,male,23,2023-08,2023-09,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,112.0000136,ng/mg,30,250,Within range
+pt-006-x,male,23,2023-08,2023-09,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,316.0000137,ng/mg,40,250,Above range
+pt-006-x,male,23,2023-08,2023-09,dhea_s,DHEA-S,Androgens and Metabolites,,166.0000138,ng/mg,30,1500,Within range
+pt-006-x,male,23,2023-08,2023-09,estrone_e1,Estrone(E1),Estrogens and Metabolites,,6.5700139,ng/mg,4,16,Within range
+pt-006-x,male,23,2023-08,2023-09,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,0.6700140,ng/mg,0.5,2.2,Within range
+pt-006-x,male,23,2023-08,2023-09,estriol_e3,Estriol(E3),Estrogens and Metabolites,,2.4900141,ng/mg,2,8,Within range
+pt-006-x,male,23,2023-08,2023-09,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,1.9700142,ng/mg,0,5.9,Within range
+pt-006-x,male,23,2023-08,2023-09,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.3400143,ng/mg,0,0.8,Within range
+pt-006-x,male,23,2023-08,2023-09,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.2700144,ng/mg,0,1.2,Within range
+pt-006-x,male,23,2023-08,2023-09,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.8100145,ng/mg,0,2.8,Within range
+pt-006-x,male,23,2023-08,2023-09,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,53.9000146,ng/mg,20,130,Within range
+pt-006-x,male,23,2023-08,2023-09,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,184.0000147,ng/mg,75,400,Within range
+pt-006-x,male,23,2023-08,2023-09,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,204.0000148,ng/mg,175,700,Within range
+pt-006-x,male,23,2023-08,2023-09,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2400.0000149,ng/mg,1750,4000,Within range
+pt-006-x,male,23,2023-08,2023-09,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,3790.0000150,ng/mg,2350,5800,Within range
+pt-006-x,male,23,2023-08,2023-09,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,140.0000151,ng/mg,100,310,Within range
+pt-006-x,male,23,2023-08,2023-09,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,325.0000152,ng/mg,250,500,Within range
+pt-006-x,male,23,2023-08,2023-09,melatonin_waking,Melatonin (Waking),Melatonin,,18.6000153,ng/mg,10,85,Within range
+pt-006-x,male,23,2023-08,2023-09,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,8.5000154,ug/mg,4.8,19,Within range
+pt-006-x,male,23,2023-08,2023-09,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,5.9500155,ug/mg,2.8,8,Within range
+pt-006-x,male,23,2023-08,2023-09,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,4.3100156,ug/mg,3,7.5,Within range
+pt-007-x,male,33,2023-01,2023-02,testosterone,Testosterone,Androgens and Metabolites,,73.6000157,ng/mg,25,115,Within range
+pt-007-x,male,33,2023-01,2023-02,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,68.9000158,ng/mg,25,115,Within range
+pt-007-x,male,33,2023-01,2023-02,5a_dht,5a-DHT,Androgens and Metabolites,,22.4000159,ng/mg,5,25,Within range
+pt-007-x,male,33,2023-01,2023-02,androsterone,Androsterone,Androgens and Metabolites,,236.0000160,ng/mg,500,3000,Below range
+pt-007-x,male,33,2023-01,2023-02,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,1650.0000161,ng/mg,400,1500,Above range
+pt-007-x,male,33,2023-01,2023-02,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,66.7000162,ng/mg,30,250,Within range
+pt-007-x,male,33,2023-01,2023-02,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,106.0000163,ng/mg,40,250,Within range
+pt-007-x,male,33,2023-01,2023-02,dhea_s,DHEA-S,Androgens and Metabolites,,489.0000164,ng/mg,30,1500,Within range
+pt-007-x,male,33,2023-01,2023-02,estrone_e1,Estrone(E1),Estrogens and Metabolites,,11.7000165,ng/mg,4,16,Within range
+pt-007-x,male,33,2023-01,2023-02,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.5500166,ng/mg,0.5,2.2,Within range
+pt-007-x,male,33,2023-01,2023-02,estriol_e3,Estriol(E3),Estrogens and Metabolites,,4.2300167,ng/mg,2,8,Within range
+pt-007-x,male,33,2023-01,2023-02,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,4.5100168,ng/mg,0,5.9,Within range
+pt-007-x,male,33,2023-01,2023-02,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.1400169,ng/mg,0,0.8,Within range
+pt-007-x,male,33,2023-01,2023-02,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.2400170,ng/mg,0,1.2,Within range
+pt-007-x,male,33,2023-01,2023-02,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,1.1500171,ng/mg,0,2.8,Within range
+pt-007-x,male,33,2023-01,2023-02,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,39.2000172,ng/mg,20,130,Within range
+pt-007-x,male,33,2023-01,2023-02,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,436.0000173,ng/mg,75,400,Above range
+pt-007-x,male,33,2023-01,2023-02,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,502.0000174,ng/mg,175,700,Within range
+pt-007-x,male,33,2023-01,2023-02,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,4190.0000175,ng/mg,1750,4000,Above range
+pt-007-x,male,33,2023-01,2023-02,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,3670.0000176,ng/mg,2350,5800,Within range
+pt-007-x,male,33,2023-01,2023-02,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,158.0000177,ng/mg,100,310,Within range
+pt-007-x,male,33,2023-01,2023-02,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,364.0000178,ng/mg,250,500,Within range
+pt-007-x,male,33,2023-01,2023-02,melatonin_waking,Melatonin (Waking),Melatonin,,43.5000179,ng/mg,10,85,Within range
+pt-007-x,male,33,2023-01,2023-02,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,7.7700180,ug/mg,4.8,19,Within range
+pt-007-x,male,33,2023-01,2023-02,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,5.2400181,ug/mg,2.8,8,Within range
+pt-007-x,male,33,2023-01,2023-02,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,4.7200182,ug/mg,3,7.5,Within range
+pt-008-x,male,48,2025-08,2025-09,testosterone,Testosterone,Androgens and Metabolites,,41.4000183,ng/mg,25,115,Within range
+pt-008-x,male,48,2025-08,2025-09,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,80.6000184,ng/mg,25,115,Within range
+pt-008-x,male,48,2025-08,2025-09,5a_dht,5a-DHT,Androgens and Metabolites,,8.5800185,ng/mg,5,25,Within range
+pt-008-x,male,48,2025-08,2025-09,androsterone,Androsterone,Androgens and Metabolites,,395.0000186,ng/mg,500,3000,Below range
+pt-008-x,male,48,2025-08,2025-09,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,975.0000187,ng/mg,400,1500,Within range
+pt-008-x,male,48,2025-08,2025-09,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,45.5000188,ng/mg,30,250,Within range
+pt-008-x,male,48,2025-08,2025-09,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,107.0000189,ng/mg,40,250,Within range
+pt-008-x,male,48,2025-08,2025-09,dhea_s,DHEA-S,Androgens and Metabolites,,594.0000190,ng/mg,30,1500,Within range
+pt-008-x,male,48,2025-08,2025-09,estrone_e1,Estrone(E1),Estrogens and Metabolites,,8.4800191,ng/mg,4,16,Within range
+pt-008-x,male,48,2025-08,2025-09,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.3300192,ng/mg,0.5,2.2,Within range
+pt-008-x,male,48,2025-08,2025-09,estriol_e3,Estriol(E3),Estrogens and Metabolites,,7.1200193,ng/mg,2,8,Within range
+pt-008-x,male,48,2025-08,2025-09,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,1.6200194,ng/mg,0,5.9,Within range
+pt-008-x,male,48,2025-08,2025-09,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.2100195,ng/mg,0,0.8,Within range
+pt-008-x,male,48,2025-08,2025-09,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.2200196,ng/mg,0,1.2,Within range
+pt-008-x,male,48,2025-08,2025-09,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.1800197,ng/mg,0,2.8,Within range
+pt-008-x,male,48,2025-08,2025-09,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,73.3000198,ng/mg,20,130,Within range
+pt-008-x,male,48,2025-08,2025-09,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,81.8000199,ng/mg,75,400,Within range
+pt-008-x,male,48,2025-08,2025-09,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,441.0000200,ng/mg,175,700,Within range
+pt-008-x,male,48,2025-08,2025-09,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2640.0000201,ng/mg,1750,4000,Within range
+pt-008-x,male,48,2025-08,2025-09,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,4790.0000202,ng/mg,2350,5800,Within range
+pt-008-x,male,48,2025-08,2025-09,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,173.0000203,ng/mg,100,310,Within range
+pt-008-x,male,48,2025-08,2025-09,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,306.0000204,ng/mg,250,500,Within range
+pt-008-x,male,48,2025-08,2025-09,melatonin_waking,Melatonin (Waking),Melatonin,,35.4000205,ng/mg,10,85,Within range
+pt-008-x,male,48,2025-08,2025-09,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,7.8500206,ug/mg,4.8,19,Within range
+pt-008-x,male,48,2025-08,2025-09,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,4.5100207,ug/mg,2.8,8,Within range
+pt-008-x,male,48,2025-08,2025-09,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,4.7900208,ug/mg,3,7.5,Within range
+pt-009-x,male,47,2025-07,2025-08,testosterone,Testosterone,Androgens and Metabolites,,49.8000209,ng/mg,25,115,Within range
+pt-009-x,male,47,2025-07,2025-08,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,38.8000210,ng/mg,25,115,Within range
+pt-009-x,male,47,2025-07,2025-08,5a_dht,5a-DHT,Androgens and Metabolites,,10.3000211,ng/mg,5,25,Within range
+pt-009-x,male,47,2025-07,2025-08,androsterone,Androsterone,Androgens and Metabolites,,230.0000212,ng/mg,500,3000,Below range
+pt-009-x,male,47,2025-07,2025-08,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,1180.0000213,ng/mg,400,1500,Within range
+pt-009-x,male,47,2025-07,2025-08,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,45.3000214,ng/mg,30,250,Within range
+pt-009-x,male,47,2025-07,2025-08,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,169.0000215,ng/mg,40,250,Within range
+pt-009-x,male,47,2025-07,2025-08,dhea_s,DHEA-S,Androgens and Metabolites,,753.0000216,ng/mg,30,1500,Within range
+pt-009-x,male,47,2025-07,2025-08,estrone_e1,Estrone(E1),Estrogens and Metabolites,,4.0100217,ng/mg,4,16,Within range
+pt-009-x,male,47,2025-07,2025-08,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.1100218,ng/mg,0.5,2.2,Within range
+pt-009-x,male,47,2025-07,2025-08,estriol_e3,Estriol(E3),Estrogens and Metabolites,,3.8300219,ng/mg,2,8,Within range
+pt-009-x,male,47,2025-07,2025-08,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,0.5900220,ng/mg,0,5.9,Within range
+pt-009-x,male,47,2025-07,2025-08,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.2700221,ng/mg,0,0.8,Within range
+pt-009-x,male,47,2025-07,2025-08,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.1900222,ng/mg,0,1.2,Within range
+pt-009-x,male,47,2025-07,2025-08,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.1600223,ng/mg,0,2.8,Within range
+pt-009-x,male,47,2025-07,2025-08,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,44.9000224,ng/mg,20,130,Within range
+pt-009-x,male,47,2025-07,2025-08,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,163.0000225,ng/mg,75,400,Within range
+pt-009-x,male,47,2025-07,2025-08,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,363.0000226,ng/mg,175,700,Within range
+pt-009-x,male,47,2025-07,2025-08,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2040.0000227,ng/mg,1750,4000,Within range
+pt-009-x,male,47,2025-07,2025-08,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,4250.0000228,ng/mg,2350,5800,Within range
+pt-009-x,male,47,2025-07,2025-08,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,218.0000229,ng/mg,100,310,Within range
+pt-009-x,male,47,2025-07,2025-08,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,289.0000230,ng/mg,250,500,Within range
+pt-009-x,male,47,2025-07,2025-08,melatonin_waking,Melatonin (Waking),Melatonin,,20.3000231,ng/mg,10,85,Within range
+pt-009-x,male,47,2025-07,2025-08,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,9.2800232,ug/mg,4.8,19,Within range
+pt-009-x,male,47,2025-07,2025-08,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,4.0700233,ug/mg,2.8,8,Within range
+pt-009-x,male,47,2025-07,2025-08,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,7.1300234,ug/mg,3,7.5,Within range
+pt-010-x,male,48,2025-06,2025-07,testosterone,Testosterone,Androgens and Metabolites,,36.2000235,ng/mg,25,115,Within range
+pt-010-x,male,48,2025-06,2025-07,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,39.5000236,ng/mg,25,115,Within range
+pt-010-x,male,48,2025-06,2025-07,5a_dht,5a-DHT,Androgens and Metabolites,,10.9000237,ng/mg,5,25,Within range
+pt-010-x,male,48,2025-06,2025-07,androsterone,Androsterone,Androgens and Metabolites,,1750.0000238,ng/mg,500,3000,Within range
+pt-010-x,male,48,2025-06,2025-07,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,1170.0000239,ng/mg,400,1500,Within range
+pt-010-x,male,48,2025-06,2025-07,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,92.8000240,ng/mg,30,250,Within range
+pt-010-x,male,48,2025-06,2025-07,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,127.0000241,ng/mg,40,250,Within range
+pt-010-x,male,48,2025-06,2025-07,dhea_s,DHEA-S,Androgens and Metabolites,,204.0000242,ng/mg,30,1500,Within range
+pt-010-x,male,48,2025-06,2025-07,estrone_e1,Estrone(E1),Estrogens and Metabolites,,17.9000243,ng/mg,4,16,Above range
+pt-010-x,male,48,2025-06,2025-07,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,0.8600244,ng/mg,0.5,2.2,Within range
+pt-010-x,male,48,2025-06,2025-07,estriol_e3,Estriol(E3),Estrogens and Metabolites,,5.2000245,ng/mg,2,8,Within range
+pt-010-x,male,48,2025-06,2025-07,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,1.4900246,ng/mg,0,5.9,Within range
+pt-010-x,male,48,2025-06,2025-07,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.2900247,ng/mg,0,0.8,Within range
+pt-010-x,male,48,2025-06,2025-07,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.1100248,ng/mg,0,1.2,Within range
+pt-010-x,male,48,2025-06,2025-07,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,2.4200249,ng/mg,0,2.8,Within range
+pt-010-x,male,48,2025-06,2025-07,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,48.1000250,ng/mg,20,130,Within range
+pt-010-x,male,48,2025-06,2025-07,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,176.0000251,ng/mg,75,400,Within range
+pt-010-x,male,48,2025-06,2025-07,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,251.0000252,ng/mg,175,700,Within range
+pt-010-x,male,48,2025-06,2025-07,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2270.0000253,ng/mg,1750,4000,Within range
+pt-010-x,male,48,2025-06,2025-07,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,4200.0000254,ng/mg,2350,5800,Within range
+pt-010-x,male,48,2025-06,2025-07,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,234.0000255,ng/mg,100,310,Within range
+pt-010-x,male,48,2025-06,2025-07,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,404.0000256,ng/mg,250,500,Within range
+pt-010-x,male,48,2025-06,2025-07,melatonin_waking,Melatonin (Waking),Melatonin,,56.4000257,ng/mg,10,85,Within range
+pt-010-x,male,48,2025-06,2025-07,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,12.3000258,ug/mg,4.8,19,Within range
+pt-010-x,male,48,2025-06,2025-07,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,4.7700259,ug/mg,2.8,8,Within range
+pt-010-x,male,48,2025-06,2025-07,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,5.7700260,ug/mg,3,7.5,Within range
+pt-011-x,male,25,2026-06,2026-07,testosterone,Testosterone,Androgens and Metabolites,,51.6000261,ng/mg,25,115,Within range
+pt-011-x,male,25,2026-06,2026-07,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,71.1000262,ng/mg,25,115,Within range
+pt-011-x,male,25,2026-06,2026-07,5a_dht,5a-DHT,Androgens and Metabolites,,19.0000263,ng/mg,5,25,Within range
+pt-011-x,male,25,2026-06,2026-07,androsterone,Androsterone,Androgens and Metabolites,,682.0000264,ng/mg,500,3000,Within range
+pt-011-x,male,25,2026-06,2026-07,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,1100.0000265,ng/mg,400,1500,Within range
+pt-011-x,male,25,2026-06,2026-07,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,128.0000266,ng/mg,30,250,Within range
+pt-011-x,male,25,2026-06,2026-07,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,243.0000267,ng/mg,40,250,Within range
+pt-011-x,male,25,2026-06,2026-07,dhea_s,DHEA-S,Androgens and Metabolites,,172.0000268,ng/mg,30,1500,Within range
+pt-011-x,male,25,2026-06,2026-07,estrone_e1,Estrone(E1),Estrogens and Metabolites,,7.7400269,ng/mg,4,16,Within range
+pt-011-x,male,25,2026-06,2026-07,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.0000270,ng/mg,0.5,2.2,Within range
+pt-011-x,male,25,2026-06,2026-07,estriol_e3,Estriol(E3),Estrogens and Metabolites,,6.1600271,ng/mg,2,8,Within range
+pt-011-x,male,25,2026-06,2026-07,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,0.3200272,ng/mg,0,5.9,Within range
+pt-011-x,male,25,2026-06,2026-07,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.2400273,ng/mg,0,0.8,Within range
+pt-011-x,male,25,2026-06,2026-07,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.6700274,ng/mg,0,1.2,Within range
+pt-011-x,male,25,2026-06,2026-07,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.3400275,ng/mg,0,2.8,Within range
+pt-011-x,male,25,2026-06,2026-07,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,104.0000276,ng/mg,20,130,Within range
+pt-011-x,male,25,2026-06,2026-07,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,218.0000277,ng/mg,75,400,Within range
+pt-011-x,male,25,2026-06,2026-07,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,288.0000278,ng/mg,175,700,Within range
+pt-011-x,male,25,2026-06,2026-07,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2760.0000279,ng/mg,1750,4000,Within range
+pt-011-x,male,25,2026-06,2026-07,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,2590.0000280,ng/mg,2350,5800,Within range
+pt-011-x,male,25,2026-06,2026-07,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,150.0000281,ng/mg,100,310,Within range
+pt-011-x,male,25,2026-06,2026-07,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,488.0000282,ng/mg,250,500,Within range
+pt-011-x,male,25,2026-06,2026-07,melatonin_waking,Melatonin (Waking),Melatonin,,17.9000283,ng/mg,10,85,Within range
+pt-011-x,male,25,2026-06,2026-07,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,18.2000284,ug/mg,4.8,19,Within range
+pt-011-x,male,25,2026-06,2026-07,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,4.6300285,ug/mg,2.8,8,Within range
+pt-011-x,male,25,2026-06,2026-07,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,5.9900286,ug/mg,3,7.5,Within range
+pt-012-x,male,25,2026-05,2026-06,testosterone,Testosterone,Androgens and Metabolites,,22.4000287,ng/mg,25,115,Below range
+pt-012-x,male,25,2026-05,2026-06,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,42.9000288,ng/mg,25,115,Within range
+pt-012-x,male,25,2026-05,2026-06,5a_dht,5a-DHT,Androgens and Metabolites,,12.1000289,ng/mg,5,25,Within range
+pt-012-x,male,25,2026-05,2026-06,androsterone,Androsterone,Androgens and Metabolites,,362.0000290,ng/mg,500,3000,Below range
+pt-012-x,male,25,2026-05,2026-06,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,787.0000291,ng/mg,400,1500,Within range
+pt-012-x,male,25,2026-05,2026-06,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,106.0000292,ng/mg,30,250,Within range
+pt-012-x,male,25,2026-05,2026-06,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,73.8000293,ng/mg,40,250,Within range
+pt-012-x,male,25,2026-05,2026-06,dhea_s,DHEA-S,Androgens and Metabolites,,39.0000294,ng/mg,30,1500,Within range
+pt-012-x,male,25,2026-05,2026-06,estrone_e1,Estrone(E1),Estrogens and Metabolites,,6.2800295,ng/mg,4,16,Within range
+pt-012-x,male,25,2026-05,2026-06,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.4500296,ng/mg,0.5,2.2,Within range
+pt-012-x,male,25,2026-05,2026-06,estriol_e3,Estriol(E3),Estrogens and Metabolites,,3.3800297,ng/mg,2,8,Within range
+pt-012-x,male,25,2026-05,2026-06,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,2.7000298,ng/mg,0,5.9,Within range
+pt-012-x,male,25,2026-05,2026-06,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.5700299,ng/mg,0,0.8,Within range
+pt-012-x,male,25,2026-05,2026-06,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.2800300,ng/mg,0,1.2,Within range
+pt-012-x,male,25,2026-05,2026-06,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.2600301,ng/mg,0,2.8,Within range
+pt-012-x,male,25,2026-05,2026-06,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,27.4000302,ng/mg,20,130,Within range
+pt-012-x,male,25,2026-05,2026-06,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,171.0000303,ng/mg,75,400,Within range
+pt-012-x,male,25,2026-05,2026-06,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,478.0000304,ng/mg,175,700,Within range
+pt-012-x,male,25,2026-05,2026-06,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2800.0000305,ng/mg,1750,4000,Within range
+pt-012-x,male,25,2026-05,2026-06,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,4190.0000306,ng/mg,2350,5800,Within range
+pt-012-x,male,25,2026-05,2026-06,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,155.0000307,ng/mg,100,310,Within range
+pt-012-x,male,25,2026-05,2026-06,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,373.0000308,ng/mg,250,500,Within range
+pt-012-x,male,25,2026-05,2026-06,melatonin_waking,Melatonin (Waking),Melatonin,,22.5000309,ng/mg,10,85,Within range
+pt-012-x,male,25,2026-05,2026-06,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,8.5200310,ug/mg,4.8,19,Within range
+pt-012-x,male,25,2026-05,2026-06,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,3.3500311,ug/mg,2.8,8,Within range
+pt-012-x,male,25,2026-05,2026-06,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,3.2800312,ug/mg,3,7.5,Within range
+pt-013-x,male,32,2025-06,2025-07,testosterone,Testosterone,Androgens and Metabolites,,34.8000313,ng/mg,25,115,Within range
+pt-013-x,male,32,2025-06,2025-07,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,36.9000314,ng/mg,25,115,Within range
+pt-013-x,male,32,2025-06,2025-07,5a_dht,5a-DHT,Androgens and Metabolites,,14.7000315,ng/mg,5,25,Within range
+pt-013-x,male,32,2025-06,2025-07,androsterone,Androsterone,Androgens and Metabolites,,583.0000316,ng/mg,500,3000,Within range
+pt-013-x,male,32,2025-06,2025-07,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,3310.0000317,ng/mg,400,1500,Above range
+pt-013-x,male,32,2025-06,2025-07,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,143.0000318,ng/mg,30,250,Within range
+pt-013-x,male,32,2025-06,2025-07,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,74.4000319,ng/mg,40,250,Within range
+pt-013-x,male,32,2025-06,2025-07,dhea_s,DHEA-S,Androgens and Metabolites,,461.0000320,ng/mg,30,1500,Within range
+pt-013-x,male,32,2025-06,2025-07,estrone_e1,Estrone(E1),Estrogens and Metabolites,,9.0800321,ng/mg,4,16,Within range
+pt-013-x,male,32,2025-06,2025-07,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,0.8100322,ng/mg,0.5,2.2,Within range
+pt-013-x,male,32,2025-06,2025-07,estriol_e3,Estriol(E3),Estrogens and Metabolites,,5.9100323,ng/mg,2,8,Within range
+pt-013-x,male,32,2025-06,2025-07,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,0.7300324,ng/mg,0,5.9,Within range
+pt-013-x,male,32,2025-06,2025-07,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.0200325,ng/mg,0,0.8,Within range
+pt-013-x,male,32,2025-06,2025-07,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.4900326,ng/mg,0,1.2,Within range
+pt-013-x,male,32,2025-06,2025-07,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.3900327,ng/mg,0,2.8,Within range
+pt-013-x,male,32,2025-06,2025-07,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,104.0000328,ng/mg,20,130,Within range
+pt-013-x,male,32,2025-06,2025-07,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,131.0000329,ng/mg,75,400,Within range
+pt-013-x,male,32,2025-06,2025-07,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,230.0000330,ng/mg,175,700,Within range
+pt-013-x,male,32,2025-06,2025-07,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,3670.0000331,ng/mg,1750,4000,Within range
+pt-013-x,male,32,2025-06,2025-07,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,2880.0000332,ng/mg,2350,5800,Within range
+pt-013-x,male,32,2025-06,2025-07,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,187.0000333,ng/mg,100,310,Within range
+pt-013-x,male,32,2025-06,2025-07,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,457.0000334,ng/mg,250,500,Within range
+pt-013-x,male,32,2025-06,2025-07,melatonin_waking,Melatonin (Waking),Melatonin,,31.0000335,ng/mg,10,85,Within range
+pt-013-x,male,32,2025-06,2025-07,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,9.2800336,ug/mg,4.8,19,Within range
+pt-013-x,male,32,2025-06,2025-07,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,4.8600337,ug/mg,2.8,8,Within range
+pt-013-x,male,32,2025-06,2025-07,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,5.7700338,ug/mg,3,7.5,Within range
+pt-014-x,male,50,2026-09,2026-10,testosterone,Testosterone,Androgens and Metabolites,,68.0000339,ng/mg,25,115,Within range
+pt-014-x,male,50,2026-09,2026-10,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,67.1000340,ng/mg,25,115,Within range
+pt-014-x,male,50,2026-09,2026-10,5a_dht,5a-DHT,Androgens and Metabolites,,29.1000341,ng/mg,5,25,Above range
+pt-014-x,male,50,2026-09,2026-10,androsterone,Androsterone,Androgens and Metabolites,,525.0000342,ng/mg,500,3000,Within range
+pt-014-x,male,50,2026-09,2026-10,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,910.0000343,ng/mg,400,1500,Within range
+pt-014-x,male,50,2026-09,2026-10,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,129.0000344,ng/mg,30,250,Within range
+pt-014-x,male,50,2026-09,2026-10,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,83.1000345,ng/mg,40,250,Within range
+pt-014-x,male,50,2026-09,2026-10,dhea_s,DHEA-S,Androgens and Metabolites,,283.0000346,ng/mg,30,1500,Within range
+pt-014-x,male,50,2026-09,2026-10,estrone_e1,Estrone(E1),Estrogens and Metabolites,,8.3800347,ng/mg,4,16,Within range
+pt-014-x,male,50,2026-09,2026-10,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.6300348,ng/mg,0.5,2.2,Within range
+pt-014-x,male,50,2026-09,2026-10,estriol_e3,Estriol(E3),Estrogens and Metabolites,,3.1700349,ng/mg,2,8,Within range
+pt-014-x,male,50,2026-09,2026-10,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,1.2300350,ng/mg,0,5.9,Within range
+pt-014-x,male,50,2026-09,2026-10,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.0300351,ng/mg,0,0.8,Within range
+pt-014-x,male,50,2026-09,2026-10,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.1400352,ng/mg,0,1.2,Within range
+pt-014-x,male,50,2026-09,2026-10,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,2.0300353,ng/mg,0,2.8,Within range
+pt-014-x,male,50,2026-09,2026-10,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,36.8000354,ng/mg,20,130,Within range
+pt-014-x,male,50,2026-09,2026-10,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,128.0000355,ng/mg,75,400,Within range
+pt-014-x,male,50,2026-09,2026-10,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,228.0000356,ng/mg,175,700,Within range
+pt-014-x,male,50,2026-09,2026-10,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2990.0000357,ng/mg,1750,4000,Within range
+pt-014-x,male,50,2026-09,2026-10,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,3850.0000358,ng/mg,2350,5800,Within range
+pt-014-x,male,50,2026-09,2026-10,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,125.0000359,ng/mg,100,310,Within range
+pt-014-x,male,50,2026-09,2026-10,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,398.0000360,ng/mg,250,500,Within range
+pt-014-x,male,50,2026-09,2026-10,melatonin_waking,Melatonin (Waking),Melatonin,,33.6000361,ng/mg,10,85,Within range
+pt-014-x,male,50,2026-09,2026-10,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,12.4000362,ug/mg,4.8,19,Within range
+pt-014-x,male,50,2026-09,2026-10,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,3.9900363,ug/mg,2.8,8,Within range
+pt-014-x,male,50,2026-09,2026-10,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,7.1200364,ug/mg,3,7.5,Within range
+pt-015-x,male,53,2026-01,2026-02,testosterone,Testosterone,Androgens and Metabolites,,51.2000365,ng/mg,25,115,Within range
+pt-015-x,male,53,2026-01,2026-02,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,43.8000366,ng/mg,25,115,Within range
+pt-015-x,male,53,2026-01,2026-02,5a_dht,5a-DHT,Androgens and Metabolites,,10.1000367,ng/mg,5,25,Within range
+pt-015-x,male,53,2026-01,2026-02,androsterone,Androsterone,Androgens and Metabolites,,907.0000368,ng/mg,500,3000,Within range
+pt-015-x,male,53,2026-01,2026-02,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,1130.0000369,ng/mg,400,1500,Within range
+pt-015-x,male,53,2026-01,2026-02,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,155.0000370,ng/mg,30,250,Within range
+pt-015-x,male,53,2026-01,2026-02,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,131.0000371,ng/mg,40,250,Within range
+pt-015-x,male,53,2026-01,2026-02,dhea_s,DHEA-S,Androgens and Metabolites,,813.0000372,ng/mg,30,1500,Within range
+pt-015-x,male,53,2026-01,2026-02,estrone_e1,Estrone(E1),Estrogens and Metabolites,,10.7000373,ng/mg,4,16,Within range
+pt-015-x,male,53,2026-01,2026-02,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.0200374,ng/mg,0.5,2.2,Within range
+pt-015-x,male,53,2026-01,2026-02,estriol_e3,Estriol(E3),Estrogens and Metabolites,,2.0400375,ng/mg,2,8,Within range
+pt-015-x,male,53,2026-01,2026-02,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,1.6600376,ng/mg,0,5.9,Within range
+pt-015-x,male,53,2026-01,2026-02,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.3300377,ng/mg,0,0.8,Within range
+pt-015-x,male,53,2026-01,2026-02,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.3000378,ng/mg,0,1.2,Within range
+pt-015-x,male,53,2026-01,2026-02,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.9600379,ng/mg,0,2.8,Within range
+pt-015-x,male,53,2026-01,2026-02,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,40.7000380,ng/mg,20,130,Within range
+pt-015-x,male,53,2026-01,2026-02,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,147.0000381,ng/mg,75,400,Within range
+pt-015-x,male,53,2026-01,2026-02,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,251.0000382,ng/mg,175,700,Within range
+pt-015-x,male,53,2026-01,2026-02,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,3530.0000383,ng/mg,1750,4000,Within range
+pt-015-x,male,53,2026-01,2026-02,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,3830.0000384,ng/mg,2350,5800,Within range
+pt-015-x,male,53,2026-01,2026-02,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,153.0000385,ng/mg,100,310,Within range
+pt-015-x,male,53,2026-01,2026-02,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,279.0000386,ng/mg,250,500,Within range
+pt-015-x,male,53,2026-01,2026-02,melatonin_waking,Melatonin (Waking),Melatonin,,26.8000387,ng/mg,10,85,Within range
+pt-015-x,male,53,2026-01,2026-02,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,15.8000388,ug/mg,4.8,19,Within range
+pt-015-x,male,53,2026-01,2026-02,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,5.3600389,ug/mg,2.8,8,Within range
+pt-015-x,male,53,2026-01,2026-02,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,4.0000390,ug/mg,3,7.5,Within range
+pt-016-x,male,49,2025-03,2025-04,testosterone,Testosterone,Androgens and Metabolites,,93.5000391,ng/mg,25,115,Within range
+pt-016-x,male,49,2025-03,2025-04,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,78.5000392,ng/mg,25,115,Within range
+pt-016-x,male,49,2025-03,2025-04,5a_dht,5a-DHT,Androgens and Metabolites,,15.5000393,ng/mg,5,25,Within range
+pt-016-x,male,49,2025-03,2025-04,androsterone,Androsterone,Androgens and Metabolites,,1040.0000394,ng/mg,500,3000,Within range
+pt-016-x,male,49,2025-03,2025-04,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,1490.0000395,ng/mg,400,1500,Within range
+pt-016-x,male,49,2025-03,2025-04,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,132.0000396,ng/mg,30,250,Within range
+pt-016-x,male,49,2025-03,2025-04,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,69.4000397,ng/mg,40,250,Within range
+pt-016-x,male,49,2025-03,2025-04,dhea_s,DHEA-S,Androgens and Metabolites,,947.0000398,ng/mg,30,1500,Within range
+pt-016-x,male,49,2025-03,2025-04,estrone_e1,Estrone(E1),Estrogens and Metabolites,,8.6800399,ng/mg,4,16,Within range
+pt-016-x,male,49,2025-03,2025-04,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,2.2500400,ng/mg,0.5,2.2,Above range
+pt-016-x,male,49,2025-03,2025-04,estriol_e3,Estriol(E3),Estrogens and Metabolites,,1.9400401,ng/mg,2,8,Below range
+pt-016-x,male,49,2025-03,2025-04,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,2.2600402,ng/mg,0,5.9,Within range
+pt-016-x,male,49,2025-03,2025-04,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.3800403,ng/mg,0,0.8,Within range
+pt-016-x,male,49,2025-03,2025-04,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.2100404,ng/mg,0,1.2,Within range
+pt-016-x,male,49,2025-03,2025-04,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.8900405,ng/mg,0,2.8,Within range
+pt-016-x,male,49,2025-03,2025-04,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,72.9000406,ng/mg,20,130,Within range
+pt-016-x,male,49,2025-03,2025-04,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,222.0000407,ng/mg,75,400,Within range
+pt-016-x,male,49,2025-03,2025-04,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,289.0000408,ng/mg,175,700,Within range
+pt-016-x,male,49,2025-03,2025-04,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2570.0000409,ng/mg,1750,4000,Within range
+pt-016-x,male,49,2025-03,2025-04,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,4670.0000410,ng/mg,2350,5800,Within range
+pt-016-x,male,49,2025-03,2025-04,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,255.0000411,ng/mg,100,310,Within range
+pt-016-x,male,49,2025-03,2025-04,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,360.0000412,ng/mg,250,500,Within range
+pt-016-x,male,49,2025-03,2025-04,melatonin_waking,Melatonin (Waking),Melatonin,,30.4000413,ng/mg,10,85,Within range
+pt-016-x,male,49,2025-03,2025-04,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,10.2000414,ug/mg,4.8,19,Within range
+pt-016-x,male,49,2025-03,2025-04,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,6.2500415,ug/mg,2.8,8,Within range
+pt-016-x,male,49,2025-03,2025-04,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,3.7100416,ug/mg,3,7.5,Within range
+pt-017-x,male,49,2025-03,2025-04,testosterone,Testosterone,Androgens and Metabolites,,56.3000417,ng/mg,25,115,Within range
+pt-017-x,male,49,2025-03,2025-04,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,34.9000418,ng/mg,25,115,Within range
+pt-017-x,male,49,2025-03,2025-04,5a_dht,5a-DHT,Androgens and Metabolites,,8.7900419,ng/mg,5,25,Within range
+pt-017-x,male,49,2025-03,2025-04,androsterone,Androsterone,Androgens and Metabolites,,637.0000420,ng/mg,500,3000,Within range
+pt-017-x,male,49,2025-03,2025-04,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,1460.0000421,ng/mg,400,1500,Within range
+pt-017-x,male,49,2025-03,2025-04,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,48.5000422,ng/mg,30,250,Within range
+pt-017-x,male,49,2025-03,2025-04,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,145.0000423,ng/mg,40,250,Within range
+pt-017-x,male,49,2025-03,2025-04,dhea_s,DHEA-S,Androgens and Metabolites,,36.1000424,ng/mg,30,1500,Within range
+pt-017-x,male,49,2025-03,2025-04,estrone_e1,Estrone(E1),Estrogens and Metabolites,,9.7000425,ng/mg,4,16,Within range
+pt-017-x,male,49,2025-03,2025-04,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,0.5800426,ng/mg,0.5,2.2,Within range
+pt-017-x,male,49,2025-03,2025-04,estriol_e3,Estriol(E3),Estrogens and Metabolites,,2.5500427,ng/mg,2,8,Within range
+pt-017-x,male,49,2025-03,2025-04,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,2.1600428,ng/mg,0,5.9,Within range
+pt-017-x,male,49,2025-03,2025-04,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.1300429,ng/mg,0,0.8,Within range
+pt-017-x,male,49,2025-03,2025-04,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.1500430,ng/mg,0,1.2,Within range
+pt-017-x,male,49,2025-03,2025-04,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.4500431,ng/mg,0,2.8,Within range
+pt-017-x,male,49,2025-03,2025-04,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,63.7000432,ng/mg,20,130,Within range
+pt-017-x,male,49,2025-03,2025-04,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,169.0000433,ng/mg,75,400,Within range
+pt-017-x,male,49,2025-03,2025-04,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,346.0000434,ng/mg,175,700,Within range
+pt-017-x,male,49,2025-03,2025-04,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,3300.0000435,ng/mg,1750,4000,Within range
+pt-017-x,male,49,2025-03,2025-04,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,3130.0000436,ng/mg,2350,5800,Within range
+pt-017-x,male,49,2025-03,2025-04,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,154.0000437,ng/mg,100,310,Within range
+pt-017-x,male,49,2025-03,2025-04,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,322.0000438,ng/mg,250,500,Within range
+pt-017-x,male,49,2025-03,2025-04,melatonin_waking,Melatonin (Waking),Melatonin,,55.2000439,ng/mg,10,85,Within range
+pt-017-x,male,49,2025-03,2025-04,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,13.5000440,ug/mg,4.8,19,Within range
+pt-017-x,male,49,2025-03,2025-04,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,6.6800441,ug/mg,2.8,8,Within range
+pt-017-x,male,49,2025-03,2025-04,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,4.7100442,ug/mg,3,7.5,Within range
+pt-018-x,male,45,2024-01,2024-02,testosterone,Testosterone,Androgens and Metabolites,,74.7000443,ng/mg,25,115,Within range
+pt-018-x,male,45,2024-01,2024-02,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,46.0000444,ng/mg,25,115,Within range
+pt-018-x,male,45,2024-01,2024-02,5a_dht,5a-DHT,Androgens and Metabolites,,15.7000445,ng/mg,5,25,Within range
+pt-018-x,male,45,2024-01,2024-02,androsterone,Androsterone,Androgens and Metabolites,,853.0000446,ng/mg,500,3000,Within range
+pt-018-x,male,45,2024-01,2024-02,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,979.0000447,ng/mg,400,1500,Within range
+pt-018-x,male,45,2024-01,2024-02,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,82.8000448,ng/mg,30,250,Within range
+pt-018-x,male,45,2024-01,2024-02,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,94.6000449,ng/mg,40,250,Within range
+pt-018-x,male,45,2024-01,2024-02,dhea_s,DHEA-S,Androgens and Metabolites,,1200.0000450,ng/mg,30,1500,Within range
+pt-018-x,male,45,2024-01,2024-02,estrone_e1,Estrone(E1),Estrogens and Metabolites,,20.0000451,ng/mg,4,16,Above range
+pt-018-x,male,45,2024-01,2024-02,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.0100452,ng/mg,0.5,2.2,Within range
+pt-018-x,male,45,2024-01,2024-02,estriol_e3,Estriol(E3),Estrogens and Metabolites,,4.0200453,ng/mg,2,8,Within range
+pt-018-x,male,45,2024-01,2024-02,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,0.2300454,ng/mg,0,5.9,Within range
+pt-018-x,male,45,2024-01,2024-02,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.2100455,ng/mg,0,0.8,Within range
+pt-018-x,male,45,2024-01,2024-02,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.2700456,ng/mg,0,1.2,Within range
+pt-018-x,male,45,2024-01,2024-02,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.2800457,ng/mg,0,2.8,Within range
+pt-018-x,male,45,2024-01,2024-02,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,74.2000458,ng/mg,20,130,Within range
+pt-018-x,male,45,2024-01,2024-02,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,88.8000459,ng/mg,75,400,Within range
+pt-018-x,male,45,2024-01,2024-02,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,324.0000460,ng/mg,175,700,Within range
+pt-018-x,male,45,2024-01,2024-02,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2720.0000461,ng/mg,1750,4000,Within range
+pt-018-x,male,45,2024-01,2024-02,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,2770.0000462,ng/mg,2350,5800,Within range
+pt-018-x,male,45,2024-01,2024-02,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,225.0000463,ng/mg,100,310,Within range
+pt-018-x,male,45,2024-01,2024-02,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,426.0000464,ng/mg,250,500,Within range
+pt-018-x,male,45,2024-01,2024-02,melatonin_waking,Melatonin (Waking),Melatonin,,13.7000465,ng/mg,10,85,Within range
+pt-018-x,male,45,2024-01,2024-02,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,5.8300466,ug/mg,4.8,19,Within range
+pt-018-x,male,45,2024-01,2024-02,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,5.5600467,ug/mg,2.8,8,Within range
+pt-018-x,male,45,2024-01,2024-02,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,4.7100468,ug/mg,3,7.5,Within range
+pt-019-x,male,22,2026-08,2026-09,testosterone,Testosterone,Androgens and Metabolites,,47.8000469,ng/mg,25,115,Within range
+pt-019-x,male,22,2026-08,2026-09,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,51.4000470,ng/mg,25,115,Within range
+pt-019-x,male,22,2026-08,2026-09,5a_dht,5a-DHT,Androgens and Metabolites,,10.5000471,ng/mg,5,25,Within range
+pt-019-x,male,22,2026-08,2026-09,androsterone,Androsterone,Androgens and Metabolites,,894.0000472,ng/mg,500,3000,Within range
+pt-019-x,male,22,2026-08,2026-09,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,1410.0000473,ng/mg,400,1500,Within range
+pt-019-x,male,22,2026-08,2026-09,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,226.0000474,ng/mg,30,250,Within range
+pt-019-x,male,22,2026-08,2026-09,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,190.0000475,ng/mg,40,250,Within range
+pt-019-x,male,22,2026-08,2026-09,dhea_s,DHEA-S,Androgens and Metabolites,,418.0000476,ng/mg,30,1500,Within range
+pt-019-x,male,22,2026-08,2026-09,estrone_e1,Estrone(E1),Estrogens and Metabolites,,11.7000477,ng/mg,4,16,Within range
+pt-019-x,male,22,2026-08,2026-09,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.7300478,ng/mg,0.5,2.2,Within range
+pt-019-x,male,22,2026-08,2026-09,estriol_e3,Estriol(E3),Estrogens and Metabolites,,5.1300479,ng/mg,2,8,Within range
+pt-019-x,male,22,2026-08,2026-09,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,0.5200480,ng/mg,0,5.9,Within range
+pt-019-x,male,22,2026-08,2026-09,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.3400481,ng/mg,0,0.8,Within range
+pt-019-x,male,22,2026-08,2026-09,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.2800482,ng/mg,0,1.2,Within range
+pt-019-x,male,22,2026-08,2026-09,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,2.1600483,ng/mg,0,2.8,Within range
+pt-019-x,male,22,2026-08,2026-09,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,53.3000484,ng/mg,20,130,Within range
+pt-019-x,male,22,2026-08,2026-09,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,217.0000485,ng/mg,75,400,Within range
+pt-019-x,male,22,2026-08,2026-09,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,393.0000486,ng/mg,175,700,Within range
+pt-019-x,male,22,2026-08,2026-09,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,3770.0000487,ng/mg,1750,4000,Within range
+pt-019-x,male,22,2026-08,2026-09,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,3850.0000488,ng/mg,2350,5800,Within range
+pt-019-x,male,22,2026-08,2026-09,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,163.0000489,ng/mg,100,310,Within range
+pt-019-x,male,22,2026-08,2026-09,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,373.0000490,ng/mg,250,500,Within range
+pt-019-x,male,22,2026-08,2026-09,melatonin_waking,Melatonin (Waking),Melatonin,,22.9000491,ng/mg,10,85,Within range
+pt-019-x,male,22,2026-08,2026-09,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,10.1000492,ug/mg,4.8,19,Within range
+pt-019-x,male,22,2026-08,2026-09,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,4.7200493,ug/mg,2.8,8,Within range
+pt-019-x,male,22,2026-08,2026-09,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,5.0500494,ug/mg,3,7.5,Within range
+pt-020-x,male,41,2024-05,2024-06,testosterone,Testosterone,Androgens and Metabolites,,45.8000495,ng/mg,25,115,Within range
+pt-020-x,male,41,2024-05,2024-06,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,54.4000496,ng/mg,25,115,Within range
+pt-020-x,male,41,2024-05,2024-06,5a_dht,5a-DHT,Androgens and Metabolites,,10.3000497,ng/mg,5,25,Within range
+pt-020-x,male,41,2024-05,2024-06,androsterone,Androsterone,Androgens and Metabolites,,833.0000498,ng/mg,500,3000,Within range
+pt-020-x,male,41,2024-05,2024-06,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,832.0000499,ng/mg,400,1500,Within range
+pt-020-x,male,41,2024-05,2024-06,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,59.5000500,ng/mg,30,250,Within range
+pt-020-x,male,41,2024-05,2024-06,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,98.2000501,ng/mg,40,250,Within range
+pt-020-x,male,41,2024-05,2024-06,dhea_s,DHEA-S,Androgens and Metabolites,,366.0000502,ng/mg,30,1500,Within range
+pt-020-x,male,41,2024-05,2024-06,estrone_e1,Estrone(E1),Estrogens and Metabolites,,7.8700503,ng/mg,4,16,Within range
+pt-020-x,male,41,2024-05,2024-06,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,0.8700504,ng/mg,0.5,2.2,Within range
+pt-020-x,male,41,2024-05,2024-06,estriol_e3,Estriol(E3),Estrogens and Metabolites,,2.9400505,ng/mg,2,8,Within range
+pt-020-x,male,41,2024-05,2024-06,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,1.9500506,ng/mg,0,5.9,Within range
+pt-020-x,male,41,2024-05,2024-06,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.5400507,ng/mg,0,0.8,Within range
+pt-020-x,male,41,2024-05,2024-06,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.3400508,ng/mg,0,1.2,Within range
+pt-020-x,male,41,2024-05,2024-06,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.7200509,ng/mg,0,2.8,Within range
+pt-020-x,male,41,2024-05,2024-06,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,63.0000510,ng/mg,20,130,Within range
+pt-020-x,male,41,2024-05,2024-06,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,116.0000511,ng/mg,75,400,Within range
+pt-020-x,male,41,2024-05,2024-06,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,313.0000512,ng/mg,175,700,Within range
+pt-020-x,male,41,2024-05,2024-06,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2500.0000513,ng/mg,1750,4000,Within range
+pt-020-x,male,41,2024-05,2024-06,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,3950.0000514,ng/mg,2350,5800,Within range
+pt-020-x,male,41,2024-05,2024-06,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,174.0000515,ng/mg,100,310,Within range
+pt-020-x,male,41,2024-05,2024-06,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,285.0000516,ng/mg,250,500,Within range
+pt-020-x,male,41,2024-05,2024-06,melatonin_waking,Melatonin (Waking),Melatonin,,53.9000517,ng/mg,10,85,Within range
+pt-020-x,male,41,2024-05,2024-06,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,17.3000518,ug/mg,4.8,19,Within range
+pt-020-x,male,41,2024-05,2024-06,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,4.4100519,ug/mg,2.8,8,Within range
+pt-020-x,male,41,2024-05,2024-06,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,5.2100520,ug/mg,3,7.5,Within range
+pt-021-x,male,49,2025-06,2025-07,testosterone,Testosterone,Androgens and Metabolites,,72.8000521,ng/mg,25,115,Within range
+pt-021-x,male,49,2025-06,2025-07,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,30.1000522,ng/mg,25,115,Within range
+pt-021-x,male,49,2025-06,2025-07,5a_dht,5a-DHT,Androgens and Metabolites,,21.7000523,ng/mg,5,25,Within range
+pt-021-x,male,49,2025-06,2025-07,androsterone,Androsterone,Androgens and Metabolites,,494.0000524,ng/mg,500,3000,Below range
+pt-021-x,male,49,2025-06,2025-07,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,1900.0000525,ng/mg,400,1500,Above range
+pt-021-x,male,49,2025-06,2025-07,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,90.5000526,ng/mg,30,250,Within range
+pt-021-x,male,49,2025-06,2025-07,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,83.4000527,ng/mg,40,250,Within range
+pt-021-x,male,49,2025-06,2025-07,dhea_s,DHEA-S,Androgens and Metabolites,,184.0000528,ng/mg,30,1500,Within range
+pt-021-x,male,49,2025-06,2025-07,estrone_e1,Estrone(E1),Estrogens and Metabolites,,11.0000529,ng/mg,4,16,Within range
+pt-021-x,male,49,2025-06,2025-07,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,0.7600530,ng/mg,0.5,2.2,Within range
+pt-021-x,male,49,2025-06,2025-07,estriol_e3,Estriol(E3),Estrogens and Metabolites,,3.5000531,ng/mg,2,8,Within range
+pt-021-x,male,49,2025-06,2025-07,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,0.9100532,ng/mg,0,5.9,Within range
+pt-021-x,male,49,2025-06,2025-07,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.0500533,ng/mg,0,0.8,Within range
+pt-021-x,male,49,2025-06,2025-07,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.7200534,ng/mg,0,1.2,Within range
+pt-021-x,male,49,2025-06,2025-07,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.9700535,ng/mg,0,2.8,Within range
+pt-021-x,male,49,2025-06,2025-07,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,50.5000536,ng/mg,20,130,Within range
+pt-021-x,male,49,2025-06,2025-07,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,285.0000537,ng/mg,75,400,Within range
+pt-021-x,male,49,2025-06,2025-07,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,250.0000538,ng/mg,175,700,Within range
+pt-021-x,male,49,2025-06,2025-07,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2610.0000539,ng/mg,1750,4000,Within range
+pt-021-x,male,49,2025-06,2025-07,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,5490.0000540,ng/mg,2350,5800,Within range
+pt-021-x,male,49,2025-06,2025-07,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,234.0000541,ng/mg,100,310,Within range
+pt-021-x,male,49,2025-06,2025-07,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,239.0000542,ng/mg,250,500,Below range
+pt-021-x,male,49,2025-06,2025-07,melatonin_waking,Melatonin (Waking),Melatonin,,4.7300543,ng/mg,10,85,Below range
+pt-021-x,male,49,2025-06,2025-07,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,6.6300544,ug/mg,4.8,19,Within range
+pt-021-x,male,49,2025-06,2025-07,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,6.2900545,ug/mg,2.8,8,Within range
+pt-021-x,male,49,2025-06,2025-07,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,4.2500546,ug/mg,3,7.5,Within range
+pt-022-x,male,27,2025-07,2025-08,testosterone,Testosterone,Androgens and Metabolites,,67.9000547,ng/mg,25,115,Within range
+pt-022-x,male,27,2025-07,2025-08,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,38.0000548,ng/mg,25,115,Within range
+pt-022-x,male,27,2025-07,2025-08,5a_dht,5a-DHT,Androgens and Metabolites,,12.2000549,ng/mg,5,25,Within range
+pt-022-x,male,27,2025-07,2025-08,androsterone,Androsterone,Androgens and Metabolites,,880.0000550,ng/mg,500,3000,Within range
+pt-022-x,male,27,2025-07,2025-08,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,1450.0000551,ng/mg,400,1500,Within range
+pt-022-x,male,27,2025-07,2025-08,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,107.0000552,ng/mg,30,250,Within range
+pt-022-x,male,27,2025-07,2025-08,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,75.5000553,ng/mg,40,250,Within range
+pt-022-x,male,27,2025-07,2025-08,dhea_s,DHEA-S,Androgens and Metabolites,,354.0000554,ng/mg,30,1500,Within range
+pt-022-x,male,27,2025-07,2025-08,estrone_e1,Estrone(E1),Estrogens and Metabolites,,6.8800555,ng/mg,4,16,Within range
+pt-022-x,male,27,2025-07,2025-08,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.7200556,ng/mg,0.5,2.2,Within range
+pt-022-x,male,27,2025-07,2025-08,estriol_e3,Estriol(E3),Estrogens and Metabolites,,9.9300557,ng/mg,2,8,Above range
+pt-022-x,male,27,2025-07,2025-08,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,0.7500558,ng/mg,0,5.9,Within range
+pt-022-x,male,27,2025-07,2025-08,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.0300559,ng/mg,0,0.8,Within range
+pt-022-x,male,27,2025-07,2025-08,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.1900560,ng/mg,0,1.2,Within range
+pt-022-x,male,27,2025-07,2025-08,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.8300561,ng/mg,0,2.8,Within range
+pt-022-x,male,27,2025-07,2025-08,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,84.2000562,ng/mg,20,130,Within range
+pt-022-x,male,27,2025-07,2025-08,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,275.0000563,ng/mg,75,400,Within range
+pt-022-x,male,27,2025-07,2025-08,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,265.0000564,ng/mg,175,700,Within range
+pt-022-x,male,27,2025-07,2025-08,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2240.0000565,ng/mg,1750,4000,Within range
+pt-022-x,male,27,2025-07,2025-08,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,4940.0000566,ng/mg,2350,5800,Within range
+pt-022-x,male,27,2025-07,2025-08,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,128.0000567,ng/mg,100,310,Within range
+pt-022-x,male,27,2025-07,2025-08,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,429.0000568,ng/mg,250,500,Within range
+pt-022-x,male,27,2025-07,2025-08,melatonin_waking,Melatonin (Waking),Melatonin,,25.8000569,ng/mg,10,85,Within range
+pt-022-x,male,27,2025-07,2025-08,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,12.5000570,ug/mg,4.8,19,Within range
+pt-022-x,male,27,2025-07,2025-08,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,5.7200571,ug/mg,2.8,8,Within range
+pt-022-x,male,27,2025-07,2025-08,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,5.6900572,ug/mg,3,7.5,Within range
+pt-023-x,male,40,2023-08,2023-09,testosterone,Testosterone,Androgens and Metabolites,,36.5000573,ng/mg,25,115,Within range
+pt-023-x,male,40,2023-08,2023-09,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,60.2000574,ng/mg,25,115,Within range
+pt-023-x,male,40,2023-08,2023-09,5a_dht,5a-DHT,Androgens and Metabolites,,11.2000575,ng/mg,5,25,Within range
+pt-023-x,male,40,2023-08,2023-09,androsterone,Androsterone,Androgens and Metabolites,,705.0000576,ng/mg,500,3000,Within range
+pt-023-x,male,40,2023-08,2023-09,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,1880.0000577,ng/mg,400,1500,Above range
+pt-023-x,male,40,2023-08,2023-09,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,74.8000578,ng/mg,30,250,Within range
+pt-023-x,male,40,2023-08,2023-09,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,71.7000579,ng/mg,40,250,Within range
+pt-023-x,male,40,2023-08,2023-09,dhea_s,DHEA-S,Androgens and Metabolites,,103.0000580,ng/mg,30,1500,Within range
+pt-023-x,male,40,2023-08,2023-09,estrone_e1,Estrone(E1),Estrogens and Metabolites,,7.1700581,ng/mg,4,16,Within range
+pt-023-x,male,40,2023-08,2023-09,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.3900582,ng/mg,0.5,2.2,Within range
+pt-023-x,male,40,2023-08,2023-09,estriol_e3,Estriol(E3),Estrogens and Metabolites,,3.0000583,ng/mg,2,8,Within range
+pt-023-x,male,40,2023-08,2023-09,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,3.2000584,ng/mg,0,5.9,Within range
+pt-023-x,male,40,2023-08,2023-09,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.2200585,ng/mg,0,0.8,Within range
+pt-023-x,male,40,2023-08,2023-09,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.2300586,ng/mg,0,1.2,Within range
+pt-023-x,male,40,2023-08,2023-09,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.2300587,ng/mg,0,2.8,Within range
+pt-023-x,male,40,2023-08,2023-09,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,57.3000588,ng/mg,20,130,Within range
+pt-023-x,male,40,2023-08,2023-09,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,233.0000589,ng/mg,75,400,Within range
+pt-023-x,male,40,2023-08,2023-09,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,187.0000590,ng/mg,175,700,Within range
+pt-023-x,male,40,2023-08,2023-09,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,3400.0000591,ng/mg,1750,4000,Within range
+pt-023-x,male,40,2023-08,2023-09,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,5400.0000592,ng/mg,2350,5800,Within range
+pt-023-x,male,40,2023-08,2023-09,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,194.0000593,ng/mg,100,310,Within range
+pt-023-x,male,40,2023-08,2023-09,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,386.0000594,ng/mg,250,500,Within range
+pt-023-x,male,40,2023-08,2023-09,melatonin_waking,Melatonin (Waking),Melatonin,,109.0000595,ng/mg,10,85,Above range
+pt-023-x,male,40,2023-08,2023-09,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,14.7000596,ug/mg,4.8,19,Within range
+pt-023-x,male,40,2023-08,2023-09,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,3.7200597,ug/mg,2.8,8,Within range
+pt-023-x,male,40,2023-08,2023-09,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,4.7200598,ug/mg,3,7.5,Within range
+pt-024-x,male,33,2023-07,2023-08,testosterone,Testosterone,Androgens and Metabolites,,50.6000599,ng/mg,25,115,Within range
+pt-024-x,male,33,2023-07,2023-08,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,21.4000600,ng/mg,25,115,Below range
+pt-024-x,male,33,2023-07,2023-08,5a_dht,5a-DHT,Androgens and Metabolites,,15.3000601,ng/mg,5,25,Within range
+pt-024-x,male,33,2023-07,2023-08,androsterone,Androsterone,Androgens and Metabolites,,458.0000602,ng/mg,500,3000,Below range
+pt-024-x,male,33,2023-07,2023-08,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,1310.0000603,ng/mg,400,1500,Within range
+pt-024-x,male,33,2023-07,2023-08,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,80.5000604,ng/mg,30,250,Within range
+pt-024-x,male,33,2023-07,2023-08,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,150.0000605,ng/mg,40,250,Within range
+pt-024-x,male,33,2023-07,2023-08,dhea_s,DHEA-S,Androgens and Metabolites,,158.0000606,ng/mg,30,1500,Within range
+pt-024-x,male,33,2023-07,2023-08,estrone_e1,Estrone(E1),Estrogens and Metabolites,,6.0400607,ng/mg,4,16,Within range
+pt-024-x,male,33,2023-07,2023-08,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.2800608,ng/mg,0.5,2.2,Within range
+pt-024-x,male,33,2023-07,2023-08,estriol_e3,Estriol(E3),Estrogens and Metabolites,,6.5700609,ng/mg,2,8,Within range
+pt-024-x,male,33,2023-07,2023-08,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,1.0300610,ng/mg,0,5.9,Within range
+pt-024-x,male,33,2023-07,2023-08,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.5100611,ng/mg,0,0.8,Within range
+pt-024-x,male,33,2023-07,2023-08,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.3300612,ng/mg,0,1.2,Within range
+pt-024-x,male,33,2023-07,2023-08,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.4200613,ng/mg,0,2.8,Within range
+pt-024-x,male,33,2023-07,2023-08,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,106.0000614,ng/mg,20,130,Within range
+pt-024-x,male,33,2023-07,2023-08,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,122.0000615,ng/mg,75,400,Within range
+pt-024-x,male,33,2023-07,2023-08,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,501.0000616,ng/mg,175,700,Within range
+pt-024-x,male,33,2023-07,2023-08,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2380.0000617,ng/mg,1750,4000,Within range
+pt-024-x,male,33,2023-07,2023-08,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,4100.0000618,ng/mg,2350,5800,Within range
+pt-024-x,male,33,2023-07,2023-08,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,123.0000619,ng/mg,100,310,Within range
+pt-024-x,male,33,2023-07,2023-08,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,305.0000620,ng/mg,250,500,Within range
+pt-024-x,male,33,2023-07,2023-08,melatonin_waking,Melatonin (Waking),Melatonin,,52.1000621,ng/mg,10,85,Within range
+pt-024-x,male,33,2023-07,2023-08,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,10.2000622,ug/mg,4.8,19,Within range
+pt-024-x,male,33,2023-07,2023-08,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,4.7800623,ug/mg,2.8,8,Within range
+pt-024-x,male,33,2023-07,2023-08,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,4.2800624,ug/mg,3,7.5,Within range
+pt-025-x,male,24,2026-07,2026-08,testosterone,Testosterone,Androgens and Metabolites,,31.1000625,ng/mg,25,115,Within range
+pt-025-x,male,24,2026-07,2026-08,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,34.7000626,ng/mg,25,115,Within range
+pt-025-x,male,24,2026-07,2026-08,5a_dht,5a-DHT,Androgens and Metabolites,,10.5000627,ng/mg,5,25,Within range
+pt-025-x,male,24,2026-07,2026-08,androsterone,Androsterone,Androgens and Metabolites,,836.0000628,ng/mg,500,3000,Within range
+pt-025-x,male,24,2026-07,2026-08,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,612.0000629,ng/mg,400,1500,Within range
+pt-025-x,male,24,2026-07,2026-08,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,83.3000630,ng/mg,30,250,Within range
+pt-025-x,male,24,2026-07,2026-08,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,93.8000631,ng/mg,40,250,Within range
+pt-025-x,male,24,2026-07,2026-08,dhea_s,DHEA-S,Androgens and Metabolites,,170.0000632,ng/mg,30,1500,Within range
+pt-025-x,male,24,2026-07,2026-08,estrone_e1,Estrone(E1),Estrogens and Metabolites,,14.4000633,ng/mg,4,16,Within range
+pt-025-x,male,24,2026-07,2026-08,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.5400634,ng/mg,0.5,2.2,Within range
+pt-025-x,male,24,2026-07,2026-08,estriol_e3,Estriol(E3),Estrogens and Metabolites,,6.1800635,ng/mg,2,8,Within range
+pt-025-x,male,24,2026-07,2026-08,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,1.2900636,ng/mg,0,5.9,Within range
+pt-025-x,male,24,2026-07,2026-08,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.1200637,ng/mg,0,0.8,Within range
+pt-025-x,male,24,2026-07,2026-08,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.0900638,ng/mg,0,1.2,Within range
+pt-025-x,male,24,2026-07,2026-08,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.4800639,ng/mg,0,2.8,Within range
+pt-025-x,male,24,2026-07,2026-08,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,18.8000640,ng/mg,20,130,Below range
+pt-025-x,male,24,2026-07,2026-08,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,135.0000641,ng/mg,75,400,Within range
+pt-025-x,male,24,2026-07,2026-08,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,459.0000642,ng/mg,175,700,Within range
+pt-025-x,male,24,2026-07,2026-08,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,3720.0000643,ng/mg,1750,4000,Within range
+pt-025-x,male,24,2026-07,2026-08,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,4610.0000644,ng/mg,2350,5800,Within range
+pt-025-x,male,24,2026-07,2026-08,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,137.0000645,ng/mg,100,310,Within range
+pt-025-x,male,24,2026-07,2026-08,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,386.0000646,ng/mg,250,500,Within range
+pt-025-x,male,24,2026-07,2026-08,melatonin_waking,Melatonin (Waking),Melatonin,,18.9000647,ng/mg,10,85,Within range
+pt-025-x,male,24,2026-07,2026-08,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,12.7000648,ug/mg,4.8,19,Within range
+pt-025-x,male,24,2026-07,2026-08,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,4.5900649,ug/mg,2.8,8,Within range
+pt-025-x,male,24,2026-07,2026-08,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,5.8000650,ug/mg,3,7.5,Within range
+pt-026-x,male,30,2024-06,2024-07,testosterone,Testosterone,Androgens and Metabolites,,76.8000651,ng/mg,25,115,Within range
+pt-026-x,male,30,2024-06,2024-07,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,133.0000652,ng/mg,25,115,Above range
+pt-026-x,male,30,2024-06,2024-07,5a_dht,5a-DHT,Androgens and Metabolites,,12.0000653,ng/mg,5,25,Within range
+pt-026-x,male,30,2024-06,2024-07,androsterone,Androsterone,Androgens and Metabolites,,1050.0000654,ng/mg,500,3000,Within range
+pt-026-x,male,30,2024-06,2024-07,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,1210.0000655,ng/mg,400,1500,Within range
+pt-026-x,male,30,2024-06,2024-07,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,220.0000656,ng/mg,30,250,Within range
+pt-026-x,male,30,2024-06,2024-07,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,77.1000657,ng/mg,40,250,Within range
+pt-026-x,male,30,2024-06,2024-07,dhea_s,DHEA-S,Androgens and Metabolites,,229.0000658,ng/mg,30,1500,Within range
+pt-026-x,male,30,2024-06,2024-07,estrone_e1,Estrone(E1),Estrogens and Metabolites,,4.8200659,ng/mg,4,16,Within range
+pt-026-x,male,30,2024-06,2024-07,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,0.9700660,ng/mg,0.5,2.2,Within range
+pt-026-x,male,30,2024-06,2024-07,estriol_e3,Estriol(E3),Estrogens and Metabolites,,5.4800661,ng/mg,2,8,Within range
+pt-026-x,male,30,2024-06,2024-07,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,1.2300662,ng/mg,0,5.9,Within range
+pt-026-x,male,30,2024-06,2024-07,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.1200663,ng/mg,0,0.8,Within range
+pt-026-x,male,30,2024-06,2024-07,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.0900664,ng/mg,0,1.2,Within range
+pt-026-x,male,30,2024-06,2024-07,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.8300665,ng/mg,0,2.8,Within range
+pt-026-x,male,30,2024-06,2024-07,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,74.6000666,ng/mg,20,130,Within range
+pt-026-x,male,30,2024-06,2024-07,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,223.0000667,ng/mg,75,400,Within range
+pt-026-x,male,30,2024-06,2024-07,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,383.0000668,ng/mg,175,700,Within range
+pt-026-x,male,30,2024-06,2024-07,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2020.0000669,ng/mg,1750,4000,Within range
+pt-026-x,male,30,2024-06,2024-07,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,5540.0000670,ng/mg,2350,5800,Within range
+pt-026-x,male,30,2024-06,2024-07,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,173.0000671,ng/mg,100,310,Within range
+pt-026-x,male,30,2024-06,2024-07,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,345.0000672,ng/mg,250,500,Within range
+pt-026-x,male,30,2024-06,2024-07,melatonin_waking,Melatonin (Waking),Melatonin,,43.5000673,ng/mg,10,85,Within range
+pt-026-x,male,30,2024-06,2024-07,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,4.4700674,ug/mg,4.8,19,Below range
+pt-026-x,male,30,2024-06,2024-07,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,4.6500675,ug/mg,2.8,8,Within range
+pt-026-x,male,30,2024-06,2024-07,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,4.5900676,ug/mg,3,7.5,Within range
+pt-027-x,male,52,2023-07,2023-08,testosterone,Testosterone,Androgens and Metabolites,,90.6000677,ng/mg,25,115,Within range
+pt-027-x,male,52,2023-07,2023-08,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,64.4000678,ng/mg,25,115,Within range
+pt-027-x,male,52,2023-07,2023-08,5a_dht,5a-DHT,Androgens and Metabolites,,5.2700679,ng/mg,5,25,Within range
+pt-027-x,male,52,2023-07,2023-08,androsterone,Androsterone,Androgens and Metabolites,,1050.0000680,ng/mg,500,3000,Within range
+pt-027-x,male,52,2023-07,2023-08,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,830.0000681,ng/mg,400,1500,Within range
+pt-027-x,male,52,2023-07,2023-08,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,93.8000682,ng/mg,30,250,Within range
+pt-027-x,male,52,2023-07,2023-08,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,54.9000683,ng/mg,40,250,Within range
+pt-027-x,male,52,2023-07,2023-08,dhea_s,DHEA-S,Androgens and Metabolites,,40.3000684,ng/mg,30,1500,Within range
+pt-027-x,male,52,2023-07,2023-08,estrone_e1,Estrone(E1),Estrogens and Metabolites,,9.7100685,ng/mg,4,16,Within range
+pt-027-x,male,52,2023-07,2023-08,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.1900686,ng/mg,0.5,2.2,Within range
+pt-027-x,male,52,2023-07,2023-08,estriol_e3,Estriol(E3),Estrogens and Metabolites,,3.9700687,ng/mg,2,8,Within range
+pt-027-x,male,52,2023-07,2023-08,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,0.3500688,ng/mg,0,5.9,Within range
+pt-027-x,male,52,2023-07,2023-08,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.6900689,ng/mg,0,0.8,Within range
+pt-027-x,male,52,2023-07,2023-08,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.0300690,ng/mg,0,1.2,Within range
+pt-027-x,male,52,2023-07,2023-08,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.4700691,ng/mg,0,2.8,Within range
+pt-027-x,male,52,2023-07,2023-08,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,138.0000692,ng/mg,20,130,Above range
+pt-027-x,male,52,2023-07,2023-08,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,162.0000693,ng/mg,75,400,Within range
+pt-027-x,male,52,2023-07,2023-08,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,380.0000694,ng/mg,175,700,Within range
+pt-027-x,male,52,2023-07,2023-08,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2060.0000695,ng/mg,1750,4000,Within range
+pt-027-x,male,52,2023-07,2023-08,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,5050.0000696,ng/mg,2350,5800,Within range
+pt-027-x,male,52,2023-07,2023-08,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,121.0000697,ng/mg,100,310,Within range
+pt-027-x,male,52,2023-07,2023-08,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,370.0000698,ng/mg,250,500,Within range
+pt-027-x,male,52,2023-07,2023-08,melatonin_waking,Melatonin (Waking),Melatonin,,31.4000699,ng/mg,10,85,Within range
+pt-027-x,male,52,2023-07,2023-08,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,6.6000700,ug/mg,4.8,19,Within range
+pt-027-x,male,52,2023-07,2023-08,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,6.0000701,ug/mg,2.8,8,Within range
+pt-027-x,male,52,2023-07,2023-08,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,3.4100702,ug/mg,3,7.5,Within range
+pt-028-x,male,43,2024-03,2024-04,testosterone,Testosterone,Androgens and Metabolites,,53.0000703,ng/mg,25,115,Within range
+pt-028-x,male,43,2024-03,2024-04,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,45.7000704,ng/mg,25,115,Within range
+pt-028-x,male,43,2024-03,2024-04,5a_dht,5a-DHT,Androgens and Metabolites,,13.5000705,ng/mg,5,25,Within range
+pt-028-x,male,43,2024-03,2024-04,androsterone,Androsterone,Androgens and Metabolites,,1870.0000706,ng/mg,500,3000,Within range
+pt-028-x,male,43,2024-03,2024-04,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,702.0000707,ng/mg,400,1500,Within range
+pt-028-x,male,43,2024-03,2024-04,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,64.6000708,ng/mg,30,250,Within range
+pt-028-x,male,43,2024-03,2024-04,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,78.5000709,ng/mg,40,250,Within range
+pt-028-x,male,43,2024-03,2024-04,dhea_s,DHEA-S,Androgens and Metabolites,,147.0000710,ng/mg,30,1500,Within range
+pt-028-x,male,43,2024-03,2024-04,estrone_e1,Estrone(E1),Estrogens and Metabolites,,10.7000711,ng/mg,4,16,Within range
+pt-028-x,male,43,2024-03,2024-04,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,0.9700712,ng/mg,0.5,2.2,Within range
+pt-028-x,male,43,2024-03,2024-04,estriol_e3,Estriol(E3),Estrogens and Metabolites,,4.6200713,ng/mg,2,8,Within range
+pt-028-x,male,43,2024-03,2024-04,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,1.2300714,ng/mg,0,5.9,Within range
+pt-028-x,male,43,2024-03,2024-04,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.0900715,ng/mg,0,0.8,Within range
+pt-028-x,male,43,2024-03,2024-04,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.5200716,ng/mg,0,1.2,Within range
+pt-028-x,male,43,2024-03,2024-04,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.2800717,ng/mg,0,2.8,Within range
+pt-028-x,male,43,2024-03,2024-04,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,51.1000718,ng/mg,20,130,Within range
+pt-028-x,male,43,2024-03,2024-04,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,327.0000719,ng/mg,75,400,Within range
+pt-028-x,male,43,2024-03,2024-04,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,238.0000720,ng/mg,175,700,Within range
+pt-028-x,male,43,2024-03,2024-04,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2620.0000721,ng/mg,1750,4000,Within range
+pt-028-x,male,43,2024-03,2024-04,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,2560.0000722,ng/mg,2350,5800,Within range
+pt-028-x,male,43,2024-03,2024-04,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,152.0000723,ng/mg,100,310,Within range
+pt-028-x,male,43,2024-03,2024-04,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,271.0000724,ng/mg,250,500,Within range
+pt-028-x,male,43,2024-03,2024-04,melatonin_waking,Melatonin (Waking),Melatonin,,23.9000725,ng/mg,10,85,Within range
+pt-028-x,male,43,2024-03,2024-04,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,7.9100726,ug/mg,4.8,19,Within range
+pt-028-x,male,43,2024-03,2024-04,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,4.9000727,ug/mg,2.8,8,Within range
+pt-028-x,male,43,2024-03,2024-04,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,6.8700728,ug/mg,3,7.5,Within range
+pt-029-x,male,47,2023-08,2023-09,testosterone,Testosterone,Androgens and Metabolites,,69.3000729,ng/mg,25,115,Within range
+pt-029-x,male,47,2023-08,2023-09,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,52.6000730,ng/mg,25,115,Within range
+pt-029-x,male,47,2023-08,2023-09,5a_dht,5a-DHT,Androgens and Metabolites,,10.1000731,ng/mg,5,25,Within range
+pt-029-x,male,47,2023-08,2023-09,androsterone,Androsterone,Androgens and Metabolites,,837.0000732,ng/mg,500,3000,Within range
+pt-029-x,male,47,2023-08,2023-09,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,422.0000733,ng/mg,400,1500,Within range
+pt-029-x,male,47,2023-08,2023-09,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,89.9000734,ng/mg,30,250,Within range
+pt-029-x,male,47,2023-08,2023-09,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,214.0000735,ng/mg,40,250,Within range
+pt-029-x,male,47,2023-08,2023-09,dhea_s,DHEA-S,Androgens and Metabolites,,341.0000736,ng/mg,30,1500,Within range
+pt-029-x,male,47,2023-08,2023-09,estrone_e1,Estrone(E1),Estrogens and Metabolites,,6.6200737,ng/mg,4,16,Within range
+pt-029-x,male,47,2023-08,2023-09,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.9600738,ng/mg,0.5,2.2,Within range
+pt-029-x,male,47,2023-08,2023-09,estriol_e3,Estriol(E3),Estrogens and Metabolites,,3.4300739,ng/mg,2,8,Within range
+pt-029-x,male,47,2023-08,2023-09,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,0.8200740,ng/mg,0,5.9,Within range
+pt-029-x,male,47,2023-08,2023-09,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.0700741,ng/mg,0,0.8,Within range
+pt-029-x,male,47,2023-08,2023-09,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.1300742,ng/mg,0,1.2,Within range
+pt-029-x,male,47,2023-08,2023-09,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.5200743,ng/mg,0,2.8,Within range
+pt-029-x,male,47,2023-08,2023-09,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,132.0000744,ng/mg,20,130,Above range
+pt-029-x,male,47,2023-08,2023-09,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,159.0000745,ng/mg,75,400,Within range
+pt-029-x,male,47,2023-08,2023-09,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,243.0000746,ng/mg,175,700,Within range
+pt-029-x,male,47,2023-08,2023-09,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2330.0000747,ng/mg,1750,4000,Within range
+pt-029-x,male,47,2023-08,2023-09,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,3510.0000748,ng/mg,2350,5800,Within range
+pt-029-x,male,47,2023-08,2023-09,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,107.0000749,ng/mg,100,310,Within range
+pt-029-x,male,47,2023-08,2023-09,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,362.0000750,ng/mg,250,500,Within range
+pt-029-x,male,47,2023-08,2023-09,melatonin_waking,Melatonin (Waking),Melatonin,,42.7000751,ng/mg,10,85,Within range
+pt-029-x,male,47,2023-08,2023-09,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,10.7000752,ug/mg,4.8,19,Within range
+pt-029-x,male,47,2023-08,2023-09,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,5.5600753,ug/mg,2.8,8,Within range
+pt-029-x,male,47,2023-08,2023-09,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,3.5100754,ug/mg,3,7.5,Within range
+pt-030-x,male,37,2026-03,2026-04,testosterone,Testosterone,Androgens and Metabolites,,88.4000755,ng/mg,25,115,Within range
+pt-030-x,male,37,2026-03,2026-04,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,82.1000756,ng/mg,25,115,Within range
+pt-030-x,male,37,2026-03,2026-04,5a_dht,5a-DHT,Androgens and Metabolites,,5.9400757,ng/mg,5,25,Within range
+pt-030-x,male,37,2026-03,2026-04,androsterone,Androsterone,Androgens and Metabolites,,1350.0000758,ng/mg,500,3000,Within range
+pt-030-x,male,37,2026-03,2026-04,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,781.0000759,ng/mg,400,1500,Within range
+pt-030-x,male,37,2026-03,2026-04,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,116.0000760,ng/mg,30,250,Within range
+pt-030-x,male,37,2026-03,2026-04,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,110.0000761,ng/mg,40,250,Within range
+pt-030-x,male,37,2026-03,2026-04,dhea_s,DHEA-S,Androgens and Metabolites,,129.0000762,ng/mg,30,1500,Within range
+pt-030-x,male,37,2026-03,2026-04,estrone_e1,Estrone(E1),Estrogens and Metabolites,,8.5700763,ng/mg,4,16,Within range
+pt-030-x,male,37,2026-03,2026-04,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.1100764,ng/mg,0.5,2.2,Within range
+pt-030-x,male,37,2026-03,2026-04,estriol_e3,Estriol(E3),Estrogens and Metabolites,,3.9300765,ng/mg,2,8,Within range
+pt-030-x,male,37,2026-03,2026-04,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,0.3200766,ng/mg,0,5.9,Within range
+pt-030-x,male,37,2026-03,2026-04,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.0200767,ng/mg,0,0.8,Within range
+pt-030-x,male,37,2026-03,2026-04,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.1500768,ng/mg,0,1.2,Within range
+pt-030-x,male,37,2026-03,2026-04,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.1800769,ng/mg,0,2.8,Within range
+pt-030-x,male,37,2026-03,2026-04,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,57.5000770,ng/mg,20,130,Within range
+pt-030-x,male,37,2026-03,2026-04,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,235.0000771,ng/mg,75,400,Within range
+pt-030-x,male,37,2026-03,2026-04,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,384.0000772,ng/mg,175,700,Within range
+pt-030-x,male,37,2026-03,2026-04,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2450.0000773,ng/mg,1750,4000,Within range
+pt-030-x,male,37,2026-03,2026-04,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,3750.0000774,ng/mg,2350,5800,Within range
+pt-030-x,male,37,2026-03,2026-04,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,247.0000775,ng/mg,100,310,Within range
+pt-030-x,male,37,2026-03,2026-04,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,311.0000776,ng/mg,250,500,Within range
+pt-030-x,male,37,2026-03,2026-04,melatonin_waking,Melatonin (Waking),Melatonin,,48.2000777,ng/mg,10,85,Within range
+pt-030-x,male,37,2026-03,2026-04,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,12.2000778,ug/mg,4.8,19,Within range
+pt-030-x,male,37,2026-03,2026-04,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,5.0800779,ug/mg,2.8,8,Within range
+pt-030-x,male,37,2026-03,2026-04,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,6.6600780,ug/mg,3,7.5,Within range
+pt-031-x,male,53,2025-10,2025-11,testosterone,Testosterone,Androgens and Metabolites,,77.4000781,ng/mg,25,115,Within range
+pt-031-x,male,53,2025-10,2025-11,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,37.3000782,ng/mg,25,115,Within range
+pt-031-x,male,53,2025-10,2025-11,5a_dht,5a-DHT,Androgens and Metabolites,,8.1600783,ng/mg,5,25,Within range
+pt-031-x,male,53,2025-10,2025-11,androsterone,Androsterone,Androgens and Metabolites,,755.0000784,ng/mg,500,3000,Within range
+pt-031-x,male,53,2025-10,2025-11,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,900.0000785,ng/mg,400,1500,Within range
+pt-031-x,male,53,2025-10,2025-11,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,52.1000786,ng/mg,30,250,Within range
+pt-031-x,male,53,2025-10,2025-11,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,102.0000787,ng/mg,40,250,Within range
+pt-031-x,male,53,2025-10,2025-11,dhea_s,DHEA-S,Androgens and Metabolites,,68.2000788,ng/mg,30,1500,Within range
+pt-031-x,male,53,2025-10,2025-11,estrone_e1,Estrone(E1),Estrogens and Metabolites,,11.7000789,ng/mg,4,16,Within range
+pt-031-x,male,53,2025-10,2025-11,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,2.1000790,ng/mg,0.5,2.2,Within range
+pt-031-x,male,53,2025-10,2025-11,estriol_e3,Estriol(E3),Estrogens and Metabolites,,4.3300791,ng/mg,2,8,Within range
+pt-031-x,male,53,2025-10,2025-11,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,4.6300792,ng/mg,0,5.9,Within range
+pt-031-x,male,53,2025-10,2025-11,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.2800793,ng/mg,0,0.8,Within range
+pt-031-x,male,53,2025-10,2025-11,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,1.4100794,ng/mg,0,1.2,Above range
+pt-031-x,male,53,2025-10,2025-11,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.6800795,ng/mg,0,2.8,Within range
+pt-031-x,male,53,2025-10,2025-11,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,24.1000796,ng/mg,20,130,Within range
+pt-031-x,male,53,2025-10,2025-11,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,327.0000797,ng/mg,75,400,Within range
+pt-031-x,male,53,2025-10,2025-11,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,335.0000798,ng/mg,175,700,Within range
+pt-031-x,male,53,2025-10,2025-11,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2130.0000799,ng/mg,1750,4000,Within range
+pt-031-x,male,53,2025-10,2025-11,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,3170.0000800,ng/mg,2350,5800,Within range
+pt-031-x,male,53,2025-10,2025-11,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,110.0000801,ng/mg,100,310,Within range
+pt-031-x,male,53,2025-10,2025-11,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,343.0000802,ng/mg,250,500,Within range
+pt-031-x,male,53,2025-10,2025-11,melatonin_waking,Melatonin (Waking),Melatonin,,16.2000803,ng/mg,10,85,Within range
+pt-031-x,male,53,2025-10,2025-11,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,16.1000804,ug/mg,4.8,19,Within range
+pt-031-x,male,53,2025-10,2025-11,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,5.6500805,ug/mg,2.8,8,Within range
+pt-031-x,male,53,2025-10,2025-11,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,3.2200806,ug/mg,3,7.5,Within range
+pt-032-x,male,31,2023-05,2023-06,testosterone,Testosterone,Androgens and Metabolites,,43.0000807,ng/mg,25,115,Within range
+pt-032-x,male,31,2023-05,2023-06,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,25.3000808,ng/mg,25,115,Within range
+pt-032-x,male,31,2023-05,2023-06,5a_dht,5a-DHT,Androgens and Metabolites,,10.7000809,ng/mg,5,25,Within range
+pt-032-x,male,31,2023-05,2023-06,androsterone,Androsterone,Androgens and Metabolites,,1200.0000810,ng/mg,500,3000,Within range
+pt-032-x,male,31,2023-05,2023-06,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,597.0000811,ng/mg,400,1500,Within range
+pt-032-x,male,31,2023-05,2023-06,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,64.4000812,ng/mg,30,250,Within range
+pt-032-x,male,31,2023-05,2023-06,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,126.0000813,ng/mg,40,250,Within range
+pt-032-x,male,31,2023-05,2023-06,dhea_s,DHEA-S,Androgens and Metabolites,,877.0000814,ng/mg,30,1500,Within range
+pt-032-x,male,31,2023-05,2023-06,estrone_e1,Estrone(E1),Estrogens and Metabolites,,13.6000815,ng/mg,4,16,Within range
+pt-032-x,male,31,2023-05,2023-06,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.0600816,ng/mg,0.5,2.2,Within range
+pt-032-x,male,31,2023-05,2023-06,estriol_e3,Estriol(E3),Estrogens and Metabolites,,5.4100817,ng/mg,2,8,Within range
+pt-032-x,male,31,2023-05,2023-06,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,0.7500818,ng/mg,0,5.9,Within range
+pt-032-x,male,31,2023-05,2023-06,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.2400819,ng/mg,0,0.8,Within range
+pt-032-x,male,31,2023-05,2023-06,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.1300820,ng/mg,0,1.2,Within range
+pt-032-x,male,31,2023-05,2023-06,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,1.0900821,ng/mg,0,2.8,Within range
+pt-032-x,male,31,2023-05,2023-06,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,28.2000822,ng/mg,20,130,Within range
+pt-032-x,male,31,2023-05,2023-06,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,115.0000823,ng/mg,75,400,Within range
+pt-032-x,male,31,2023-05,2023-06,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,349.0000824,ng/mg,175,700,Within range
+pt-032-x,male,31,2023-05,2023-06,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2980.0000825,ng/mg,1750,4000,Within range
+pt-032-x,male,31,2023-05,2023-06,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,2650.0000826,ng/mg,2350,5800,Within range
+pt-032-x,male,31,2023-05,2023-06,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,151.0000827,ng/mg,100,310,Within range
+pt-032-x,male,31,2023-05,2023-06,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,362.0000828,ng/mg,250,500,Within range
+pt-032-x,male,31,2023-05,2023-06,melatonin_waking,Melatonin (Waking),Melatonin,,33.0000829,ng/mg,10,85,Within range
+pt-032-x,male,31,2023-05,2023-06,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,7.1100830,ug/mg,4.8,19,Within range
+pt-032-x,male,31,2023-05,2023-06,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,4.8600831,ug/mg,2.8,8,Within range
+pt-032-x,male,31,2023-05,2023-06,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,4.4600832,ug/mg,3,7.5,Within range
+pt-033-x,male,52,2023-11,2023-12,testosterone,Testosterone,Androgens and Metabolites,,66.6000833,ng/mg,25,115,Within range
+pt-033-x,male,52,2023-11,2023-12,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,32.0000834,ng/mg,25,115,Within range
+pt-033-x,male,52,2023-11,2023-12,5a_dht,5a-DHT,Androgens and Metabolites,,4.5300835,ng/mg,5,25,Below range
+pt-033-x,male,52,2023-11,2023-12,androsterone,Androsterone,Androgens and Metabolites,,1280.0000836,ng/mg,500,3000,Within range
+pt-033-x,male,52,2023-11,2023-12,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,1150.0000837,ng/mg,400,1500,Within range
+pt-033-x,male,52,2023-11,2023-12,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,95.1000838,ng/mg,30,250,Within range
+pt-033-x,male,52,2023-11,2023-12,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,151.0000839,ng/mg,40,250,Within range
+pt-033-x,male,52,2023-11,2023-12,dhea_s,DHEA-S,Androgens and Metabolites,,131.0000840,ng/mg,30,1500,Within range
+pt-033-x,male,52,2023-11,2023-12,estrone_e1,Estrone(E1),Estrogens and Metabolites,,4.9400841,ng/mg,4,16,Within range
+pt-033-x,male,52,2023-11,2023-12,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.3900842,ng/mg,0.5,2.2,Within range
+pt-033-x,male,52,2023-11,2023-12,estriol_e3,Estriol(E3),Estrogens and Metabolites,,4.1400843,ng/mg,2,8,Within range
+pt-033-x,male,52,2023-11,2023-12,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,2.2200844,ng/mg,0,5.9,Within range
+pt-033-x,male,52,2023-11,2023-12,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.0600845,ng/mg,0,0.8,Within range
+pt-033-x,male,52,2023-11,2023-12,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.3100846,ng/mg,0,1.2,Within range
+pt-033-x,male,52,2023-11,2023-12,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.3900847,ng/mg,0,2.8,Within range
+pt-033-x,male,52,2023-11,2023-12,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,74.9000848,ng/mg,20,130,Within range
+pt-033-x,male,52,2023-11,2023-12,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,135.0000849,ng/mg,75,400,Within range
+pt-033-x,male,52,2023-11,2023-12,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,282.0000850,ng/mg,175,700,Within range
+pt-033-x,male,52,2023-11,2023-12,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2340.0000851,ng/mg,1750,4000,Within range
+pt-033-x,male,52,2023-11,2023-12,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,4940.0000852,ng/mg,2350,5800,Within range
+pt-033-x,male,52,2023-11,2023-12,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,178.0000853,ng/mg,100,310,Within range
+pt-033-x,male,52,2023-11,2023-12,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,309.0000854,ng/mg,250,500,Within range
+pt-033-x,male,52,2023-11,2023-12,melatonin_waking,Melatonin (Waking),Melatonin,,16.7000855,ng/mg,10,85,Within range
+pt-033-x,male,52,2023-11,2023-12,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,6.6200856,ug/mg,4.8,19,Within range
+pt-033-x,male,52,2023-11,2023-12,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,7.0000857,ug/mg,2.8,8,Within range
+pt-033-x,male,52,2023-11,2023-12,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,3.1000858,ug/mg,3,7.5,Within range
+pt-034-x,male,26,2024-11,2024-12,testosterone,Testosterone,Androgens and Metabolites,,68.7000859,ng/mg,25,115,Within range
+pt-034-x,male,26,2024-11,2024-12,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,84.8000860,ng/mg,25,115,Within range
+pt-034-x,male,26,2024-11,2024-12,5a_dht,5a-DHT,Androgens and Metabolites,,10.5000861,ng/mg,5,25,Within range
+pt-034-x,male,26,2024-11,2024-12,androsterone,Androsterone,Androgens and Metabolites,,1750.0000862,ng/mg,500,3000,Within range
+pt-034-x,male,26,2024-11,2024-12,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,1000.0000863,ng/mg,400,1500,Within range
+pt-034-x,male,26,2024-11,2024-12,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,148.0000864,ng/mg,30,250,Within range
+pt-034-x,male,26,2024-11,2024-12,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,102.0000865,ng/mg,40,250,Within range
+pt-034-x,male,26,2024-11,2024-12,dhea_s,DHEA-S,Androgens and Metabolites,,1110.0000866,ng/mg,30,1500,Within range
+pt-034-x,male,26,2024-11,2024-12,estrone_e1,Estrone(E1),Estrogens and Metabolites,,8.6400867,ng/mg,4,16,Within range
+pt-034-x,male,26,2024-11,2024-12,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.8800868,ng/mg,0.5,2.2,Within range
+pt-034-x,male,26,2024-11,2024-12,estriol_e3,Estriol(E3),Estrogens and Metabolites,,2.7300869,ng/mg,2,8,Within range
+pt-034-x,male,26,2024-11,2024-12,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,2.7500870,ng/mg,0,5.9,Within range
+pt-034-x,male,26,2024-11,2024-12,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.0700871,ng/mg,0,0.8,Within range
+pt-034-x,male,26,2024-11,2024-12,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.0900872,ng/mg,0,1.2,Within range
+pt-034-x,male,26,2024-11,2024-12,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.9400873,ng/mg,0,2.8,Within range
+pt-034-x,male,26,2024-11,2024-12,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,34.8000874,ng/mg,20,130,Within range
+pt-034-x,male,26,2024-11,2024-12,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,212.0000875,ng/mg,75,400,Within range
+pt-034-x,male,26,2024-11,2024-12,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,242.0000876,ng/mg,175,700,Within range
+pt-034-x,male,26,2024-11,2024-12,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,3740.0000877,ng/mg,1750,4000,Within range
+pt-034-x,male,26,2024-11,2024-12,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,3730.0000878,ng/mg,2350,5800,Within range
+pt-034-x,male,26,2024-11,2024-12,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,128.0000879,ng/mg,100,310,Within range
+pt-034-x,male,26,2024-11,2024-12,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,367.0000880,ng/mg,250,500,Within range
+pt-034-x,male,26,2024-11,2024-12,melatonin_waking,Melatonin (Waking),Melatonin,,48.3000881,ng/mg,10,85,Within range
+pt-034-x,male,26,2024-11,2024-12,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,7.4000882,ug/mg,4.8,19,Within range
+pt-034-x,male,26,2024-11,2024-12,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,5.5000883,ug/mg,2.8,8,Within range
+pt-034-x,male,26,2024-11,2024-12,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,7.7400884,ug/mg,3,7.5,Above range
+pt-035-x,male,52,2024-11,2024-12,testosterone,Testosterone,Androgens and Metabolites,,54.4000885,ng/mg,25,115,Within range
+pt-035-x,male,52,2024-11,2024-12,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,43.8000886,ng/mg,25,115,Within range
+pt-035-x,male,52,2024-11,2024-12,5a_dht,5a-DHT,Androgens and Metabolites,,14.5000887,ng/mg,5,25,Within range
+pt-035-x,male,52,2024-11,2024-12,androsterone,Androsterone,Androgens and Metabolites,,627.0000888,ng/mg,500,3000,Within range
+pt-035-x,male,52,2024-11,2024-12,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,283.0000889,ng/mg,400,1500,Below range
+pt-035-x,male,52,2024-11,2024-12,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,62.2000890,ng/mg,30,250,Within range
+pt-035-x,male,52,2024-11,2024-12,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,61.8000891,ng/mg,40,250,Within range
+pt-035-x,male,52,2024-11,2024-12,dhea_s,DHEA-S,Androgens and Metabolites,,1280.0000892,ng/mg,30,1500,Within range
+pt-035-x,male,52,2024-11,2024-12,estrone_e1,Estrone(E1),Estrogens and Metabolites,,8.5700893,ng/mg,4,16,Within range
+pt-035-x,male,52,2024-11,2024-12,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,0.7400894,ng/mg,0.5,2.2,Within range
+pt-035-x,male,52,2024-11,2024-12,estriol_e3,Estriol(E3),Estrogens and Metabolites,,2.7100895,ng/mg,2,8,Within range
+pt-035-x,male,52,2024-11,2024-12,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,2.0200896,ng/mg,0,5.9,Within range
+pt-035-x,male,52,2024-11,2024-12,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.1000897,ng/mg,0,0.8,Within range
+pt-035-x,male,52,2024-11,2024-12,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.1800898,ng/mg,0,1.2,Within range
+pt-035-x,male,52,2024-11,2024-12,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.6100899,ng/mg,0,2.8,Within range
+pt-035-x,male,52,2024-11,2024-12,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,54.8000900,ng/mg,20,130,Within range
+pt-035-x,male,52,2024-11,2024-12,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,185.0000901,ng/mg,75,400,Within range
+pt-035-x,male,52,2024-11,2024-12,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,373.0000902,ng/mg,175,700,Within range
+pt-035-x,male,52,2024-11,2024-12,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,3530.0000903,ng/mg,1750,4000,Within range
+pt-035-x,male,52,2024-11,2024-12,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,5550.0000904,ng/mg,2350,5800,Within range
+pt-035-x,male,52,2024-11,2024-12,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,111.0000905,ng/mg,100,310,Within range
+pt-035-x,male,52,2024-11,2024-12,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,565.0000906,ng/mg,250,500,Above range
+pt-035-x,male,52,2024-11,2024-12,melatonin_waking,Melatonin (Waking),Melatonin,,32.5000907,ng/mg,10,85,Within range
+pt-035-x,male,52,2024-11,2024-12,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,15.2000908,ug/mg,4.8,19,Within range
+pt-035-x,male,52,2024-11,2024-12,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,3.9600909,ug/mg,2.8,8,Within range
+pt-035-x,male,52,2024-11,2024-12,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,5.2100910,ug/mg,3,7.5,Within range
+pt-036-x,male,42,2026-07,2026-08,testosterone,Testosterone,Androgens and Metabolites,,57.6000911,ng/mg,25,115,Within range
+pt-036-x,male,42,2026-07,2026-08,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,76.9000912,ng/mg,25,115,Within range
+pt-036-x,male,42,2026-07,2026-08,5a_dht,5a-DHT,Androgens and Metabolites,,14.9000913,ng/mg,5,25,Within range
+pt-036-x,male,42,2026-07,2026-08,androsterone,Androsterone,Androgens and Metabolites,,800.0000914,ng/mg,500,3000,Within range
+pt-036-x,male,42,2026-07,2026-08,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,763.0000915,ng/mg,400,1500,Within range
+pt-036-x,male,42,2026-07,2026-08,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,134.0000916,ng/mg,30,250,Within range
+pt-036-x,male,42,2026-07,2026-08,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,143.0000917,ng/mg,40,250,Within range
+pt-036-x,male,42,2026-07,2026-08,dhea_s,DHEA-S,Androgens and Metabolites,,163.0000918,ng/mg,30,1500,Within range
+pt-036-x,male,42,2026-07,2026-08,estrone_e1,Estrone(E1),Estrogens and Metabolites,,7.4400919,ng/mg,4,16,Within range
+pt-036-x,male,42,2026-07,2026-08,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.0200920,ng/mg,0.5,2.2,Within range
+pt-036-x,male,42,2026-07,2026-08,estriol_e3,Estriol(E3),Estrogens and Metabolites,,2.7800921,ng/mg,2,8,Within range
+pt-036-x,male,42,2026-07,2026-08,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,0.5200922,ng/mg,0,5.9,Within range
+pt-036-x,male,42,2026-07,2026-08,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.6300923,ng/mg,0,0.8,Within range
+pt-036-x,male,42,2026-07,2026-08,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.2100924,ng/mg,0,1.2,Within range
+pt-036-x,male,42,2026-07,2026-08,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.7100925,ng/mg,0,2.8,Within range
+pt-036-x,male,42,2026-07,2026-08,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,37.0000926,ng/mg,20,130,Within range
+pt-036-x,male,42,2026-07,2026-08,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,311.0000927,ng/mg,75,400,Within range
+pt-036-x,male,42,2026-07,2026-08,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,668.0000928,ng/mg,175,700,Within range
+pt-036-x,male,42,2026-07,2026-08,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2570.0000929,ng/mg,1750,4000,Within range
+pt-036-x,male,42,2026-07,2026-08,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,4230.0000930,ng/mg,2350,5800,Within range
+pt-036-x,male,42,2026-07,2026-08,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,145.0000931,ng/mg,100,310,Within range
+pt-036-x,male,42,2026-07,2026-08,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,490.0000932,ng/mg,250,500,Within range
+pt-036-x,male,42,2026-07,2026-08,melatonin_waking,Melatonin (Waking),Melatonin,,50.4000933,ng/mg,10,85,Within range
+pt-036-x,male,42,2026-07,2026-08,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,7.3000934,ug/mg,4.8,19,Within range
+pt-036-x,male,42,2026-07,2026-08,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,6.7500935,ug/mg,2.8,8,Within range
+pt-036-x,male,42,2026-07,2026-08,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,5.2500936,ug/mg,3,7.5,Within range
+pt-037-x,male,29,2025-01,2025-02,testosterone,Testosterone,Androgens and Metabolites,,63.4000937,ng/mg,25,115,Within range
+pt-037-x,male,29,2025-01,2025-02,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,42.5000938,ng/mg,25,115,Within range
+pt-037-x,male,29,2025-01,2025-02,5a_dht,5a-DHT,Androgens and Metabolites,,9.2400939,ng/mg,5,25,Within range
+pt-037-x,male,29,2025-01,2025-02,androsterone,Androsterone,Androgens and Metabolites,,1680.0000940,ng/mg,500,3000,Within range
+pt-037-x,male,29,2025-01,2025-02,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,781.0000941,ng/mg,400,1500,Within range
+pt-037-x,male,29,2025-01,2025-02,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,53.9000942,ng/mg,30,250,Within range
+pt-037-x,male,29,2025-01,2025-02,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,267.0000943,ng/mg,40,250,Above range
+pt-037-x,male,29,2025-01,2025-02,dhea_s,DHEA-S,Androgens and Metabolites,,185.0000944,ng/mg,30,1500,Within range
+pt-037-x,male,29,2025-01,2025-02,estrone_e1,Estrone(E1),Estrogens and Metabolites,,6.7300945,ng/mg,4,16,Within range
+pt-037-x,male,29,2025-01,2025-02,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,0.8300946,ng/mg,0.5,2.2,Within range
+pt-037-x,male,29,2025-01,2025-02,estriol_e3,Estriol(E3),Estrogens and Metabolites,,5.2300947,ng/mg,2,8,Within range
+pt-037-x,male,29,2025-01,2025-02,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,2.9300948,ng/mg,0,5.9,Within range
+pt-037-x,male,29,2025-01,2025-02,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.2300949,ng/mg,0,0.8,Within range
+pt-037-x,male,29,2025-01,2025-02,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.5500950,ng/mg,0,1.2,Within range
+pt-037-x,male,29,2025-01,2025-02,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.2100951,ng/mg,0,2.8,Within range
+pt-037-x,male,29,2025-01,2025-02,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,44.1000952,ng/mg,20,130,Within range
+pt-037-x,male,29,2025-01,2025-02,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,146.0000953,ng/mg,75,400,Within range
+pt-037-x,male,29,2025-01,2025-02,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,359.0000954,ng/mg,175,700,Within range
+pt-037-x,male,29,2025-01,2025-02,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2970.0000955,ng/mg,1750,4000,Within range
+pt-037-x,male,29,2025-01,2025-02,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,2340.0000956,ng/mg,2350,5800,Below range
+pt-037-x,male,29,2025-01,2025-02,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,442.0000957,ng/mg,100,310,Above range
+pt-037-x,male,29,2025-01,2025-02,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,307.0000958,ng/mg,250,500,Within range
+pt-037-x,male,29,2025-01,2025-02,melatonin_waking,Melatonin (Waking),Melatonin,,36.4000959,ng/mg,10,85,Within range
+pt-037-x,male,29,2025-01,2025-02,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,13.1000960,ug/mg,4.8,19,Within range
+pt-037-x,male,29,2025-01,2025-02,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,6.0400961,ug/mg,2.8,8,Within range
+pt-037-x,male,29,2025-01,2025-02,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,5.0900962,ug/mg,3,7.5,Within range
+pt-038-x,male,28,2024-06,2024-07,testosterone,Testosterone,Androgens and Metabolites,,35.9000963,ng/mg,25,115,Within range
+pt-038-x,male,28,2024-06,2024-07,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,73.6000964,ng/mg,25,115,Within range
+pt-038-x,male,28,2024-06,2024-07,5a_dht,5a-DHT,Androgens and Metabolites,,7.8300965,ng/mg,5,25,Within range
+pt-038-x,male,28,2024-06,2024-07,androsterone,Androsterone,Androgens and Metabolites,,774.0000966,ng/mg,500,3000,Within range
+pt-038-x,male,28,2024-06,2024-07,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,356.0000967,ng/mg,400,1500,Below range
+pt-038-x,male,28,2024-06,2024-07,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,172.0000968,ng/mg,30,250,Within range
+pt-038-x,male,28,2024-06,2024-07,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,130.0000969,ng/mg,40,250,Within range
+pt-038-x,male,28,2024-06,2024-07,dhea_s,DHEA-S,Androgens and Metabolites,,90.9000970,ng/mg,30,1500,Within range
+pt-038-x,male,28,2024-06,2024-07,estrone_e1,Estrone(E1),Estrogens and Metabolites,,7.7500971,ng/mg,4,16,Within range
+pt-038-x,male,28,2024-06,2024-07,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.0200972,ng/mg,0.5,2.2,Within range
+pt-038-x,male,28,2024-06,2024-07,estriol_e3,Estriol(E3),Estrogens and Metabolites,,2.7300973,ng/mg,2,8,Within range
+pt-038-x,male,28,2024-06,2024-07,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,1.1000974,ng/mg,0,5.9,Within range
+pt-038-x,male,28,2024-06,2024-07,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.2200975,ng/mg,0,0.8,Within range
+pt-038-x,male,28,2024-06,2024-07,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.4200976,ng/mg,0,1.2,Within range
+pt-038-x,male,28,2024-06,2024-07,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,1.6900977,ng/mg,0,2.8,Within range
+pt-038-x,male,28,2024-06,2024-07,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,52.4000978,ng/mg,20,130,Within range
+pt-038-x,male,28,2024-06,2024-07,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,144.0000979,ng/mg,75,400,Within range
+pt-038-x,male,28,2024-06,2024-07,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,407.0000980,ng/mg,175,700,Within range
+pt-038-x,male,28,2024-06,2024-07,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2330.0000981,ng/mg,1750,4000,Within range
+pt-038-x,male,28,2024-06,2024-07,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,2780.0000982,ng/mg,2350,5800,Within range
+pt-038-x,male,28,2024-06,2024-07,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,246.0000983,ng/mg,100,310,Within range
+pt-038-x,male,28,2024-06,2024-07,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,332.0000984,ng/mg,250,500,Within range
+pt-038-x,male,28,2024-06,2024-07,melatonin_waking,Melatonin (Waking),Melatonin,,31.5000985,ng/mg,10,85,Within range
+pt-038-x,male,28,2024-06,2024-07,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,12.1000986,ug/mg,4.8,19,Within range
+pt-038-x,male,28,2024-06,2024-07,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,3.5400987,ug/mg,2.8,8,Within range
+pt-038-x,male,28,2024-06,2024-07,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,5.5400988,ug/mg,3,7.5,Within range
+pt-039-x,male,30,2023-12,2024-01,testosterone,Testosterone,Androgens and Metabolites,,86.5000989,ng/mg,25,115,Within range
+pt-039-x,male,30,2023-12,2024-01,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,52.0000990,ng/mg,25,115,Within range
+pt-039-x,male,30,2023-12,2024-01,5a_dht,5a-DHT,Androgens and Metabolites,,13.3000991,ng/mg,5,25,Within range
+pt-039-x,male,30,2023-12,2024-01,androsterone,Androsterone,Androgens and Metabolites,,874.0000992,ng/mg,500,3000,Within range
+pt-039-x,male,30,2023-12,2024-01,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,371.0000993,ng/mg,400,1500,Below range
+pt-039-x,male,30,2023-12,2024-01,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,75.1000994,ng/mg,30,250,Within range
+pt-039-x,male,30,2023-12,2024-01,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,65.9000995,ng/mg,40,250,Within range
+pt-039-x,male,30,2023-12,2024-01,dhea_s,DHEA-S,Androgens and Metabolites,,514.0000996,ng/mg,30,1500,Within range
+pt-039-x,male,30,2023-12,2024-01,estrone_e1,Estrone(E1),Estrogens and Metabolites,,8.8400997,ng/mg,4,16,Within range
+pt-039-x,male,30,2023-12,2024-01,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,0.8600998,ng/mg,0.5,2.2,Within range
+pt-039-x,male,30,2023-12,2024-01,estriol_e3,Estriol(E3),Estrogens and Metabolites,,4.0900999,ng/mg,2,8,Within range
+pt-039-x,male,30,2023-12,2024-01,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,3.7601000,ng/mg,0,5.9,Within range
+pt-039-x,male,30,2023-12,2024-01,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.4301001,ng/mg,0,0.8,Within range
+pt-039-x,male,30,2023-12,2024-01,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.3601002,ng/mg,0,1.2,Within range
+pt-039-x,male,30,2023-12,2024-01,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.8801003,ng/mg,0,2.8,Within range
+pt-039-x,male,30,2023-12,2024-01,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,45.0001004,ng/mg,20,130,Within range
+pt-039-x,male,30,2023-12,2024-01,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,165.0001005,ng/mg,75,400,Within range
+pt-039-x,male,30,2023-12,2024-01,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,434.0001006,ng/mg,175,700,Within range
+pt-039-x,male,30,2023-12,2024-01,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2590.0001007,ng/mg,1750,4000,Within range
+pt-039-x,male,30,2023-12,2024-01,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,3970.0001008,ng/mg,2350,5800,Within range
+pt-039-x,male,30,2023-12,2024-01,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,128.0001009,ng/mg,100,310,Within range
+pt-039-x,male,30,2023-12,2024-01,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,264.0001010,ng/mg,250,500,Within range
+pt-039-x,male,30,2023-12,2024-01,melatonin_waking,Melatonin (Waking),Melatonin,,11.6001011,ng/mg,10,85,Within range
+pt-039-x,male,30,2023-12,2024-01,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,8.2401012,ug/mg,4.8,19,Within range
+pt-039-x,male,30,2023-12,2024-01,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,6.7801013,ug/mg,2.8,8,Within range
+pt-039-x,male,30,2023-12,2024-01,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,6.2801014,ug/mg,3,7.5,Within range
+pt-040-x,male,50,2025-04,2025-05,testosterone,Testosterone,Androgens and Metabolites,,29.4001015,ng/mg,25,115,Within range
+pt-040-x,male,50,2025-04,2025-05,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,73.5001016,ng/mg,25,115,Within range
+pt-040-x,male,50,2025-04,2025-05,5a_dht,5a-DHT,Androgens and Metabolites,,13.6001017,ng/mg,5,25,Within range
+pt-040-x,male,50,2025-04,2025-05,androsterone,Androsterone,Androgens and Metabolites,,660.0001018,ng/mg,500,3000,Within range
+pt-040-x,male,50,2025-04,2025-05,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,1110.0001019,ng/mg,400,1500,Within range
+pt-040-x,male,50,2025-04,2025-05,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,96.0001020,ng/mg,30,250,Within range
+pt-040-x,male,50,2025-04,2025-05,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,187.0001021,ng/mg,40,250,Within range
+pt-040-x,male,50,2025-04,2025-05,dhea_s,DHEA-S,Androgens and Metabolites,,303.0001022,ng/mg,30,1500,Within range
+pt-040-x,male,50,2025-04,2025-05,estrone_e1,Estrone(E1),Estrogens and Metabolites,,11.0001023,ng/mg,4,16,Within range
+pt-040-x,male,50,2025-04,2025-05,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.1901024,ng/mg,0.5,2.2,Within range
+pt-040-x,male,50,2025-04,2025-05,estriol_e3,Estriol(E3),Estrogens and Metabolites,,2.8701025,ng/mg,2,8,Within range
+pt-040-x,male,50,2025-04,2025-05,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,1.1201026,ng/mg,0,5.9,Within range
+pt-040-x,male,50,2025-04,2025-05,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.1101027,ng/mg,0,0.8,Within range
+pt-040-x,male,50,2025-04,2025-05,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.5101028,ng/mg,0,1.2,Within range
+pt-040-x,male,50,2025-04,2025-05,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.3001029,ng/mg,0,2.8,Within range
+pt-040-x,male,50,2025-04,2025-05,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,24.7001030,ng/mg,20,130,Within range
+pt-040-x,male,50,2025-04,2025-05,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,233.0001031,ng/mg,75,400,Within range
+pt-040-x,male,50,2025-04,2025-05,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,528.0001032,ng/mg,175,700,Within range
+pt-040-x,male,50,2025-04,2025-05,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,3600.0001033,ng/mg,1750,4000,Within range
+pt-040-x,male,50,2025-04,2025-05,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,4760.0001034,ng/mg,2350,5800,Within range
+pt-040-x,male,50,2025-04,2025-05,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,114.0001035,ng/mg,100,310,Within range
+pt-040-x,male,50,2025-04,2025-05,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,313.0001036,ng/mg,250,500,Within range
+pt-040-x,male,50,2025-04,2025-05,melatonin_waking,Melatonin (Waking),Melatonin,,21.8001037,ng/mg,10,85,Within range
+pt-040-x,male,50,2025-04,2025-05,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,9.5201038,ug/mg,4.8,19,Within range
+pt-040-x,male,50,2025-04,2025-05,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,2.6701039,ug/mg,2.8,8,Below range
+pt-040-x,male,50,2025-04,2025-05,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,4.7501040,ug/mg,3,7.5,Within range
+pt-041-x,male,28,2025-01,2025-02,testosterone,Testosterone,Androgens and Metabolites,,37.2001041,ng/mg,25,115,Within range
+pt-041-x,male,28,2025-01,2025-02,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,56.4001042,ng/mg,25,115,Within range
+pt-041-x,male,28,2025-01,2025-02,5a_dht,5a-DHT,Androgens and Metabolites,,18.3001043,ng/mg,5,25,Within range
+pt-041-x,male,28,2025-01,2025-02,androsterone,Androsterone,Androgens and Metabolites,,1260.0001044,ng/mg,500,3000,Within range
+pt-041-x,male,28,2025-01,2025-02,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,1110.0001045,ng/mg,400,1500,Within range
+pt-041-x,male,28,2025-01,2025-02,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,151.0001046,ng/mg,30,250,Within range
+pt-041-x,male,28,2025-01,2025-02,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,122.0001047,ng/mg,40,250,Within range
+pt-041-x,male,28,2025-01,2025-02,dhea_s,DHEA-S,Androgens and Metabolites,,315.0001048,ng/mg,30,1500,Within range
+pt-041-x,male,28,2025-01,2025-02,estrone_e1,Estrone(E1),Estrogens and Metabolites,,7.0401049,ng/mg,4,16,Within range
+pt-041-x,male,28,2025-01,2025-02,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.6801050,ng/mg,0.5,2.2,Within range
+pt-041-x,male,28,2025-01,2025-02,estriol_e3,Estriol(E3),Estrogens and Metabolites,,3.4001051,ng/mg,2,8,Within range
+pt-041-x,male,28,2025-01,2025-02,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,0.7801052,ng/mg,0,5.9,Within range
+pt-041-x,male,28,2025-01,2025-02,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.3101053,ng/mg,0,0.8,Within range
+pt-041-x,male,28,2025-01,2025-02,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.1501054,ng/mg,0,1.2,Within range
+pt-041-x,male,28,2025-01,2025-02,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.8801055,ng/mg,0,2.8,Within range
+pt-041-x,male,28,2025-01,2025-02,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,84.9001056,ng/mg,20,130,Within range
+pt-041-x,male,28,2025-01,2025-02,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,180.0001057,ng/mg,75,400,Within range
+pt-041-x,male,28,2025-01,2025-02,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,365.0001058,ng/mg,175,700,Within range
+pt-041-x,male,28,2025-01,2025-02,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,3220.0001059,ng/mg,1750,4000,Within range
+pt-041-x,male,28,2025-01,2025-02,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,4410.0001060,ng/mg,2350,5800,Within range
+pt-041-x,male,28,2025-01,2025-02,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,113.0001061,ng/mg,100,310,Within range
+pt-041-x,male,28,2025-01,2025-02,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,281.0001062,ng/mg,250,500,Within range
+pt-041-x,male,28,2025-01,2025-02,melatonin_waking,Melatonin (Waking),Melatonin,,60.8001063,ng/mg,10,85,Within range
+pt-041-x,male,28,2025-01,2025-02,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,11.0001064,ug/mg,4.8,19,Within range
+pt-041-x,male,28,2025-01,2025-02,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,2.7201065,ug/mg,2.8,8,Below range
+pt-041-x,male,28,2025-01,2025-02,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,3.4701066,ug/mg,3,7.5,Within range
+pt-042-x,male,50,2026-05,2026-06,testosterone,Testosterone,Androgens and Metabolites,,36.8001067,ng/mg,25,115,Within range
+pt-042-x,male,50,2026-05,2026-06,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,64.8001068,ng/mg,25,115,Within range
+pt-042-x,male,50,2026-05,2026-06,5a_dht,5a-DHT,Androgens and Metabolites,,11.6001069,ng/mg,5,25,Within range
+pt-042-x,male,50,2026-05,2026-06,androsterone,Androsterone,Androgens and Metabolites,,1540.0001070,ng/mg,500,3000,Within range
+pt-042-x,male,50,2026-05,2026-06,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,526.0001071,ng/mg,400,1500,Within range
+pt-042-x,male,50,2026-05,2026-06,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,122.0001072,ng/mg,30,250,Within range
+pt-042-x,male,50,2026-05,2026-06,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,252.0001073,ng/mg,40,250,Above range
+pt-042-x,male,50,2026-05,2026-06,dhea_s,DHEA-S,Androgens and Metabolites,,97.8001074,ng/mg,30,1500,Within range
+pt-042-x,male,50,2026-05,2026-06,estrone_e1,Estrone(E1),Estrogens and Metabolites,,12.8001075,ng/mg,4,16,Within range
+pt-042-x,male,50,2026-05,2026-06,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.5301076,ng/mg,0.5,2.2,Within range
+pt-042-x,male,50,2026-05,2026-06,estriol_e3,Estriol(E3),Estrogens and Metabolites,,5.0601077,ng/mg,2,8,Within range
+pt-042-x,male,50,2026-05,2026-06,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,1.2801078,ng/mg,0,5.9,Within range
+pt-042-x,male,50,2026-05,2026-06,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.0701079,ng/mg,0,0.8,Within range
+pt-042-x,male,50,2026-05,2026-06,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.1401080,ng/mg,0,1.2,Within range
+pt-042-x,male,50,2026-05,2026-06,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,1.1401081,ng/mg,0,2.8,Within range
+pt-042-x,male,50,2026-05,2026-06,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,82.3001082,ng/mg,20,130,Within range
+pt-042-x,male,50,2026-05,2026-06,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,295.0001083,ng/mg,75,400,Within range
+pt-042-x,male,50,2026-05,2026-06,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,496.0001084,ng/mg,175,700,Within range
+pt-042-x,male,50,2026-05,2026-06,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,3220.0001085,ng/mg,1750,4000,Within range
+pt-042-x,male,50,2026-05,2026-06,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,3360.0001086,ng/mg,2350,5800,Within range
+pt-042-x,male,50,2026-05,2026-06,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,125.0001087,ng/mg,100,310,Within range
+pt-042-x,male,50,2026-05,2026-06,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,368.0001088,ng/mg,250,500,Within range
+pt-042-x,male,50,2026-05,2026-06,melatonin_waking,Melatonin (Waking),Melatonin,,38.8001089,ng/mg,10,85,Within range
+pt-042-x,male,50,2026-05,2026-06,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,9.9201090,ug/mg,4.8,19,Within range
+pt-042-x,male,50,2026-05,2026-06,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,3.1701091,ug/mg,2.8,8,Within range
+pt-042-x,male,50,2026-05,2026-06,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,4.2201092,ug/mg,3,7.5,Within range
+pt-043-x,male,40,2023-06,2023-07,testosterone,Testosterone,Androgens and Metabolites,,57.3001093,ng/mg,25,115,Within range
+pt-043-x,male,40,2023-06,2023-07,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,36.0001094,ng/mg,25,115,Within range
+pt-043-x,male,40,2023-06,2023-07,5a_dht,5a-DHT,Androgens and Metabolites,,10.5001095,ng/mg,5,25,Within range
+pt-043-x,male,40,2023-06,2023-07,androsterone,Androsterone,Androgens and Metabolites,,1440.0001096,ng/mg,500,3000,Within range
+pt-043-x,male,40,2023-06,2023-07,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,818.0001097,ng/mg,400,1500,Within range
+pt-043-x,male,40,2023-06,2023-07,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,184.0001098,ng/mg,30,250,Within range
+pt-043-x,male,40,2023-06,2023-07,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,60.4001099,ng/mg,40,250,Within range
+pt-043-x,male,40,2023-06,2023-07,dhea_s,DHEA-S,Androgens and Metabolites,,24.6001100,ng/mg,30,1500,Below range
+pt-043-x,male,40,2023-06,2023-07,estrone_e1,Estrone(E1),Estrogens and Metabolites,,11.3001101,ng/mg,4,16,Within range
+pt-043-x,male,40,2023-06,2023-07,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.8001102,ng/mg,0.5,2.2,Within range
+pt-043-x,male,40,2023-06,2023-07,estriol_e3,Estriol(E3),Estrogens and Metabolites,,6.7001103,ng/mg,2,8,Within range
+pt-043-x,male,40,2023-06,2023-07,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,1.6701104,ng/mg,0,5.9,Within range
+pt-043-x,male,40,2023-06,2023-07,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.2801105,ng/mg,0,0.8,Within range
+pt-043-x,male,40,2023-06,2023-07,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.3001106,ng/mg,0,1.2,Within range
+pt-043-x,male,40,2023-06,2023-07,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.2401107,ng/mg,0,2.8,Within range
+pt-043-x,male,40,2023-06,2023-07,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,39.4001108,ng/mg,20,130,Within range
+pt-043-x,male,40,2023-06,2023-07,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,217.0001109,ng/mg,75,400,Within range
+pt-043-x,male,40,2023-06,2023-07,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,288.0001110,ng/mg,175,700,Within range
+pt-043-x,male,40,2023-06,2023-07,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,3980.0001111,ng/mg,1750,4000,Within range
+pt-043-x,male,40,2023-06,2023-07,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,2610.0001112,ng/mg,2350,5800,Within range
+pt-043-x,male,40,2023-06,2023-07,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,157.0001113,ng/mg,100,310,Within range
+pt-043-x,male,40,2023-06,2023-07,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,433.0001114,ng/mg,250,500,Within range
+pt-043-x,male,40,2023-06,2023-07,melatonin_waking,Melatonin (Waking),Melatonin,,21.3001115,ng/mg,10,85,Within range
+pt-043-x,male,40,2023-06,2023-07,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,6.4901116,ug/mg,4.8,19,Within range
+pt-043-x,male,40,2023-06,2023-07,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,3.3201117,ug/mg,2.8,8,Within range
+pt-043-x,male,40,2023-06,2023-07,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,4.0301118,ug/mg,3,7.5,Within range
+pt-044-x,male,43,2026-10,2026-11,testosterone,Testosterone,Androgens and Metabolites,,63.6001119,ng/mg,25,115,Within range
+pt-044-x,male,43,2026-10,2026-11,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,66.4001120,ng/mg,25,115,Within range
+pt-044-x,male,43,2026-10,2026-11,5a_dht,5a-DHT,Androgens and Metabolites,,9.1501121,ng/mg,5,25,Within range
+pt-044-x,male,43,2026-10,2026-11,androsterone,Androsterone,Androgens and Metabolites,,1830.0001122,ng/mg,500,3000,Within range
+pt-044-x,male,43,2026-10,2026-11,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,812.0001123,ng/mg,400,1500,Within range
+pt-044-x,male,43,2026-10,2026-11,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,53.5001124,ng/mg,30,250,Within range
+pt-044-x,male,43,2026-10,2026-11,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,82.2001125,ng/mg,40,250,Within range
+pt-044-x,male,43,2026-10,2026-11,dhea_s,DHEA-S,Androgens and Metabolites,,268.0001126,ng/mg,30,1500,Within range
+pt-044-x,male,43,2026-10,2026-11,estrone_e1,Estrone(E1),Estrogens and Metabolites,,12.2001127,ng/mg,4,16,Within range
+pt-044-x,male,43,2026-10,2026-11,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.0401128,ng/mg,0.5,2.2,Within range
+pt-044-x,male,43,2026-10,2026-11,estriol_e3,Estriol(E3),Estrogens and Metabolites,,4.8301129,ng/mg,2,8,Within range
+pt-044-x,male,43,2026-10,2026-11,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,6.3301130,ng/mg,0,5.9,Above range
+pt-044-x,male,43,2026-10,2026-11,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.1001131,ng/mg,0,0.8,Within range
+pt-044-x,male,43,2026-10,2026-11,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.1101132,ng/mg,0,1.2,Within range
+pt-044-x,male,43,2026-10,2026-11,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,1.3601133,ng/mg,0,2.8,Within range
+pt-044-x,male,43,2026-10,2026-11,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,63.9001134,ng/mg,20,130,Within range
+pt-044-x,male,43,2026-10,2026-11,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,169.0001135,ng/mg,75,400,Within range
+pt-044-x,male,43,2026-10,2026-11,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,389.0001136,ng/mg,175,700,Within range
+pt-044-x,male,43,2026-10,2026-11,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2490.0001137,ng/mg,1750,4000,Within range
+pt-044-x,male,43,2026-10,2026-11,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,4190.0001138,ng/mg,2350,5800,Within range
+pt-044-x,male,43,2026-10,2026-11,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,161.0001139,ng/mg,100,310,Within range
+pt-044-x,male,43,2026-10,2026-11,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,410.0001140,ng/mg,250,500,Within range
+pt-044-x,male,43,2026-10,2026-11,melatonin_waking,Melatonin (Waking),Melatonin,,15.7001141,ng/mg,10,85,Within range
+pt-044-x,male,43,2026-10,2026-11,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,7.2601142,ug/mg,4.8,19,Within range
+pt-044-x,male,43,2026-10,2026-11,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,4.9301143,ug/mg,2.8,8,Within range
+pt-044-x,male,43,2026-10,2026-11,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,4.2901144,ug/mg,3,7.5,Within range
+pt-045-x,male,52,2025-09,2025-10,testosterone,Testosterone,Androgens and Metabolites,,53.5001145,ng/mg,25,115,Within range
+pt-045-x,male,52,2025-09,2025-10,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,44.0001146,ng/mg,25,115,Within range
+pt-045-x,male,52,2025-09,2025-10,5a_dht,5a-DHT,Androgens and Metabolites,,12.4001147,ng/mg,5,25,Within range
+pt-045-x,male,52,2025-09,2025-10,androsterone,Androsterone,Androgens and Metabolites,,978.0001148,ng/mg,500,3000,Within range
+pt-045-x,male,52,2025-09,2025-10,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,464.0001149,ng/mg,400,1500,Within range
+pt-045-x,male,52,2025-09,2025-10,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,47.8001150,ng/mg,30,250,Within range
+pt-045-x,male,52,2025-09,2025-10,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,70.0001151,ng/mg,40,250,Within range
+pt-045-x,male,52,2025-09,2025-10,dhea_s,DHEA-S,Androgens and Metabolites,,138.0001152,ng/mg,30,1500,Within range
+pt-045-x,male,52,2025-09,2025-10,estrone_e1,Estrone(E1),Estrogens and Metabolites,,8.3901153,ng/mg,4,16,Within range
+pt-045-x,male,52,2025-09,2025-10,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.5001154,ng/mg,0.5,2.2,Within range
+pt-045-x,male,52,2025-09,2025-10,estriol_e3,Estriol(E3),Estrogens and Metabolites,,4.9301155,ng/mg,2,8,Within range
+pt-045-x,male,52,2025-09,2025-10,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,5.3001156,ng/mg,0,5.9,Within range
+pt-045-x,male,52,2025-09,2025-10,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.4901157,ng/mg,0,0.8,Within range
+pt-045-x,male,52,2025-09,2025-10,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.2401158,ng/mg,0,1.2,Within range
+pt-045-x,male,52,2025-09,2025-10,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,2.2801159,ng/mg,0,2.8,Within range
+pt-045-x,male,52,2025-09,2025-10,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,91.5001160,ng/mg,20,130,Within range
+pt-045-x,male,52,2025-09,2025-10,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,145.0001161,ng/mg,75,400,Within range
+pt-045-x,male,52,2025-09,2025-10,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,397.0001162,ng/mg,175,700,Within range
+pt-045-x,male,52,2025-09,2025-10,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,3360.0001163,ng/mg,1750,4000,Within range
+pt-045-x,male,52,2025-09,2025-10,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,3940.0001164,ng/mg,2350,5800,Within range
+pt-045-x,male,52,2025-09,2025-10,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,239.0001165,ng/mg,100,310,Within range
+pt-045-x,male,52,2025-09,2025-10,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,382.0001166,ng/mg,250,500,Within range
+pt-045-x,male,52,2025-09,2025-10,melatonin_waking,Melatonin (Waking),Melatonin,,43.9001167,ng/mg,10,85,Within range
+pt-045-x,male,52,2025-09,2025-10,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,8.6801168,ug/mg,4.8,19,Within range
+pt-045-x,male,52,2025-09,2025-10,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,5.3001169,ug/mg,2.8,8,Within range
+pt-045-x,male,52,2025-09,2025-10,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,4.4001170,ug/mg,3,7.5,Within range
+pt-046-x,male,39,2024-02,2024-03,testosterone,Testosterone,Androgens and Metabolites,,28.3001171,ng/mg,25,115,Within range
+pt-046-x,male,39,2024-02,2024-03,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,62.2001172,ng/mg,25,115,Within range
+pt-046-x,male,39,2024-02,2024-03,5a_dht,5a-DHT,Androgens and Metabolites,,19.0001173,ng/mg,5,25,Within range
+pt-046-x,male,39,2024-02,2024-03,androsterone,Androsterone,Androgens and Metabolites,,1630.0001174,ng/mg,500,3000,Within range
+pt-046-x,male,39,2024-02,2024-03,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,780.0001175,ng/mg,400,1500,Within range
+pt-046-x,male,39,2024-02,2024-03,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,119.0001176,ng/mg,30,250,Within range
+pt-046-x,male,39,2024-02,2024-03,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,68.8001177,ng/mg,40,250,Within range
+pt-046-x,male,39,2024-02,2024-03,dhea_s,DHEA-S,Androgens and Metabolites,,97.0001178,ng/mg,30,1500,Within range
+pt-046-x,male,39,2024-02,2024-03,estrone_e1,Estrone(E1),Estrogens and Metabolites,,7.1701179,ng/mg,4,16,Within range
+pt-046-x,male,39,2024-02,2024-03,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.0101180,ng/mg,0.5,2.2,Within range
+pt-046-x,male,39,2024-02,2024-03,estriol_e3,Estriol(E3),Estrogens and Metabolites,,5.7201181,ng/mg,2,8,Within range
+pt-046-x,male,39,2024-02,2024-03,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,0.6901182,ng/mg,0,5.9,Within range
+pt-046-x,male,39,2024-02,2024-03,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.4001183,ng/mg,0,0.8,Within range
+pt-046-x,male,39,2024-02,2024-03,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.0801184,ng/mg,0,1.2,Within range
+pt-046-x,male,39,2024-02,2024-03,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.3601185,ng/mg,0,2.8,Within range
+pt-046-x,male,39,2024-02,2024-03,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,51.2001186,ng/mg,20,130,Within range
+pt-046-x,male,39,2024-02,2024-03,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,290.0001187,ng/mg,75,400,Within range
+pt-046-x,male,39,2024-02,2024-03,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,286.0001188,ng/mg,175,700,Within range
+pt-046-x,male,39,2024-02,2024-03,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,1700.0001189,ng/mg,1750,4000,Below range
+pt-046-x,male,39,2024-02,2024-03,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,4110.0001190,ng/mg,2350,5800,Within range
+pt-046-x,male,39,2024-02,2024-03,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,177.0001191,ng/mg,100,310,Within range
+pt-046-x,male,39,2024-02,2024-03,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,294.0001192,ng/mg,250,500,Within range
+pt-046-x,male,39,2024-02,2024-03,melatonin_waking,Melatonin (Waking),Melatonin,,16.9001193,ng/mg,10,85,Within range
+pt-046-x,male,39,2024-02,2024-03,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,7.6001194,ug/mg,4.8,19,Within range
+pt-046-x,male,39,2024-02,2024-03,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,4.9201195,ug/mg,2.8,8,Within range
+pt-046-x,male,39,2024-02,2024-03,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,5.6001196,ug/mg,3,7.5,Within range
+pt-047-x,male,31,2026-09,2026-10,testosterone,Testosterone,Androgens and Metabolites,,133.0001197,ng/mg,25,115,Above range
+pt-047-x,male,31,2026-09,2026-10,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,53.8001198,ng/mg,25,115,Within range
+pt-047-x,male,31,2026-09,2026-10,5a_dht,5a-DHT,Androgens and Metabolites,,9.7801199,ng/mg,5,25,Within range
+pt-047-x,male,31,2026-09,2026-10,androsterone,Androsterone,Androgens and Metabolites,,1700.0001200,ng/mg,500,3000,Within range
+pt-047-x,male,31,2026-09,2026-10,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,816.0001201,ng/mg,400,1500,Within range
+pt-047-x,male,31,2026-09,2026-10,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,314.0001202,ng/mg,30,250,Above range
+pt-047-x,male,31,2026-09,2026-10,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,171.0001203,ng/mg,40,250,Within range
+pt-047-x,male,31,2026-09,2026-10,dhea_s,DHEA-S,Androgens and Metabolites,,154.0001204,ng/mg,30,1500,Within range
+pt-047-x,male,31,2026-09,2026-10,estrone_e1,Estrone(E1),Estrogens and Metabolites,,7.0801205,ng/mg,4,16,Within range
+pt-047-x,male,31,2026-09,2026-10,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,0.8801206,ng/mg,0.5,2.2,Within range
+pt-047-x,male,31,2026-09,2026-10,estriol_e3,Estriol(E3),Estrogens and Metabolites,,3.6001207,ng/mg,2,8,Within range
+pt-047-x,male,31,2026-09,2026-10,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,2.2801208,ng/mg,0,5.9,Within range
+pt-047-x,male,31,2026-09,2026-10,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.1101209,ng/mg,0,0.8,Within range
+pt-047-x,male,31,2026-09,2026-10,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.9501210,ng/mg,0,1.2,Within range
+pt-047-x,male,31,2026-09,2026-10,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,0.6101211,ng/mg,0,2.8,Within range
+pt-047-x,male,31,2026-09,2026-10,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,48.6001212,ng/mg,20,130,Within range
+pt-047-x,male,31,2026-09,2026-10,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,265.0001213,ng/mg,75,400,Within range
+pt-047-x,male,31,2026-09,2026-10,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,177.0001214,ng/mg,175,700,Within range
+pt-047-x,male,31,2026-09,2026-10,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2190.0001215,ng/mg,1750,4000,Within range
+pt-047-x,male,31,2026-09,2026-10,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,4280.0001216,ng/mg,2350,5800,Within range
+pt-047-x,male,31,2026-09,2026-10,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,179.0001217,ng/mg,100,310,Within range
+pt-047-x,male,31,2026-09,2026-10,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,355.0001218,ng/mg,250,500,Within range
+pt-047-x,male,31,2026-09,2026-10,melatonin_waking,Melatonin (Waking),Melatonin,,37.1001219,ng/mg,10,85,Within range
+pt-047-x,male,31,2026-09,2026-10,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,7.8501220,ug/mg,4.8,19,Within range
+pt-047-x,male,31,2026-09,2026-10,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,4.5701221,ug/mg,2.8,8,Within range
+pt-047-x,male,31,2026-09,2026-10,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,3.4901222,ug/mg,3,7.5,Within range
+pt-048-x,male,41,2025-04,2025-05,testosterone,Testosterone,Androgens and Metabolites,,89.2001223,ng/mg,25,115,Within range
+pt-048-x,male,41,2025-04,2025-05,epi_testosterone,Epi-Testosterone,Androgens and Metabolites,,37.9001224,ng/mg,25,115,Within range
+pt-048-x,male,41,2025-04,2025-05,5a_dht,5a-DHT,Androgens and Metabolites,,8.4801225,ng/mg,5,25,Within range
+pt-048-x,male,41,2025-04,2025-05,androsterone,Androsterone,Androgens and Metabolites,,2360.0001226,ng/mg,500,3000,Within range
+pt-048-x,male,41,2025-04,2025-05,etiocholanolone,Etiocholanolone,Androgens and Metabolites,,1120.0001227,ng/mg,400,1500,Within range
+pt-048-x,male,41,2025-04,2025-05,5a_androstanediol,5a-Androstanediol,Androgens and Metabolites,,66.6001228,ng/mg,30,250,Within range
+pt-048-x,male,41,2025-04,2025-05,5b_androstanediol,5b-Androstanediol,Androgens and Metabolites,,79.5001229,ng/mg,40,250,Within range
+pt-048-x,male,41,2025-04,2025-05,dhea_s,DHEA-S,Androgens and Metabolites,,203.0001230,ng/mg,30,1500,Within range
+pt-048-x,male,41,2025-04,2025-05,estrone_e1,Estrone(E1),Estrogens and Metabolites,,5.7901231,ng/mg,4,16,Within range
+pt-048-x,male,41,2025-04,2025-05,estradiol_e2,Estradiol(E2),Estrogens and Metabolites,,1.3101232,ng/mg,0.5,2.2,Within range
+pt-048-x,male,41,2025-04,2025-05,estriol_e3,Estriol(E3),Estrogens and Metabolites,,4.2701233,ng/mg,2,8,Within range
+pt-048-x,male,41,2025-04,2025-05,2_oh_e1,2-OH-E1,Estrogens and Metabolites,,1.5001234,ng/mg,0,5.9,Within range
+pt-048-x,male,41,2025-04,2025-05,4_oh_e1,4-OH-E1,Estrogens and Metabolites,,0.3301235,ng/mg,0,0.8,Within range
+pt-048-x,male,41,2025-04,2025-05,16_oh_e1,16-OH-E1,Estrogens and Metabolites,,0.4801236,ng/mg,0,1.2,Within range
+pt-048-x,male,41,2025-04,2025-05,2_methoxy_e1,2-Methoxy-E1,Estrogens and Metabolites,,2.6401237,ng/mg,0,2.8,Within range
+pt-048-x,male,41,2025-04,2025-05,a_pregnanediol,a-Pregnanediol,Progesterone Metabolites,,107.0001238,ng/mg,20,130,Within range
+pt-048-x,male,41,2025-04,2025-05,b_pregnanediol,b-Pregnanediol,Progesterone Metabolites,,84.8001239,ng/mg,75,400,Within range
+pt-048-x,male,41,2025-04,2025-05,a_tetrahydrocortisol_a_thf,a-Tetrahydrocortisol (a-THF),Cortisol Metabolites and DHEA-S,,487.0001240,ng/mg,175,700,Within range
+pt-048-x,male,41,2025-04,2025-05,b_tetrahydrocortisol_b_thf,b-Tetrahydrocortisol (b-THF),Cortisol Metabolites and DHEA-S,,2110.0001241,ng/mg,1750,4000,Within range
+pt-048-x,male,41,2025-04,2025-05,b_tetrahydrocortisone_b_the,b-Tetrahydrocortisone (b-THE),Cortisol Metabolites and DHEA-S,,2680.0001242,ng/mg,2350,5800,Within range
+pt-048-x,male,41,2025-04,2025-05,24hr_free_cortisol,24hr Free Cortisol,Daily Free Cortisol and Cortisone,,219.0001243,ng/mg,100,310,Within range
+pt-048-x,male,41,2025-04,2025-05,24hr_free_cortisone,24hr Free Cortisone,Daily Free Cortisol and Cortisone,,314.0001244,ng/mg,250,500,Within range
+pt-048-x,male,41,2025-04,2025-05,melatonin_waking,Melatonin (Waking),Melatonin,,25.1001245,ng/mg,10,85,Within range
+pt-048-x,male,41,2025-04,2025-05,homovanillate_hva,Homovanillate (HVA),Dopamine Metabolite,,14.1001246,ug/mg,4.8,19,Within range
+pt-048-x,male,41,2025-04,2025-05,vanilmandelate_vma,Vanilmandelate (VMA),Norepinephrine/Epinephrine Metabolite,,4.0001247,ug/mg,2.8,8,Within range
+pt-048-x,male,41,2025-04,2025-05,5_hydroxyindoleacetate_5hiaa,5-Hydroxyindoleacetate (5-HIAA),Serotonin Metabolite,,3.8801248,ug/mg,3,7.5,Within range
