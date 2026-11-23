@@ -20,9 +20,11 @@ def _graph(links: list[tuple[str, str, str]], co_mentions: list[tuple[str, str, 
         graph.add_node(term, kind="gene")
         graph.add_edge(syndrome, term, kind=kind, papers=1)
     for a, b, papers in co_mentions:
-        for x, y in ((a, b), (b, a)):
-            graph.add_node(x, kind=graph.nodes[x].get("kind", "gene") if x in graph else "gene")
-            graph.add_edge(x, y, kind=CO_MENTION, papers=papers)
+        for term in (a, b):
+            if term not in graph:
+                graph.add_node(term, kind="gene")
+        graph.add_edge(a, b, kind=CO_MENTION, papers=papers)
+        graph.add_edge(b, a, kind=CO_MENTION, papers=papers)
     return graph
 
 
@@ -80,9 +82,14 @@ def test_weights_that_weigh_nothing_are_refused(weights):
 
 def test_a_cascade_does_not_pass_through_a_syndrome():
     # Both terms are co-mentioned with PSSD; neither reaches the other through it.
-    graph = _graph([(PSSD, "A", LITERATURE)], [("A", PSSD, 3), ("B", PSSD, 3)])
+    graph = _graph([], [("A", PSSD, 3), ("B", PSSD, 3)])
     found = _by_name(graph)
     assert (found["A"].cascade, found["B"].cascade) == (0, 0)
+
+
+def test_only_a_literature_or_finding_link_counts_for_overlap_not_a_co_mention():
+    graph = _graph([(PFS, "A", FINDING)], [("A", PSSD, 3)])
+    assert _by_name(graph)["A"].syndromes == ("PFS",)
 
 
 def test_a_graph_without_co_mentions_scores_by_overlap_alone():

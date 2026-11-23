@@ -351,7 +351,8 @@ bottlenecks(graph, Weights(overlap=0.45, cascade=0.35, betweenness=0.20))  # the
 
 - **Betweenness** is networkx's normalised betweenness centrality on the graph taken as
   undirected, syndromes included, counting hops.
-- **Overlap** is which of PSSD, PFS and PAS link to the term, by literature or by a finding.
+- **Overlap** is which of PSSD, PFS and PAS link to the term, by literature or by a finding;
+  a co-mention with a syndrome's name is not a link.
 - **Cascade** is downstream reach: over every other term reached by co-mentions, the strength
   of the strongest path there, summed. A path's strength is the product of its edges'
   strengths, an edge's being its papers over the most papers of any co-mention. Paths do not
