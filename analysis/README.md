@@ -830,8 +830,29 @@ Each step's one-line statement is shown, and when the run finishes, its findings
    `ASCLEPIUS_LLM_*`) still override the file, and the screen names any that do. **Check** asks
    the model one short question, holding nothing from the dataset, and shows which model answered.
 
+7. **Systems bottleneck map** (milestone 6), at the foot of the page, needs no dataset: the
+   knowledge graph is built from the paper library as the app opens (`asclepius.web.graph`,
+   `GET /api/graph`), and until then, or without a library, the section says so.
+   - **Network.** The top terms by score (40 by default) and the co-mentions among them in at
+     least 10 papers (both changeable), drawn with Cytoscape.js, shipped in the app
+     (`asclepius/web/vendor/`) so nothing is fetched from the internet. Each syndrome sits at a
+     corner of a triangle and each term among the syndromes linking to it: all three in the
+     middle, two between their corners, one near its corner, none below. A term's colour says
+     how many syndromes link to it (grey none, then light to dark blue); its size, its score. A
+     line's width is its papers; a syndrome's literature links are dashed (finding links, solid,
+     appear once the app adds a run's findings to the graph).
+     Hovering names a term or line ("co-mentioned in N papers").
+   - **Clicking a line** shows what it was counted from (`GET /api/graph/edge?a=&b=`): each
+     passage (up to 50, then how many more) with its paper's title, journal and year and links to
+     PubMed, the full text and the DOI, and a finding link's findings.
+   - **Ranked bottlenecks.** Every term's score beside its raw metrics (the syndromes linking to
+     it, cascade, betweenness), the top 50 or all; a row picks its term on the network.
+   - **Weights.** Three sliders, overlap, cascade and betweenness (45, 35, 20 by default, each
+     counting as its share of their sum), re-score and re-rank in the page at once, by the same
+     formula as `hypothesis_engine.bottlenecks`; a browser test checks both rank alike.
+
 A run of 100 PSSD, 40 PFS and 100 controls takes about 7 seconds; the full
 r/PSSD export loads (3,153 authors) and runs in about 3. The logic is
 `asclepius.web.workspace.Workspace` (files, review, run), with the findings view in
 `asclepius.web.findings`, the exports in `asclepius.web.export`, the hypotheses in
-`asclepius.web.hypotheses` and the settings screen in `asclepius.web.llm_settings`; `asclepius.web.server` only serves them.
+`asclepius.web.hypotheses`, the settings screen in `asclepius.web.llm_settings` and the bottleneck map in `asclepius.web.graph`; `asclepius.web.server` only serves them.

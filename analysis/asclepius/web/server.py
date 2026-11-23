@@ -19,6 +19,9 @@ The page (`index.html`) talks to a small JSON API over `asclepius.web.workspace.
 | `GET /api/settings` | the LLM settings (`asclepius.web.llm_settings`); the key only as whether one is stored |
 | `POST /api/settings` | save them, `{"backend": ..., "anthropic": {...}, "local": {...}}`; 400 when the engine would refuse them |
 | `POST /api/settings/check` | ask the LLM one short question; which model answered |
+| `GET /api/graph` | the bottleneck map (`asclepius.web.graph`): scored terms, co-mentions and syndrome links, or the graph's state while it builds |
+| `GET /api/graph/edge?a=<term>&b=<term>` | the link a → b and the passages it was counted from; 404 when the graph has none |
+| `GET /vendor/cytoscape.min.js` | the network-drawing library, shipped with the app so the page needs no network |
 | `GET /extractor/...` | the extractor's browser page (`extractor/`, built by `npm run build`), for reading report PDFs |
 
 The server listens on 127.0.0.1 and refuses requests naming another host or coming from another
@@ -52,6 +55,7 @@ from asclepius.web.llm_settings import SettingsError
 from asclepius.web.workspace import ROLES, LoadError, RunError, Workspace
 
 PAGE = Path(__file__).parent / "index.html"
+VENDOR = {"/vendor/cytoscape.min.js": Path(__file__).parent / "vendor" / "cytoscape.min.js"}
 PACKAGED_EXTRACTOR = Path(__file__).parent / "extractor"  # in the installed app
 CHECKOUT_EXTRACTOR = Path(__file__).resolve().parents[3] / "extractor" / "dist"  # in a source checkout
 EXTRACTOR_TYPES = {
@@ -118,6 +122,12 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/settings":
             engine = self.server.engine
             self._json(HTTPStatus.OK, llm_settings.read(engine.settings, engine.env))
+        elif path == "/api/graph":
+            self._json(HTTPStatus.OK, self.server.knowledge.map_view())
+        elif path == "/api/graph/edge":
+            self._edge(parse_qs(urlsplit(self.path).query))
+        elif path in VENDOR:
+            self._send(HTTPStatus.OK, VENDOR[path].read_bytes(), "text/javascript; charset=utf-8")
         elif path in EXPORTS:
             self._export(path)
         elif path == "/extractor":  # the page's file paths are relative to the folder
@@ -214,6 +224,13 @@ class Handler(BaseHTTPRequestHandler):
             content_type,
             {"Content-Disposition": f'attachment; filename="{name}"'},
         )
+
+    def _edge(self, query: dict[str, list[str]]) -> None:
+        a, b = (query.get(k, [""])[0] for k in ("a", "b"))
+        try:
+            self._json(HTTPStatus.OK, self.server.knowledge.edge(a, b))
+        except KeyError:
+            self._json(HTTPStatus.NOT_FOUND, {"error": f"The knowledge graph has no link from {a} to {b}."})
 
     def _extractor(self, name: str) -> None:
         """One file of the extractor's built page; nothing outside its folder."""

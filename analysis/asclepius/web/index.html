@@ -107,6 +107,33 @@
   mark { background: color-mix(in srgb, var(--accent) 28%, transparent); color: inherit; }
   a.jump { font-size: .85em; font-weight: 400; color: var(--accent); margin-left: 6px; }
   :target { scroll-margin-top: 16px; outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* the bottleneck map: overlap 1-3 syndromes as one blue ramp (validated ordinal), none in grey */
+  :root { --overlap-0: #b9b8b3; --overlap-1: #86b6ef; --overlap-2: #3987e5; --overlap-3: #184f95; --edge: #c3c6ca; }
+  @media (prefers-color-scheme: dark) {
+    :root { --overlap-0: #6b6b66; --overlap-1: #1c5cab; --overlap-2: #3987e5; --overlap-3: #9ec5f4; --edge: #4f5357; }
+  }
+  .weights { display: grid; grid-template-columns: max-content 1fr 3.5em; gap: 4px 12px; align-items: center; }
+  .weights label { margin: 0; }
+  .weights input[type=range] { width: 100%; accent-color: var(--accent); }
+  .weights output { text-align: right; font-variant-numeric: tabular-nums; }
+  .map-controls { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 8px 0; }
+  .map-controls label { margin: 0; }
+  .map-controls input[type=number] { width: 5em; font: inherit; padding: 2px 4px; background: var(--panel);
+    color: var(--text); border: 1px solid var(--line); border-radius: 4px; }
+  .map-wrap { position: relative; }
+  #network { height: 560px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
+  #map-tip { position: absolute; pointer-events: none; background: var(--panel); color: var(--text);
+    border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; font-size: .85em; max-width: 280px;
+    box-shadow: 0 2px 6px rgb(0 0 0 / .15); z-index: 2; }
+  .legend i.dot { border-radius: 50%; }
+  .legend i.syndrome { background: var(--text); transform: rotate(45deg); width: 9px; height: 9px; }
+  #edge-panel { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 12px; }
+  #edge-panel h3, #bottlenecks h3 { font-size: 1.05rem; margin: 0 0 8px; }
+  #edge-panel ol { padding-left: 22px; margin: 4px 0; max-height: 480px; overflow-y: auto; }
+  #edge-panel li { margin-bottom: 10px; }
+  .bottleneck-table td.wrap { max-width: 220px; }
+  .bottleneck-table tbody tr { cursor: pointer; }
+  .bottleneck-table tbody tr.picked { outline: 2px solid var(--accent); outline-offset: -2px; }
 </style>
 </head>
 <body>
@@ -229,7 +256,56 @@
     </div>
     <div id="hypotheses-body"></div>
   </section>
+
+  <section id="bottlenecks">
+    <h2>Systems bottleneck map</h2>
+    <p class="muted">The terms of your paper library (genes, hormones, receptors, symptoms) and where PSSD, PFS
+      and PAS converge on them. A line between two terms means they were co-mentioned in the same passages of
+      that many papers, not that one acts on the other; a score says where to look, not a cause. Click a line
+      to read the passages it was counted from.</p>
+    <p id="map-status" class="muted" aria-live="polite">Loading the knowledge graph…</p>
+    <div id="map-error" class="error" role="alert" hidden></div>
+    <div id="map-body" hidden>
+      <fieldset>
+        <legend>Bottleneck weights</legend>
+        <div class="weights">
+          <label for="weight-overlap">Overlap: how many of PSSD, PFS, PAS link to it</label>
+          <input id="weight-overlap" type="range" min="0" max="100" step="1" data-weight="overlap">
+          <output id="weight-overlap-value" for="weight-overlap"></output>
+          <label for="weight-cascade">Cascade: its reach through co-mentions</label>
+          <input id="weight-cascade" type="range" min="0" max="100" step="1" data-weight="cascade">
+          <output id="weight-cascade-value" for="weight-cascade"></output>
+          <label for="weight-betweenness">Betweenness: how often it lies between other terms</label>
+          <input id="weight-betweenness" type="range" min="0" max="100" step="1" data-weight="betweenness">
+          <output id="weight-betweenness-value" for="weight-betweenness"></output>
+        </div>
+        <div class="buttons"><button id="weights-reset" type="button">Default weights</button>
+          <span id="weights-note" class="muted"></span></div>
+      </fieldset>
+      <div class="map-controls">
+        <label>Draw the top <input id="map-top" type="number" min="5" max="500" step="5" value="40"> terms</label>
+        <label>and co-mentions in at least <input id="map-min-papers" type="number" min="1" step="1" value="10"> papers</label>
+        <span id="map-count" class="muted"></span>
+      </div>
+      <div class="legend" id="map-legend">Syndromes linking to a term:
+        <i class="dot" style="background: var(--overlap-0)"></i>none
+        <i class="dot" style="background: var(--overlap-1)"></i>one
+        <i class="dot" style="background: var(--overlap-2)"></i>two
+        <i class="dot" style="background: var(--overlap-3)"></i>all three
+        <i class="syndrome"></i>a syndrome. Larger circles score higher; a dashed line
+        joins a syndrome to a term found in its papers.</div>
+      <div class="map-wrap">
+        <div id="network" role="img" aria-label="Network of the top-scoring terms; the ranked table below lists the same terms"></div>
+        <div id="map-tip" hidden></div>
+      </div>
+      <div id="edge-panel" aria-live="polite" hidden></div>
+      <h3 style="margin-top: 16px">Ranked bottlenecks</h3>
+      <div id="bottleneck-table"></div>
+      <button id="bottleneck-more" type="button" hidden></button>
+    </div>
+  </section>
 </main>
+<script src="/vendor/cytoscape.min.js"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -1004,6 +1080,262 @@ function zonesPlot(sides) {
   });
   return root;
 }
+// ------------------------------------------------------------------ the bottleneck map (M6-04)
+
+const TOP_ROWS = 50; // the ranked table shows this many terms until "Show all"
+const MAP = { view: null, weights: null, ranked: [], shown: TOP_ROWS, cy: null, picked: null };
+const LABELLED = 15; // the top terms named on the network; every term is named on hover and in the table
+const KIND_NAMES = { gene: "gene", hormone: "hormone or neurosteroid", receptor: "receptor", symptom: "symptom" };
+
+function weightTotal(w) { return w.overlap + w.cascade + w.betweenness; }
+
+function fixed(x, digits) { return x === null || x === undefined ? "–" : x.toFixed(digits); }
+
+/** Each term's score under `weights`, as `hypothesis_engine.bottlenecks` computes it: each metric scaled
+ * to 0-1 (overlap over the three syndromes, the others over the highest of any term), weighted, over
+ * the weights' sum. */
+function rescore(view, weights) {
+  const terms = view.terms;
+  const highest = (key) => Math.max(0, ...terms.map((t) => t[key]));
+  const scaled = (v, top) => (top ? v / top : 0);
+  const topCascade = highest("cascade"), topBetweenness = highest("betweenness");
+  const total = weightTotal(weights);
+  return terms
+    .map((t) => ({ ...t, score: total ? (weights.overlap * t.overlap / view.syndromes.length
+      + weights.cascade * scaled(t.cascade, topCascade)
+      + weights.betweenness * scaled(t.betweenness, topBetweenness)) / total : 0 }))
+    .sort((a, b) => b.score - a.score || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+}
+
+async function loadMap() {
+  let view;
+  try {
+    view = await api("/api/graph");
+  } catch (error) {
+    $("map-status").hidden = true;
+    showError("map-error", error.message);
+    return;
+  }
+  if (view.state === "building") {
+    $("map-status").textContent = view.message;
+    setTimeout(loadMap, 1000);
+    return;
+  }
+  if (view.state !== "ready") {
+    $("map-status").hidden = true;
+    showError("map-error", view.message);
+    return;
+  }
+  MAP.view = view;
+  $("map-status").textContent = view.message;
+  $("map-body").hidden = false;
+  setWeights(view.weights);
+  redraw();
+}
+
+function setWeights(weights) {
+  MAP.weights = { ...weights };
+  for (const input of document.querySelectorAll("input[data-weight]")) input.value = Math.round(weights[input.dataset.weight] * 100);
+  showWeights();
+}
+
+function showWeights() {
+  const w = MAP.weights, total = weightTotal(w);
+  for (const key of Object.keys(w)) $(`weight-${key}-value`).textContent = total ? `${Math.round((w[key] / total) * 100)}%` : "–";
+  $("weights-note").textContent = total ? "Each weight counts as its share of their sum." : "Give at least one weight more than 0.";
+}
+
+for (const input of document.querySelectorAll("input[data-weight]")) {
+  input.addEventListener("input", () => {
+    MAP.weights[input.dataset.weight] = Number(input.value) / 100;
+    showWeights();
+    if (weightTotal(MAP.weights) > 0) redraw();
+  });
+}
+$("weights-reset").addEventListener("click", () => { setWeights(MAP.view.weights); redraw(); });
+for (const id of ["map-top", "map-min-papers"]) $(id).addEventListener("change", () => drawNetwork());
+$("bottleneck-more").addEventListener("click", () => {
+  MAP.shown = MAP.shown >= MAP.ranked.length ? TOP_ROWS : MAP.ranked.length;
+  showTable();
+});
+
+function redraw() {
+  MAP.ranked = rescore(MAP.view, MAP.weights);
+  showTable();
+  drawNetwork();
+}
+
+function showTable() {
+  const head = ["Rank", "Term", "Kind", "Score", "Syndromes linking to it", "Cascade", "Betweenness"];
+  const rows = MAP.ranked.slice(0, MAP.shown).map((t, i) => [String(i + 1), t.name, KIND_NAMES[t.kind] || t.kind,
+    fixed(t.score, 2), t.syndromes.length ? t.syndromes.join(", ") : "none", fixed(t.cascade, 2), fixed(t.betweenness, 3)]);
+  const wrap = table(head, rows);
+  wrap.classList.add("bottleneck-table");
+  wrap.querySelectorAll("tbody tr").forEach((tr, i) => {
+    const name = MAP.ranked[i].name;
+    tr.dataset.term = name;
+    if (name === MAP.picked) tr.classList.add("picked");
+    tr.addEventListener("click", () => pickTerm(name));
+  });
+  $("bottleneck-table").replaceChildren(wrap);
+  const more = $("bottleneck-more");
+  more.hidden = MAP.ranked.length <= TOP_ROWS;
+  more.textContent = MAP.shown >= MAP.ranked.length ? `Show the top ${TOP_ROWS} only` : `Show all ${MAP.ranked.length} terms`;
+}
+
+function pickTerm(name) {
+  MAP.picked = name;
+  document.querySelectorAll(".bottleneck-table tr.picked").forEach((tr) => tr.classList.remove("picked"));
+  document.querySelector(`.bottleneck-table tr[data-term="${CSS.escape(name)}"]`)?.classList.add("picked");
+  if (!MAP.cy) return;
+  MAP.cy.elements().unselect();
+  const node = MAP.cy.getElementById(name);
+  if (node.nonempty()) { node.select(); MAP.cy.animate({ center: { eles: node } }, { duration: 200 }); }
+}
+
+function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+function networkElements() {
+  const view = MAP.view;
+  const top = Math.max(1, Number($("map-top").value) || 40);
+  const least = Math.max(1, Number($("map-min-papers").value) || 1);
+  const drawn = MAP.ranked.slice(0, top);
+  const names = new Set(drawn.map((t) => t.name));
+  const best = drawn.length ? drawn[0].score || 1 : 1;
+  const nodes = drawn.map((t, i) => ({ data: { id: t.name, label: i < LABELLED ? t.name : "", overlap: t.overlap, syndromes: t.syndromes,
+    size: 10 + 18 * (t.score / best), tip: `${t.name} (${KIND_NAMES[t.kind] || t.kind}): score ${fixed(t.score, 2)}; ` +
+      `${t.syndromes.length ? t.syndromes.join(", ") : "no syndrome"} link${t.syndromes.length === 1 ? "s" : ""} to it` } }));
+  const syndromes = new Map();
+  const links = view.links.filter((l) => names.has(l.term)).map((l) => {
+    syndromes.set(l.from, l.syndrome);
+    return { data: { id: `${l.from}→${l.term}`, source: l.from, target: l.term, kind: l.kind,
+      tip: `${l.syndrome} – ${l.term}: ${l.label}` } };
+  });
+  const mentions = view.co_mentions.filter((e) => names.has(e.a) && names.has(e.b) && e.papers >= least);
+  const most = Math.max(1, ...mentions.map((e) => e.papers));
+  const edges = mentions.map((e) => ({ data: { id: `${e.a}|${e.b}`, source: e.a, target: e.b, kind: "co-mention",
+    width: 1 + 5 * Math.log1p(e.papers) / Math.log1p(most), tip: `${e.a} – ${e.b}: ${e.label}` } }));
+  const syndromeNodes = [...syndromes].map(([id, abbreviation]) => ({ data: { id, label: abbreviation, tip: id }, classes: "syndrome" }));
+  $("map-count").textContent = `${drawn.length} terms, ${edges.length} co-mention${edges.length === 1 ? "" : "s"}, ` +
+    `${links.length} syndrome link${links.length === 1 ? "" : "s"} drawn`;
+  return [...syndromeNodes, ...nodes, ...links, ...edges];
+}
+
+/** Where each node goes: the syndromes at a triangle's corners, and each term among the syndromes linking
+ * to it, so the position shows the overlap: all three in the middle, two between their corners, one by its
+ * corner, none below. Within a group the highest scores are at its centre (a sunflower spiral). */
+function overlapPositions(elements) {
+  const corners = {}, R = 300;
+  MAP.view.syndromes.forEach((name, i) => {
+    const angle = -Math.PI / 2 + (i * 2 * Math.PI) / MAP.view.syndromes.length;
+    corners[name] = { x: R * Math.cos(angle), y: R * Math.sin(angle) };
+  });
+  const positions = {}, groups = new Map();
+  for (const e of elements) {
+    if (e.data.source) continue;
+    if (e.classes === "syndrome") { positions[e.data.id] = corners[e.data.label]; continue; }
+    const key = e.data.syndromes.join(",");
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(e.data.id); // already in score order
+  }
+  for (const [key, members] of groups) {
+    const linked = key ? key.split(",").map((name) => corners[name]).filter(Boolean) : [];
+    const pull = linked.length === 1 ? 0.6 : linked.length === 2 ? 0.75 : 1; // keep groups off the corners
+    const centre = linked.length
+      ? { x: pull * linked.reduce((x, c) => x + c.x, 0) / linked.length, y: pull * linked.reduce((y, c) => y + c.y, 0) / linked.length }
+      : { x: 0, y: R * 1.1 };
+    members.forEach((id, i) => {
+      const r = 26 * Math.sqrt(i), angle = i * 2.39996; // the golden angle
+      positions[id] = { x: centre.x + r * Math.cos(angle), y: centre.y + r * Math.sin(angle) };
+    });
+  }
+  return (node) => positions[node.id()];
+}
+
+function drawNetwork() {
+  if (typeof cytoscape !== "function") { showError("map-error", "The network library did not load; the table below still ranks every term."); return; }
+  const elements = networkElements();
+  MAP.cy?.destroy();
+  const text = css("--text"), panel = css("--panel");
+  const cy = cytoscape({
+    container: $("network"),
+    elements,
+    wheelSensitivity: 0.3,
+    style: [
+      { selector: "node", style: { width: "data(size)", height: "data(size)", label: "data(label)", color: text,
+        "font-size": 10, "text-valign": "bottom", "text-margin-y": 2, "text-outline-color": panel,
+        "text-outline-width": 2, "border-width": 2, "border-color": panel } },
+      { selector: "node[overlap = 0]", style: { "background-color": css("--overlap-0") } },
+      { selector: "node[overlap = 1]", style: { "background-color": css("--overlap-1") } },
+      { selector: "node[overlap = 2]", style: { "background-color": css("--overlap-2") } },
+      { selector: "node[overlap = 3]", style: { "background-color": css("--overlap-3") } },
+      { selector: "node.syndrome", style: { shape: "diamond", width: 26, height: 26, "background-color": text,
+        "font-size": 12, "font-weight": 700 } },
+      { selector: "node:selected", style: { "border-color": css("--accent"), "border-width": 4 } },
+      { selector: "edge", style: { "curve-style": "haystack", "line-color": css("--edge"), width: "data(width)", opacity: 0.45 } },
+      { selector: "edge[kind = 'literature']", style: { "line-style": "dashed", width: 1, "line-color": css("--muted"), opacity: 0.5 } },
+      { selector: "edge[kind = 'finding']", style: { width: 3, "line-color": css("--accent"), opacity: 0.9 } },
+      { selector: "edge:selected, edge.hover", style: { "line-color": css("--accent"), opacity: 1, "z-index": 9 } },
+    ],
+    layout: { name: "preset", positions: overlapPositions(elements), padding: 24 },
+  });
+  MAP.cy = cy;
+  const tip = $("map-tip");
+  cy.on("mouseover", "node, edge", (event) => {
+    tip.textContent = event.target.data("tip");
+    tip.hidden = false;
+    if (event.target.isEdge()) event.target.addClass("hover");
+  });
+  cy.on("mousemove", (event) => {
+    const p = event.renderedPosition, box = $("network").getBoundingClientRect();
+    tip.style.left = `${Math.min(p.x + 12, box.width - 290)}px`;
+    tip.style.top = `${p.y + 12}px`;
+  });
+  cy.on("mouseout", "node, edge", (event) => { tip.hidden = true; event.target.removeClass("hover"); });
+  cy.on("tap", "edge", (event) => openEdge(event.target.data("source"), event.target.data("target")));
+  cy.on("tap", "node", (event) => { if (!event.target.hasClass("syndrome")) pickTerm(event.target.id()); });
+  if (MAP.picked) cy.getElementById(MAP.picked).select();
+}
+
+async function openEdge(a, b) {
+  const panel = $("edge-panel");
+  panel.hidden = false;
+  panel.replaceChildren(el("p", "Reading the passages…", { class: "muted" }));
+  let edge;
+  try {
+    edge = await api(`/api/graph/edge?${new URLSearchParams({ a, b })}`);
+  } catch (error) {
+    panel.replaceChildren(el("div", error.message, { class: "error", role: "alert" }));
+    return;
+  }
+  const syndrome = MAP.view.links.find((l) => l.from === edge.a);
+  const heading = el("h3", `${syndrome ? syndrome.syndrome : edge.a} – ${edge.b}: ${edge.label}`, { id: "edge-heading" });
+  const parts = [heading];
+  if (edge.kind === "co-mention") parts.push(el("p", "Mentioned together, which says nothing about cause.", { class: "muted" }));
+  if (edge.findings.length) {
+    const list = el("ul");
+    edge.findings.forEach((f) => list.append(el("li", `${f.marker_name}: ${f.label}, ${f.group_a} against ${f.group_b}` +
+      (f.sex ? ` (${f.sex})` : ""))));
+    parts.push(el("p", "Analysis findings:"), list);
+  }
+  const list = el("ol", null, { class: "edge-passages" });
+  for (const p of edge.passages) {
+    const item = el("li");
+    item.append(el("blockquote", p.text));
+    const cite = el("div", null, { class: "cite" });
+    const where = [p.journal, p.year].filter(Boolean).join(", ");
+    cite.append(`${p.title}${where ? ` (${where})` : ""}`);
+    p.links.forEach((link) => { cite.append(" · "); cite.append(el("a", link.label, { href: link.url, target: "_blank", rel: "noopener" })); });
+    item.append(cite);
+    list.append(item);
+  }
+  parts.push(list);
+  if (edge.more) parts.push(el("p", `${edge.more} more passage${edge.more === 1 ? "" : "s"} not shown.`, { class: "muted" }));
+  if (!edge.passages.length && !edge.findings.length) parts.push(el("p", "The library no longer holds these passages.", { class: "muted" }));
+  panel.replaceChildren(...parts);
+}
+
+loadMap();
 </script>
 </body>
 </html>
