@@ -161,3 +161,16 @@ def test_the_syndromes_are_topics_of_the_library_and_terms_of_the_vocabulary():
     assert all(kinds[name] == "syndrome" for name in SYNDROMES.values())
     assert set(ENZYME_GENES) <= {enzyme for enzyme, _ in ENZYMES.values()}
     assert all(gene in kinds for genes in ENZYME_GENES.values() for gene in genes)
+
+
+def test_a_finding_counts_for_its_syndrome_whichever_group_the_run_put_first(library):
+    reversed_groups = _finding("Allopregnanolone", "healthy control", "PFS", "strong")
+    graph = library_graph(library, VOCABULARY, [reversed_groups])
+    assert graph.edges[PFS, "allopregnanolone"]["kind"] == "finding"
+
+
+def test_a_finding_for_a_syndrome_the_vocabulary_lacks_adds_no_node(library):
+    graph = library_graph(
+        library, VOCABULARY, [_finding("Allopregnanolone", "PAS", "healthy control", "strong")]
+    )
+    assert "post-accutane syndrome" not in graph

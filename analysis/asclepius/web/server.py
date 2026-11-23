@@ -91,7 +91,7 @@ class App(ThreadingHTTPServer):
         self.workspace = workspace
         self.settings = settings
         self.engine = engine
-        self.graph = KnowledgeGraph(engine)  # built by `main` as the app opens
+        self.knowledge = KnowledgeGraph(engine)  # built by `main` as the app opens
         self.lock = threading.Lock()  # one load or upload at a time
 
 
@@ -298,7 +298,7 @@ def main(argv: list[str] | None = None) -> None:
             server = make_server(folder, args.port)
         except OSError as error:
             parser.exit(1, f"Cannot listen on port {args.port} ({error}); try --port with another number.\n")
-        server.graph.start()
+        server.knowledge.start()
         url = f"http://127.0.0.1:{server.server_address[1]}/"
         print(
             f"Asclepius is running at {url}\nStop it with Ctrl+C; the files picked are then deleted.",

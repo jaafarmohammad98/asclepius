@@ -20,6 +20,7 @@ computed from the library when the app opens and never stored (G6).
 from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import Any
 
 import networkx as nx
 
@@ -28,13 +29,16 @@ from hypothesis_engine.evidence import ENZYMES, RATIO, TESTED, Finding, is_inter
 from hypothesis_engine.library import Library
 from hypothesis_engine.vocabulary import Vocabulary
 
-# A syndrome's topic in `topics.toml` (and its group name in an analysis export), and its term
+# A syndrome's topic in `topics.toml` (and its group name in an analysis export, the keys of
+# `evidence.SYNDROMES`), and its term's name in `vocabulary.toml`. PAS is "post-isotretinoin
+# syndrome" in `evidence.SYNDROMES`, the wording its searches use; here it is the vocabulary's name.
 SYNDROMES = {
     "PSSD": "post-SSRI sexual dysfunction",
     "PFS": "post-finasteride syndrome",
     "PAS": "post-accutane syndrome",
 }
-CO_MENTION, LITERATURE, FINDING = "co-mention", "literature", "finding"
+CO_MENTION, LITERATURE, FINDING = "co-mention", "literature", "finding"  # a link's kind
+SYNDROME = "syndrome"  # a syndrome term's kind
 # The genes of the enzyme an enzyme-activity ratio stands for (`evidence.ENZYMES`): the ratio is a
 # finding about them. The estrogen hydroxylation ratios have no one gene behind them, so none.
 ENZYME_GENES = {
@@ -50,9 +54,7 @@ def library_graph(library: Library, vocabulary: Vocabulary, findings: Iterable[F
     found = library_co_mentions(library, vocabulary)
     graph = nx.DiGraph(left_out=found.left_out)
     for node in found.nodes.values():
-        graph.add_node(
-            node.name, kind=node.kind, papers=node.papers, passage_ids=node.passage_ids, findings=()
-        )
+        _add_node(graph, node.name, node.kind, node.papers, node.passage_ids)
     for edge in found.edges:
         data = {
             "kind": CO_MENTION,
@@ -72,8 +74,8 @@ def library_graph(library: Library, vocabulary: Vocabulary, findings: Iterable[F
     for topic, name in SYNDROMES.items():
         if name in found.left_out:
             continue
-        for node in [n for n in found.nodes.values() if n.kind != "syndrome"]:
-            naming = graph.edges[name, node.name]["passage_ids"] if graph.has_edge(name, node.name) else ()
+        for node in [n for n in found.nodes.values() if n.kind != SYNDROME]:
+            naming = _edge(graph, name, node.name).get("passage_ids", ())
             ids = tuple(i for i in node.passage_ids if i in naming or topic in found_by(_paper(i)))
             if ids:
                 _link(graph, topic, node.name, ids)
@@ -87,18 +89,17 @@ def with_findings(graph: nx.DiGraph, findings: Iterable[Finding], vocabulary: Vo
     kinds = {t.name: t.kind for t in vocabulary.terms}
     for finding in findings:
         topic = _syndrome(finding)
-        if topic is None or SYNDROMES[topic] in graph.graph["left_out"]:
+        if topic is None or kinds.get(SYNDROMES[topic]) != SYNDROME:  # left out, or not in the vocabulary
             continue
         for term in sorted(_terms(finding, vocabulary)):
-            if kinds[term] == "syndrome":
+            if kinds[term] == SYNDROME:
                 continue
             if term not in graph:
-                graph.add_node(term, kind=kinds[term], papers=0, passage_ids=(), findings=())
+                _add_node(graph, term, kinds[term])
             graph.nodes[term]["findings"] += (finding,)
-            link = graph.edges[SYNDROMES[topic], term] if graph.has_edge(SYNDROMES[topic], term) else None
-            if link is None or link["kind"] == CO_MENTION:  # no literature link: no passage of it either
-                _link(graph, topic, term, ())
-                link = graph.edges[SYNDROMES[topic], term]
+            if _edge(graph, SYNDROMES[topic], term).get("kind", CO_MENTION) == CO_MENTION:
+                _link(graph, topic, term, ())  # no literature link: no passage of it either
+            link = graph.edges[SYNDROMES[topic], term]
             link["findings"] += (finding,)
             link["kind"] = FINDING
             link["label"] = _label(link, topic)
@@ -106,11 +107,12 @@ def with_findings(graph: nx.DiGraph, findings: Iterable[Finding], vocabulary: Vo
 
 
 def _syndrome(finding: Finding) -> str | None:
-    """The syndrome a finding is for: its group a, tested against a comparator not a syndrome."""
-    significant = finding.label in TESTED and not is_intervention(finding)
-    if significant and finding.group_a in SYNDROMES and finding.group_b not in SYNDROMES:
-        return finding.group_a
-    return None
+    """The syndrome a significant finding is for: one of its groups, tested against a comparator
+    that is not a syndrome, whichever group the run put first."""
+    if finding.label not in TESTED or is_intervention(finding):
+        return None
+    syndromes = [g for g in (finding.group_a, finding.group_b) if g is not None and g in SYNDROMES]
+    return syndromes[0] if len(syndromes) == 1 else None
 
 
 def _terms(finding: Finding, vocabulary: Vocabulary) -> set[str]:
@@ -124,7 +126,7 @@ def _terms(finding: Finding, vocabulary: Vocabulary) -> set[str]:
 def _link(graph: nx.DiGraph, topic: str, term: str, passage_ids: tuple[str, ...]) -> None:
     name = SYNDROMES[topic]
     if name not in graph:
-        graph.add_node(name, kind="syndrome", papers=0, passage_ids=(), findings=())
+        _add_node(graph, name, SYNDROME)
     graph.nodes[name]["syndrome"] = topic
     graph.add_edge(
         name,
@@ -144,6 +146,17 @@ def _label(link: dict[str, object], topic: str) -> str:
         count = len(link["findings"])  # type: ignore[arg-type]
         said.append(f"in {count} significant analysis finding{'' if count == 1 else 's'}")
     return "; ".join(said)
+
+
+def _add_node(
+    graph: nx.DiGraph, name: str, kind: str, papers: int = 0, passage_ids: tuple[str, ...] = ()
+) -> None:
+    graph.add_node(name, kind=kind, papers=papers, passage_ids=passage_ids, findings=())
+
+
+def _edge(graph: nx.DiGraph, a: str, b: str) -> dict[str, Any]:
+    """The data of the link a → b, or nothing if there is none."""
+    return graph.edges[a, b] if graph.has_edge(a, b) else {}
 
 
 def _paper(passage_id: str) -> str:
