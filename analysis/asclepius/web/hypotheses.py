@@ -39,8 +39,8 @@ from asclepius.web.export import STYLE
 
 IDLE, RUNNING, FINISHED, FAILED = "idle", "running", "finished", "failed"
 BUILD_LIBRARY = (
-    "Build the paper library first: in the hypothesis folder run `uv run asclepius-library build`, "
-    "then `uv run asclepius-library index`."
+    "Build the paper library first: run `asclepius-library build`, then `asclepius-library index` "
+    "(in a source checkout, `uv run` them in the hypothesis folder). The first build takes an hour or more."
 )
 REF = ("section", "comparison", "marker_id", "sex", "group_a", "group_b")
 BUSY = "Hypotheses are being written; wait for them to finish."

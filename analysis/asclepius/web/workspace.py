@@ -18,6 +18,7 @@ import pandas as pd
 
 from asclepius.cluster import ClusterResult, TooFewPatients, cluster_patients
 from asclepius.dataset import DatasetError, LabDataset, load_lab_reports
+from asclepius.examples import EXAMPLES
 from asclepius.interventions import rank_interventions
 from asclepius.metadata import GROUPS
 from asclepius.profile import profile_drugs
@@ -170,6 +171,22 @@ class Workspace:
         except DatasetError as error:
             raise LoadError(str(error)) from error
         return review(self.data)
+
+    def load_example(self, kind: str) -> dict[str, object]:
+        """Replace the files picked with the built-in example of `kind` (`asclepius.examples`), load
+        it, and return the review, which says it is invented (`example`)."""
+        example = EXAMPLES[kind]
+        source = self.folder / "example"
+        shutil.rmtree(source, ignore_errors=True)
+        try:  # written before the files picked are forgotten, so a failure keeps them
+            written = example.write(source)
+            self.clear()
+            for role, paths in written.items():
+                for path in paths:
+                    self.add_file(role, path.name, path.read_bytes())
+        finally:
+            shutil.rmtree(source, ignore_errors=True)
+        return self.load() | {"example": example.description}
 
     def running(self) -> bool:
         return self._thread is not None and self._thread.is_alive()

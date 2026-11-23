@@ -7,6 +7,7 @@ The page (`index.html`) talks to a small JSON API over `asclepius.web.workspace.
 | `POST /api/clear` | forget the files picked |
 | `PUT /api/files/<role>?name=<file name>` | add one picked file, its bytes as the body; role `reports`, `metadata` or `export` |
 | `POST /api/load` | load the files; the review, or `{"error": ...}` with status 400 |
+| `POST /api/example/<kind>` | load the built-in example (`asclepius.examples`), `lab-report` or `self-report`, in place of the files; the review |
 | `POST /api/run` | start the run, `{"group_a": ..., "group_b": ...}` for lab reports |
 | `GET /api/status` | the run's state and each step's |
 | `GET /api/findings` | each step's findings, sizes, labels and plots (`asclepius.web.findings`) |
@@ -18,9 +19,13 @@ The page (`index.html`) talks to a small JSON API over `asclepius.web.workspace.
 | `GET /api/settings` | the LLM settings (`asclepius.web.llm_settings`); the key only as whether one is stored |
 | `POST /api/settings` | save them, `{"backend": ..., "anthropic": {...}, "local": {...}}`; 400 when the engine would refuse them |
 | `POST /api/settings/check` | ask the LLM one short question; which model answered |
+| `GET /extractor/...` | the extractor's browser page (`extractor/`, built by `npm run build`), for reading report PDFs |
 
 The server listens on 127.0.0.1 and refuses requests naming another host or coming from another
-site's page, so no other web page open in the browser can read the data or start a run. Picked
+site's page, so no other web page open in the browser can read the data or start a run. The
+extractor page is the one `npm run build` writes: the installed app carries a copy
+(`asclepius/web/extractor/`, put there by `package/build.py`), and a source checkout serves
+`extractor/dist/`. It reads PDFs in the browser; nothing it reads reaches this server. Picked
 files are kept in a temporary folder that is deleted when the app stops.
 """
 
@@ -35,8 +40,9 @@ from functools import partial
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
+from asclepius.examples import EXAMPLES
 from asclepius.run import Settings
 from asclepius.web import llm_settings
 from asclepius.web.hypotheses import Engine
@@ -44,6 +50,25 @@ from asclepius.web.llm_settings import SettingsError
 from asclepius.web.workspace import ROLES, LoadError, RunError, Workspace
 
 PAGE = Path(__file__).parent / "index.html"
+PACKAGED_EXTRACTOR = Path(__file__).parent / "extractor"  # in the installed app
+CHECKOUT_EXTRACTOR = Path(__file__).resolve().parents[3] / "extractor" / "dist"  # in a source checkout
+EXTRACTOR_TYPES = {
+    ".html": "text/html; charset=utf-8",
+    ".js": "text/javascript; charset=utf-8",
+    ".mjs": "text/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".json": "application/json",
+    ".webmanifest": "application/manifest+json",
+    ".svg": "image/svg+xml",
+    ".png": "image/png",
+    ".ico": "image/x-icon",
+    ".wasm": "application/wasm",
+}
+NOT_BUILT = (
+    "<!doctype html><title>Extractor not built</title><p>The extractor page is not built. In the "
+    "<code>extractor</code> folder run <code>npm install</code> and <code>npm run build</code>, then "
+    "start the app again.</p>"
+)
 DEFAULT_PORT = 8765
 LOCAL_HOSTS = ("127.0.0.1", "localhost")
 EXPORTS = {  # path -> the file's suffix, its type and the workspace method that makes it
@@ -56,8 +81,11 @@ EXPORTS = {  # path -> the file's suffix, its type and the workspace method that
 class App(ThreadingHTTPServer):
     daemon_threads = True
 
-    def __init__(self, port: int, workspace: Workspace, settings: Settings | None, engine: Engine) -> None:
+    def __init__(
+        self, port: int, workspace: Workspace, settings: Settings | None, engine: Engine, extractor: Path
+    ) -> None:
         super().__init__(("127.0.0.1", port), Handler)
+        self.extractor = extractor
         self.workspace = workspace
         self.settings = settings
         self.engine = engine
@@ -89,6 +117,10 @@ class Handler(BaseHTTPRequestHandler):
             self._json(HTTPStatus.OK, llm_settings.read(engine.settings, engine.env))
         elif path in EXPORTS:
             self._export(path)
+        elif path == "/extractor":  # the page's file paths are relative to the folder
+            self._send(HTTPStatus.MOVED_PERMANENTLY, b"", "text/plain", {"Location": "/extractor/"})
+        elif path.startswith("/extractor/"):
+            self._extractor(unquote(path.removeprefix("/extractor/")))
         else:
             self._json(HTTPStatus.NOT_FOUND, {"error": "Not found."})
 
@@ -126,6 +158,10 @@ class Handler(BaseHTTPRequestHandler):
             elif path == "/api/load":
                 with self.server.lock:
                     review = workspace.load()
+                self._json(HTTPStatus.OK, review)
+            elif (kind := path.removeprefix("/api/example/")) in EXAMPLES and path != kind:
+                with self.server.lock:
+                    review = workspace.load_example(kind)
                 self._json(HTTPStatus.OK, review)
             elif path == "/api/run":
                 choice = json.loads(body or b"{}")
@@ -176,6 +212,22 @@ class Handler(BaseHTTPRequestHandler):
             {"Content-Disposition": f'attachment; filename="{name}"'},
         )
 
+    def _extractor(self, name: str) -> None:
+        """One file of the extractor's built page; nothing outside its folder."""
+        root = self.server.extractor.resolve()
+        if not (root / "index.html").is_file():
+            self._send(HTTPStatus.NOT_FOUND, NOT_BUILT.encode(), "text/html; charset=utf-8")
+            return
+        try:
+            file = (root / (name or "index.html")).resolve()
+        except (OSError, ValueError):  # a NUL byte, or a name the system refuses
+            file = root
+        if not file.is_relative_to(root) or not file.is_file():
+            self._json(HTTPStatus.NOT_FOUND, {"error": "Not found."})
+            return
+        kind = EXTRACTOR_TYPES.get(file.suffix, "application/octet-stream")
+        self._send(HTTPStatus.OK, file.read_bytes(), kind)
+
     # ------------------------------------------------------------------ helpers
 
     def _allowed(self) -> bool:
@@ -221,12 +273,16 @@ def make_server(
     port: int = DEFAULT_PORT,
     settings: Settings | None = None,
     engine: Engine | None = None,
+    extractor: Path | None = None,
 ) -> App:
     """The app, serving a workspace kept in `folder`, on 127.0.0.1:`port` (0 picks a free port).
     `settings` replaces the default analysis settings (tests use faster ones); `engine`, where the
-    hypothesis engine's library, index and LLM settings are (tests use their own)."""
+    hypothesis engine's library, index and LLM settings are (tests use their own); `extractor`, the
+    folder of the extractor's built page (by default the installed copy, else the checkout's)."""
     engine = engine or Engine()
-    return App(port, Workspace(folder, engine), settings, engine)
+    if extractor is None:
+        extractor = PACKAGED_EXTRACTOR if PACKAGED_EXTRACTOR.is_dir() else CHECKOUT_EXTRACTOR
+    return App(port, Workspace(folder, engine), settings, engine, extractor)
 
 
 def main(argv: list[str] | None = None) -> None:

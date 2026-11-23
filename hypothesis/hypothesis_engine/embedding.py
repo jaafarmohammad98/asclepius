@@ -1,8 +1,8 @@
 """The local embedding model the meaning index uses: free, small, and run on this machine.
 
 BAAI's bge-small-en-v1.5 (MIT licence, 384 dimensions, about 64 MB), run with ONNX Runtime
-through fastembed. It is downloaded once from Hugging Face into `hypothesis/data/models/`
-by `asclepius-library index`; from then on it is loaded from there and nothing goes over
+through fastembed. It is downloaded once from Hugging Face into the data folder's `models/`
+(`hypothesis_engine.home`) by `asclepius-library index`; from then on it is loaded from there and nothing goes over
 the network. Searching never downloads it.
 """
 
@@ -13,8 +13,10 @@ from pathlib import Path
 
 import numpy as np
 
+from hypothesis_engine.home import DATA
+
 MODEL = "BAAI/bge-small-en-v1.5"
-DEFAULT_MODELS = Path(__file__).resolve().parents[1] / "data" / "models"
+DEFAULT_MODELS = DATA / "models"
 
 
 class ModelMissing(Exception):

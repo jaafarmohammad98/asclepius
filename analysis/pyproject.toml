@@ -11,6 +11,7 @@ dependencies = [
 ]
 
 [project.scripts]
+asclepius = "asclepius.web.server:main"
 asclepius-app = "asclepius.web.server:main"
 
 [dependency-groups]
