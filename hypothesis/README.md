@@ -331,7 +331,9 @@ fake model that answers every kind of request usably, so each is sent. Through t
 hook it checks that no request holds a record id, case id, author key or individual value of
 either dataset, nor any run of the private paper's words, and that a request carrying more of
 the private paper than short quotes is refused before it reaches the model. A test adds one
-record's id and value to the prompt and confirms the check finds them.
+record's id and value to the prompt and confirms the check finds them. It looks for ids and
+lab values exactly as the datasets hold them: a value rounded before it is sent, or a field
+too ordinary to search for (an age, a dose, a month), would not be caught.
 
 To make a leak show, the datasets' record ids read `pt-...-x` and every lab value carries five
 digits of its own after the decimal point (`1140.0000123`); the lab groups are of even size,

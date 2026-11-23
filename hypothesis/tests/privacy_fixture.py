@@ -16,6 +16,7 @@ from __future__ import annotations
 import csv
 import shutil
 import sys
+import time
 from pathlib import Path
 
 from asclepius import synthetic
@@ -47,9 +48,8 @@ def lab(out: Path) -> None:
         rows = list(csv.DictReader(f))
     for k, row in enumerate(rows, start=1):
         row["record_id"] = _record_id(row["record_id"])
-        value = float(distinctive(float(row["value"]), k))
-        low, high = float(row["ref_low"]), float(row["ref_high"])
         row["value"] = distinctive(float(row["value"]), k)
+        value, low, high = float(row["value"]), float(row["ref_low"]), float(row["ref_high"])
         row["status"] = "Below range" if value < low else "Above range" if value > high else "Within range"
     _write(written.reports, rows)
     with written.metadata.open(encoding="utf-8") as f:
@@ -69,6 +69,7 @@ def lab(out: Path) -> None:
 
 
 def self_report(out: Path) -> None:
+    """300 authors, one planted drug-symptom association and one intervention outcome."""
     written = synthetic.write_self_reports(
         out,
         authors=300,
@@ -107,7 +108,7 @@ def _write(path: Path, rows: list[dict[str, str]]) -> None:
 
 def _finish(workspace: Workspace) -> None:
     while (status := workspace.status())["state"] == "running":
-        workspace._thread.join(1)  # type: ignore[union-attr]
+        time.sleep(0.1)
     if status["state"] != "finished":
         sys.exit(f"the analysis run did not finish: {status}")
 

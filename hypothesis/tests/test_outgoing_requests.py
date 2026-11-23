@@ -13,6 +13,7 @@ from __future__ import annotations
 import csv
 import json
 from collections.abc import Iterator
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -21,6 +22,7 @@ from test_evidence import PAPERS
 from test_search import WordEmbedder
 
 from hypothesis_engine import build, hypotheses
+from hypothesis_engine.evidence import EvidenceBundle, gather_evidence
 from hypothesis_engine.library import write_build
 from hypothesis_engine.llm import LLM, OutgoingRequest, Settings, connect
 from hypothesis_engine.privacy import PrivateTextGuard
@@ -114,43 +116,70 @@ def library_files(tmp_path: Path) -> list[str]:
     return ["--library", str(library), "--index", str(tmp_path / "index.sqlite")]
 
 
-@pytest.fixture
-def run(library_files: list[str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: Any) -> Any:
-    """`run(kind)`: the hypotheses command on that dataset's findings; returns (exit code, the
-    requests the hook saw, the requests the model received, what was printed)."""
+@dataclass
+class Run:
+    """What one run of the hypotheses command did."""
 
-    def go(kind: str) -> tuple[int, list[OutgoingRequest], list[dict[str, Any]], str]:
-        seen: list[OutgoingRequest] = []
-        received: list[dict[str, Any]] = []
+    code: int  # its exit code
+    seen: list[OutgoingRequest]  # the requests the hook saw, refused ones too
+    received: list[dict[str, Any]]  # the request bodies the model got
+    bundles: list[EvidenceBundle]  # the evidence gathered, before any prompt
+    printed: str
+
+
+@pytest.fixture
+def run_hypotheses(
+    library_files: list[str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: Any
+) -> Any:
+    """`run_hypotheses(kind)`: the hypotheses command on that dataset's findings, as a `Run`."""
+
+    def go(kind: str) -> Run:
+        done = Run(0, [], [], [], "")
 
         def connecting(settings: Settings, on_request: Any = None, **_kwargs: Any) -> LLM:
             def hook(request: OutgoingRequest) -> None:
-                seen.append(request)
+                done.seen.append(request)
                 if on_request is not None:
                     on_request(request)  # the command's own checks, which may refuse it
 
             def model(url: str, body: dict[str, Any]) -> dict[str, Any]:
-                received.append(body)
+                done.received.append(body)
                 return fake_model(url, body)
 
             return connect(settings, on_request=hook, local_transport=model)
 
+        def gathering(*args: Any, **kwargs: Any) -> list[EvidenceBundle]:
+            done.bundles.extend(gather_evidence(*args, **kwargs))
+            return done.bundles
+
         monkeypatch.setattr(build, "LocalEmbedder", lambda *_args, **_kwargs: WordEmbedder())
         monkeypatch.setattr(build, "load_settings", lambda *_args: LOCAL)
         monkeypatch.setattr(build, "connect", connecting)
+        monkeypatch.setattr(build, "gather_evidence", gathering)
         out = tmp_path / f"{kind}.json"
-        code = build.main(["hypotheses", str(FINDINGS[kind]), *library_files, "--out", str(out)])
-        return code, seen, received, capsys.readouterr().err
+        done.code = build.main(["hypotheses", str(FINDINGS[kind]), *library_files, "--out", str(out)])
+        done.printed = capsys.readouterr().err
+        return done
 
     return go
+
+
+def leak_into_prompt(monkeypatch: pytest.MonkeyPatch, text: str) -> None:
+    """Every hypothesis prompt from now on ends with `text`."""
+    real = hypotheses.prompt
+
+    def leaking(bundle: Any, passages: Any) -> Any:
+        messages = real(bundle, passages)
+        messages[-1]["content"] += "\n" + text
+        return messages
+
+    monkeypatch.setattr(hypotheses, "prompt", leaking)
 
 
 def test_the_fixtures_individual_values_are_distinctive():
     """No group statistic in the findings export equals a record's value by chance, so a value
     found in a request was sent as itself."""
-    exported = FINDINGS["lab"].read_text(encoding="utf-8") + FINDINGS["self_report"].read_text(
-        encoding="utf-8"
-    )
+    exported = "".join(path.read_text(encoding="utf-8") for path in FINDINGS.values())
     assert len(INDIVIDUAL) > 2000
     assert [v for v in INDIVIDUAL if v in exported] == []
 
@@ -168,51 +197,40 @@ SYSTEMS = {
         ("self_report", {"hypothesis", "interventions check", "risks"}),
     ],
 )
-def test_no_record_id_or_individual_value_is_in_any_request(run, kind, requests):
-    code, seen, _, _ = run(kind)
-    assert code == 0
-    system = [r.body["messages"][0]["content"] for r in seen]
+def test_no_record_id_or_individual_value_is_in_any_request(run_hypotheses, kind, requests):
+    done = run_hypotheses(kind)
+    assert done.code == 0
+    system = [r.body["messages"][0]["content"] for r in done.seen]
     assert {SYSTEMS.get(s, "hypothesis") for s in system} == requests, "every kind of request was sent"
-    assert leaks(seen) == []
+    assert leaks(done.seen) == []
 
 
-def test_a_record_value_added_to_a_prompt_is_caught(run, monkeypatch):
+def test_a_record_value_added_to_a_prompt_is_caught(run_hypotheses, monkeypatch):
     """The check above fails if a prompt carries one record-level value."""
     record_id, value = "pt-001-x", next(_rows(PRIVACY / "lab" / "reports.csv"))["value"]
-    real = hypotheses.prompt
-
-    def leaking(bundle: Any, passages: Any) -> Any:
-        messages = real(bundle, passages)
-        messages[-1]["content"] += f"\nOne patient: {record_id}, {value}"
-        return messages
-
-    monkeypatch.setattr(hypotheses, "prompt", leaking)
-    _, seen, _, _ = run("lab")
-    assert f"{record_id} (lab record id)" in leaks(seen)
-    assert f"{value} (lab value of pt-001-x)" in leaks(seen)
+    leak_into_prompt(monkeypatch, f"One patient: {record_id}, {value}")
+    found = leaks(run_hypotheses("lab").seen)
+    assert f"{record_id} (lab record id)" in found
+    assert f"{value} (lab value of pt-001-x)" in found
 
 
 @pytest.mark.parametrize("kind", ["lab", "self_report"])
-def test_no_private_paper_text_is_in_any_request(run, kind):
-    """Private passages are not offered to the LLM (README), so no run of their words is sent."""
-    _, seen, _, _ = run(kind)
+def test_no_private_paper_text_is_in_any_request(run_hypotheses, kind):
+    """The private paper is found as evidence, but private passages are not offered to the LLM
+    (README), so no run of its words is sent."""
+    done = run_hypotheses(kind)
+    found = [p for b in done.bundles for p in (*b.supporting, *b.contradicting) if p.paper_id == PRIVATE.id]
+    assert found, "the private paper was among the evidence"
     guard = PrivateTextGuard([PRIVATE], max_quote_words=0)
-    assert [q for r in seen for q in guard.check(r.text())] == []
+    assert [q for r in done.seen for q in guard.check(r.text())] == []
 
 
 def test_a_request_with_private_text_beyond_short_quotes_is_refused_before_it_leaves(
-    run, monkeypatch, tmp_path
+    run_hypotheses, monkeypatch, tmp_path
 ):
-    real = hypotheses.prompt
-
-    def leaking(bundle: Any, passages: Any) -> Any:
-        messages = real(bundle, passages)
-        messages[-1]["content"] += "\n" + PRIVATE.text
-        return messages
-
-    monkeypatch.setattr(hypotheses, "prompt", leaking)
-    code, seen, received, printed = run("lab")
-    assert code == 1
-    assert len(seen) == 1 and received == [], "refused by the hook: the model never got it"
-    assert "private paper" in printed
+    leak_into_prompt(monkeypatch, PRIVATE.text)
+    done = run_hypotheses("lab")
+    assert done.code == 1
+    assert len(done.seen) == 1 and done.received == [], "refused by the hook: the model never got it"
+    assert "private paper" in done.printed
     assert not (tmp_path / "lab.json").exists()
