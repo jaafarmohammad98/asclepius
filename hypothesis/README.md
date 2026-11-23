@@ -299,7 +299,10 @@ found.nodes["BDNF"]  # Node(name, kind, papers, passage_ids)
 ```
 
 - **Matching.** Symbols match case-sensitively and whole ("AR" is not found in "ARX" or
-  "Ar"); lower-case names match with case aside. Ambiguous symbols ("AR", "CAT", "REST"...)
+  "Ar"); lower-case words match with case aside, and a hyphen matches any hyphen. The
+  abbreviations "PSSD" and "PFS" count only in a paper that also names the syndrome in full, as
+  elsewhere they mean post-stroke sexual dysfunction, a nerve-testing device or progression-free
+  survival; "PAS" (mostly periodic acid-Schiff staining) is not used. Ambiguous symbols ("AR", "CAT", "REST"...)
   count only with a gene word ("gene", "receptor", "expression", "polymorphism"...) nearby
   (`GENE_WORD_WINDOW` words), so "AR (augmented reality)" is no node and "AR gene expression" is.
 - **Edges.** An edge's weight is the number of distinct papers, and it keeps the id of every

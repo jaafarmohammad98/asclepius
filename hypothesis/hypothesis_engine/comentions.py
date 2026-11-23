@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass, field, replace
-from itertools import combinations
+from itertools import combinations, groupby
 
 from hypothesis_engine.library import Library
 from hypothesis_engine.passages import Passage, split
@@ -46,16 +46,22 @@ class CoMentions:
 
 
 def co_mentions(passages: Iterable[Passage], vocabulary: Vocabulary) -> CoMentions:
-    """The edges between the vocabulary's terms in `passages`."""
+    """The edges between the vocabulary's terms in `passages` (a paper's passages together).
+
+    An abbreviation counts in a passage when the paper's title or one of its passages names the
+    term in full (`Vocabulary.find_in_paper`).
+    """
     kinds = {term.name: term.kind for term in vocabulary.terms}
     mentions: defaultdict[str, list[Passage]] = defaultdict(list)
     pairs: defaultdict[tuple[str, str], list[Passage]] = defaultdict(list)
-    for passage in passages:
-        names = sorted(vocabulary.find(passage.text))
-        for name in names:
-            mentions[name].append(passage)
-        for pair in combinations(names, 2):
-            pairs[pair].append(passage)
+    for _, group in groupby(passages, key=lambda p: p.paper_id):
+        paper = list(group)
+        _, *found = vocabulary.find_in_paper([paper[0].title, *(p.text for p in paper)])
+        for passage, names in zip(paper, found, strict=True):
+            for name in sorted(names):
+                mentions[name].append(passage)
+            for pair in combinations(sorted(names), 2):
+                pairs[pair].append(passage)
     nodes = {name: Node(name, kinds[name], _papers(ps), _ids(ps)) for name, ps in sorted(mentions.items())}
     edges = (Edge(a, b, _papers(ps), _ids(ps)) for (a, b), ps in pairs.items())
     return CoMentions(nodes, tuple(sorted(edges, key=lambda e: (-e.papers, e.a, e.b))))

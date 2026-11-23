@@ -5,9 +5,11 @@
 # it) and `pmid`, a paper of the library in which the term is found. A term whose paper is not
 # in the library, or does not name it, is left out of the graph (`seed_problems`).
 #
-# Names with a capital letter or a digit match case-sensitively; lower-case names match with
-# case aside (vocabulary.py). The syndromes are named in full: "PSSD" also names a nerve-testing
-# device, "PFS" progression-free survival and "PAS" periodic acid-Schiff staining.
+# Lower-case words match with case aside, symbols (a capital letter or a digit) exactly
+# (vocabulary.py). `abbreviations` match exactly and count only in a paper that also names the
+# term in full: elsewhere "PSSD" is post-stroke sexual dysfunction or the Pressure-Specified
+# Sensory Device, and "PFS" progression-free survival. "PAS" is not used at all: it is mostly
+# periodic acid-Schiff staining.
 #
 # Source: gene symbols from HGNC (genenames.org) in steroid, neurotransmitter, inflammation,
 # neuropathy, epigenetic, retinoid and metabolic biology, hormones, neurosteroids, receptors
@@ -601,7 +603,7 @@ pmid = "37186582"
 name = "PPP1R1B"
 kind = "gene"
 aliases = ["DARPP-32"]
-pmid = "36878398"
+pmid = "34423500"
 
 [[term]]
 name = "GCH1"
@@ -2802,12 +2804,14 @@ pmid = "6236956"
 name = "post-SSRI sexual dysfunction"
 kind = "syndrome"
 aliases = ["post SSRI sexual dysfunction"]
+abbreviations = ["PSSD"]
 pmid = "22509378"
 
 [[term]]
 name = "post-finasteride syndrome"
 kind = "syndrome"
-aliases = ["post finasteride syndrome"]
+aliases = ["post finasteride syndrome", "postfinasteride syndrome"]
+abbreviations = ["PFS"]
 pmid = "24855036"
 
 [[term]]

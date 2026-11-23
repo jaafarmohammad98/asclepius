@@ -177,3 +177,41 @@ def test_a_private_paper_s_passages_make_no_node_or_edge(seeded_library):
     found = library_co_mentions(seeded_library, SEEDED)
     assert found.nodes["anhedonia"].passage_ids == ("200:1",)
     assert found.nodes["BDNF"].passage_ids == ("100:1",)
+
+
+SYNDROMES = Vocabulary(
+    (
+        Term("post-SSRI sexual dysfunction", "syndrome", (), "1", abbreviations=("PSSD",)),
+        Term("post-finasteride syndrome", "syndrome", (), "1", abbreviations=("PFS",)),
+        Term("anhedonia", "symptom", (), "1"),
+    )
+)
+
+
+def test_a_name_s_lower_case_words_match_with_case_aside_and_its_symbols_exactly():
+    assert SYNDROMES.find("Post-SSRI Sexual Dysfunction: a review.") == {"post-SSRI sexual dysfunction"}
+    assert SYNDROMES.find("post-ssri sexual dysfunction") == set()
+
+
+def test_a_hyphen_in_a_name_matches_any_hyphen():
+    assert SYNDROMES.find("the post‐finasteride syndrome") == {"post-finasteride syndrome"}
+
+
+def _paper(paper_id: str, *texts: str) -> list[Passage]:
+    return [_passage(f"{paper_id}:{n}", text) for n, text in enumerate(texts, start=1)]
+
+
+def test_an_abbreviation_counts_in_a_paper_that_names_the_term_in_full():
+    passages = _paper("1", "We studied post-SSRI sexual dysfunction (PSSD).", "In PSSD, anhedonia persists.")
+    found = co_mentions(passages, SYNDROMES)
+    assert found.nodes["post-SSRI sexual dysfunction"].passage_ids == ("1:1", "1:2")
+    assert [(e.a, e.b, e.passage_ids) for e in found.edges] == [
+        ("anhedonia", "post-SSRI sexual dysfunction", ("1:2",))
+    ]
+
+
+def test_an_abbreviation_in_a_paper_that_never_names_the_term_is_no_node():
+    passages = _paper(
+        "2", "Poststroke sexual dysfunction (PSSD) is common.", "Median PFS was 6 months; anhedonia."
+    )
+    assert set(co_mentions(passages, SYNDROMES).nodes) == {"anhedonia"}
