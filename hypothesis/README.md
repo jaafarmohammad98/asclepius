@@ -211,9 +211,11 @@ Every hypothesis has the five sections of the spec:
 - **Citation check** (spec H1, `citations.py`). Before anything is written, every mechanism
   claim and every supporting or contradicting entry must carry a paper id and a quote; the
   paper must be in the library version the hypothesis was built from, and the quote must be
-  found word for word in its title or text (full text when that version has it, else the
-  abstract). Case, white space and hyphens do not count (`reduc-\ntase`, `post finasteride`
-  for `post-finasteride`), but the quote must start and end on whole words. Citations that
+  found word for word in its title or in its text (full text when that version has it, else
+  the abstract). Case, white space and hyphenation do not count (`reduc-\ntase`, `post
+  finasteride` or `postfinasteride` for `post-finasteride`), but words must be split where the
+  paper splits them (`in creased` is not `increased`) and the quote must start and end on
+  whole words. Citations that
   fail are removed and `record.citations_removed` says why (never with the quote); a
   hypothesis left with no mechanism claim is reported as failed instead:
 

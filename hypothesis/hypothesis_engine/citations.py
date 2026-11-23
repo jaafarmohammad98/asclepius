@@ -16,7 +16,11 @@ from hypothesis_engine.hypotheses import Citation, Claim, Failure, Hypothesis
 from hypothesis_engine.library import Library
 
 HYPHENS = "-­‐‑"  # hyphen-minus, soft hyphen, hyphen, non-breaking hyphen
-_GAP = rf"[\s{re.escape(HYPHENS)}]*"  # what may lie between two characters of a quote
+_HYPHENS = re.escape(HYPHENS)
+_IN_WORD = rf"(?:[{_HYPHENS}]\s*)?"  # within a quoted word: nothing, a hyphen, or a line-break hyphen
+_BETWEEN_WORDS = rf"[\s{_HYPHENS}]+"  # where the quote has a space: a space or a hyphen
+_ANY_GAP = rf"[\s{_HYPHENS}]*"  # where the quote has a hyphen
+_PIECE = re.compile(rf"[^\s{_HYPHENS}]+|[\s{_HYPHENS}]+")
 
 
 def verify_hypotheses(
@@ -65,7 +69,7 @@ def _problem(cited: Claim | Citation, what: str, library: Library, version: int)
     paper = library.document(cited.paper_id, version)
     if paper is None:
         return f"{what} cites paper {cited.paper_id}, which the library does not hold"
-    if not quoted(cited.quote, f"{paper.title}\n{paper.text}"):
+    if not (quoted(cited.quote, paper.title) or quoted(cited.quote, paper.text)):
         return f"{what}'s quote is not found word for word in paper {cited.paper_id}"
     return None
 
@@ -73,20 +77,38 @@ def _problem(cited: Claim | Citation, what: str, library: Library, version: int)
 def quoted(quote: str, text: str) -> bool:
     """Whether `quote` appears word for word in `text`, from the start of a word to the end of one.
 
-    Case, white space and hyphens do not count, so a word broken across a line ("reduc-\\ntase"),
-    or hyphenated in one and not the other ("post-finasteride", "post finasteride"), still matches.
+    Case, white space and hyphenation do not count: a word broken across a line ("reduc-\\ntase")
+    or hyphenated in one and not the other ("post-finasteride", "post finasteride",
+    "postfinasteride") still matches. Words split or joined differently ("in creased") do not.
     """
-    characters = [c for c in _normal(quote) if not c.isspace() and c not in HYPHENS]
-    if not characters:
+    # runs of word characters, and the gaps (white space, hyphens) between them
+    pieces = re.findall(_PIECE, _folded(quote))
+    while pieces and _is_gap(pieces[0]):
+        pieces.pop(0)
+    while pieces and _is_gap(pieces[-1]):
+        pieces.pop()
+    if not pieces:
         return False
-    pattern = _GAP.join(re.escape(c) for c in characters)
-    if characters[0].isalnum():
+    pattern = ""
+    for piece in pieces:
+        if not _is_gap(piece):
+            # inside a word, the paper may hyphenate where the quote does not, or break the line there
+            pattern += _IN_WORD.join(re.escape(c) for c in piece)
+        elif any(c in HYPHENS for c in piece):
+            pattern += _ANY_GAP  # hyphenated in the quote: the paper may join, hyphenate or space it
+        else:
+            pattern += _BETWEEN_WORDS
+    if pieces[0][0].isalnum():
         pattern = r"(?<!\w)" + pattern
-    if characters[-1].isalnum():
+    if pieces[-1][-1].isalnum():
         pattern += r"(?!\w)"
-    return re.search(pattern, _normal(text)) is not None
+    return re.search(pattern, _folded(text)) is not None
 
 
-def _normal(text: str) -> str:
-    # NFKC: ligatures and other compatibility forms from PDF text ("ﬁ") read as their letters
+def _is_gap(piece: str) -> bool:
+    return piece[0].isspace() or piece[0] in HYPHENS
+
+
+def _folded(text: str) -> str:
+    """Case aside, and NFKC: ligatures and other compatibility forms of PDF text ("ﬁ") as letters."""
     return unicodedata.normalize("NFKC", text).casefold()

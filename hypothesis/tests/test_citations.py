@@ -172,3 +172,16 @@ def test_a_claim_without_a_paper_identifier_or_a_quote_is_removed(library):
         "a mechanism claim carries no paper identifier",
         "a mechanism claim carries no quoted passage",
     ]
+
+
+@pytest.mark.parametrize(
+    "quote",
+    [
+        "Andro sterone was lower in men",  # a word split that the paper does not split
+        "Androsterone waslower in men",  # two words joined
+        "post-finasteride syndrome Androsterone was lower",  # runs from the title into the text
+    ],
+)
+def test_words_must_be_split_where_the_paper_splits_them(library, quote):
+    [result] = verify_hypotheses([hypothesis(mechanism=(claim(), claim(quote=quote)))], library)
+    assert result.mechanism == (claim(),)
