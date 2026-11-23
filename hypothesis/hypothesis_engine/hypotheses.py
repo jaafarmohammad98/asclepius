@@ -8,6 +8,13 @@
 5. How to test it: tests, each naming the kind of measure it uses. A self-report finding needs
    one whose measure is not a self-report.
 
+Treatment candidates (spec H3) are the most dangerous output. Every intervention a hypothesis
+names is a `Candidate`, labelled "candidate for study": those the LLM lists, those of the
+findings export it mentions without listing, and an intervention finding's own. Each gets its
+known risks from the library (`risks_for`), every one with a verified citation, or "risks not
+established in the library". Any output holding a candidate or an intervention carries `NOTICE`:
+`Hypothesis.as_dict`, `Failure.as_dict` and `export` add it themselves, so it cannot be left out.
+
 The LLM answers in JSON. A reply that is not the JSON asked for, cites a passage the bundle
 does not hold, (self-report findings) tests only by self-reports, or quotes words not found
 word for word in the cited paper (`citations.py`, spec H1) is sent back with what was wrong,
@@ -21,23 +28,29 @@ papers' passages are left out of the prompt, so their text never reaches an LLM 
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass
 from typing import Any
 
 from hypothesis_engine.citations import Problem, problem
 from hypothesis_engine.evidence import (
+    INTERVENTION,
+    REPORTED,
     SELF_REPORT,
     EvidenceBundle,
     Passage,
+    Searcher,
     direction,
+    is_intervention,
     is_report,
     worth_testing,
 )
 from hypothesis_engine.library import Library
 from hypothesis_engine.llm import LLM, Completion, LLMError, Message
 
-PROMPT_VERSION = "hypothesis-2"  # 2: failing quotes are sent back
+PROMPT_VERSION = "hypothesis-3"  # 2: failing quotes are sent back; 3: interventions named are listed
+RISK_PROMPT_VERSION = "risks-1"
 ATTEMPTS = 3
 SELF_REPORT_LABEL = "based on self-reports, no controls"  # section 1 of a self-report finding (H7)
 SELF_REPORT_MEASURE = "self-report"
@@ -51,7 +64,14 @@ MEASURES = (
     "animal or cell study",
     SELF_REPORT_MEASURE,
 )
-SECTIONS = ("mechanism", "supporting", "contradicting", "test")
+SECTIONS = ("mechanism", "supporting", "contradicting", "test", "candidates")
+CANDIDATE = "candidate for study"  # on every intervention a hypothesis names (spec H3)
+NO_RISKS = "risks not established in the library"
+NOTICE = (
+    "For researchers only: treatment candidates are ideas for study, not treatment advice. "
+    "No one should start, stop or change a treatment because of them."
+)
+RISK_PASSAGES = 8  # library passages naming an intervention offered for its risks, at most
 
 SYSTEM = f"""You help a researcher turn one finding from patient data into a testable hypothesis.
 The finding is about groups of patients, never one person. You are given the finding and
@@ -67,13 +87,33 @@ Reply with one JSON object and nothing else, with exactly these keys:
 - "contradicting": the passages that contradict them, in the same form. An empty list when none do.
 - "test": a list of ways to test the hypothesis. Each is {{"design": "...", "measure": "..."}},
   where measure is the kind of data the test relies on, one of: {", ".join(MEASURES)}.
+- "candidates": every intervention (a drug, supplement, procedure or therapy) your claims, entries
+  or tests name as something that could change the condition, each {{"intervention": "<its name>"}}.
+  An empty list when none is named. A drug named only as the cause of the condition is not one.
 
 Rules:
 - Every claim and every entry cites one of the given passage ids; cite no other source.
 - A passage offered as "supporting" may in truth contradict, and the other way round: judge
   each one yourself, and file it under one section only. Leave out passages that do neither.
 - Quotes are copied exactly from the passage, not reworded.
-- Say nothing about treating patients."""
+- Name an intervention only as something to study, never as advice to patients or doctors."""
+
+INTERVENTION_RULE = """
+- This finding is an intervention's reported outcomes: counts of what patients said happened,
+  not evidence that it works. Propose how it could act, and tests of whether it does."""
+
+RISK_SYSTEM = """You list the known risks of one intervention for a researcher, from numbered
+passages of papers in their library.
+
+Reply with one JSON object and nothing else: {"risks": [...]}, each risk
+{"risk": "...", "passage_id": "...", "quote": "..."}: a harm, side effect, interaction or warning
+a passage states for this intervention, the id of that passage, and a quote copied word for word
+from it that states the risk. An empty list when no passage states a risk of it.
+
+Rules:
+- Cite only the given passages, and add no risk you know of from elsewhere.
+- Quotes are copied exactly from the passage, not reworded.
+- Say nothing about whether anyone should use it."""
 
 SELF_REPORT_RULE = f"""
 - This finding comes from self-reports, with no controls. At least one test must not rely on self-reports:
@@ -128,8 +168,51 @@ class ProposedTest:
 
 
 @dataclass(frozen=True)
+class Risk:
+    """A known risk of a candidate, as a library paper states it."""
+
+    text: str
+    passage_id: str
+    paper_id: str
+    title: str
+    quote: str
+
+
+@dataclass(frozen=True)
+class Candidate:
+    """An intervention a hypothesis names: a candidate for study, never advice (spec H3)."""
+
+    intervention: str
+    risks: tuple[Risk, ...]  # each citation verified (spec H1)
+    unchecked: str | None  # why the risks could not be looked for, when they could not
+    record: dict[str, object]  # the risk prompt's version, attempts, citations removed
+
+    @property
+    def label(self) -> str:
+        """Always "candidate for study"."""
+        return CANDIDATE
+
+    @property
+    def risks_note(self) -> str | None:
+        """With no risk: "risks not established in the library", and why when it was not looked for."""
+        if self.risks:
+            return None
+        return NO_RISKS + (f" ({self.unchecked})" if self.unchecked else "")
+
+    def as_dict(self) -> dict[str, object]:
+        """The candidate with its label and its risks, or the note saying none are established."""
+        return {
+            "intervention": self.intervention,
+            "label": self.label,
+            "risks": [asdict(r) for r in self.risks],
+            "risks_note": self.risks_note,
+            "record": self.record,
+        }
+
+
+@dataclass(frozen=True)
 class Hypothesis:
-    """One finding's hypothesis in the spec's five sections, and what produced it."""
+    """One finding's hypothesis in the spec's five sections, its candidates, and what produced it."""
 
     finding: FindingSection
     mechanism: tuple[Claim, ...]
@@ -137,17 +220,23 @@ class Hypothesis:
     contradicting: tuple[Citation, ...]
     tests: tuple[ProposedTest, ...]
     record: dict[str, object]  # what produced it (spec H6)
+    candidates: tuple[Candidate, ...] = ()
 
     def as_dict(self) -> dict[str, object]:
-        """The five sections in order, then the record, as plain JSON-ready values."""
-        return {
-            "finding": asdict(self.finding),
-            "mechanism": [asdict(c) for c in self.mechanism],
-            "supporting": [asdict(c) for c in self.supporting],
-            "contradicting": [asdict(c) for c in self.contradicting],
-            "test": [asdict(t) for t in self.tests],
-            "record": self.record,
-        }
+        """The five sections in order, the candidates, then the record, as plain JSON-ready values;
+        `NOTICE` first whenever there is a candidate or the finding is an intervention's."""
+        return _noticed(
+            bool(self.candidates) or self.finding.comparison == INTERVENTION,
+            {
+                "finding": asdict(self.finding),
+                "mechanism": [asdict(c) for c in self.mechanism],
+                "supporting": [asdict(c) for c in self.supporting],
+                "contradicting": [asdict(c) for c in self.contradicting],
+                "test": [asdict(t) for t in self.tests],
+                "candidates": [c.as_dict() for c in self.candidates],
+                "record": self.record,
+            },
+        )
 
 
 @dataclass(frozen=True)
@@ -159,8 +248,24 @@ class Failure:
     record: dict[str, object]
 
     def as_dict(self) -> dict[str, object]:
-        """The failure as plain JSON-ready values."""
-        return {"finding": asdict(self.finding), "reasons": list(self.reasons), "record": self.record}
+        """The failure as plain JSON-ready values; `NOTICE` first when the finding is an intervention's."""
+        return _noticed(
+            self.finding.comparison == INTERVENTION,
+            {"finding": asdict(self.finding), "reasons": list(self.reasons), "record": self.record},
+        )
+
+
+def _noticed(applies: bool, out: dict[str, object]) -> dict[str, object]:
+    return {"notice": NOTICE, **out} if applies else out
+
+
+def export(results: Iterable[Hypothesis | Failure]) -> dict[str, object]:
+    """What the `hypotheses` command writes: `{"hypotheses": [...], "failed": [...]}`, with
+    `NOTICE` first whenever any of them holds a candidate or an intervention."""
+    results = list(results)
+    made = [r.as_dict() for r in results if isinstance(r, Hypothesis)]
+    failed = [r.as_dict() for r in results if isinstance(r, Failure)]
+    return _noticed(any("notice" in r for r in (*made, *failed)), {"hypotheses": made, "failed": failed})
 
 
 class Malformed(Exception):
@@ -168,16 +273,32 @@ class Malformed(Exception):
 
 
 def generate_hypotheses(
-    bundles: Iterable[EvidenceBundle], llm: LLM, library: Library, attempts: int = ATTEMPTS
+    bundles: Iterable[EvidenceBundle],
+    llm: LLM,
+    library: Library,
+    searcher: Searcher,
+    attempts: int = ATTEMPTS,
+    interventions: Iterable[str] = (),
 ) -> list[Hypothesis | Failure]:
-    """One hypothesis, or one failure, per bundle, in order; quotes checked against `library`."""
-    return [generate_hypothesis(b, llm, library, attempts) for b in bundles]
+    """One hypothesis, or one failure, per bundle, in order; quotes checked against `library`,
+    candidates' risks searched for with `searcher`. `interventions`: names of the findings
+    export's interventions, each marked a candidate wherever a hypothesis mentions it; the
+    bundles' own interventions are added."""
+    bundles = list(bundles)
+    known = [*interventions, *(b.finding.marker_name for b in bundles if is_intervention(b.finding))]
+    return [generate_hypothesis(b, llm, library, searcher, attempts, known) for b in bundles]
 
 
 def generate_hypothesis(
-    bundle: EvidenceBundle, llm: LLM, library: Library, attempts: int = ATTEMPTS
+    bundle: EvidenceBundle,
+    llm: LLM,
+    library: Library,
+    searcher: Searcher,
+    attempts: int = ATTEMPTS,
+    interventions: Iterable[str] = (),
 ) -> Hypothesis | Failure:
-    """The bundle's hypothesis, every citation in it checked against the library (spec H1).
+    """The bundle's hypothesis, every citation in it checked against the library (spec H1), and
+    every intervention it names a candidate with its risks (spec H3).
 
     A reply that is not usable, or that has citations whose quote is not in their paper, is sent
     back with what was wrong. After `attempts` replies (or an LLM error) the best usable reply
@@ -197,7 +318,12 @@ def generate_hypothesis(
         "attempts": 0,
     }
     if not worth_testing(bundle.finding):
-        return Failure(section, (f"a {bundle.finding.label} finding gets no hypothesis (spec H2)",), record)
+        what = (
+            "an unranked intervention"
+            if is_intervention(bundle.finding)
+            else f"a {bundle.finding.label} finding"
+        )
+        return Failure(section, (f"{what} gets no hypothesis (spec H2)",), record)
     if not passages:
         return Failure(section, ("the library holds no public passage about this finding",), record)
 
@@ -238,7 +364,13 @@ def generate_hypothesis(
     if not best.mechanism:
         reason = "no mechanism claim is left once unverified citations are removed (spec H1)"
         return Failure(section, (*reasons, reason), record)
-    return Hypothesis(section, best.mechanism, best.supporting, best.contradicting, best.tests, record)
+    named = candidate_names(bundle, best, interventions)
+    candidates = tuple(
+        risks_for(name, llm, library, searcher, bundle.library_version, attempts) for name in named
+    )
+    return Hypothesis(
+        section, best.mechanism, best.supporting, best.contradicting, best.tests, record, candidates
+    )
 
 
 @dataclass(frozen=True)
@@ -249,15 +381,17 @@ class _Checked:
     supporting: tuple[Citation, ...]
     contradicting: tuple[Citation, ...]
     tests: tuple[ProposedTest, ...]
+    candidates: tuple[str, ...]  # the interventions the LLM listed
     problems: tuple[Problem, ...]
 
 
-def _check(
-    sections: tuple[tuple[Claim, ...], tuple[Citation, ...], tuple[Citation, ...], tuple[ProposedTest, ...]],
-    library: Library,
-    version: int,
-) -> _Checked:
-    mechanism, supporting, contradicting, tests = sections
+Sections = tuple[
+    tuple[Claim, ...], tuple[Citation, ...], tuple[Citation, ...], tuple[ProposedTest, ...], tuple[str, ...]
+]
+
+
+def _check(sections: Sections, library: Library, version: int) -> _Checked:
+    mechanism, supporting, contradicting, tests, candidates = sections
     problems: list[Problem] = []
 
     def verified[C: (Claim, Citation)](cited: tuple[C, ...], what: str) -> tuple[C, ...]:
@@ -275,6 +409,7 @@ def _check(
         verified(supporting, "a supporting entry"),
         verified(contradicting, "a contradicting entry"),
         tests,
+        candidates,
         tuple(problems),
     )
 
@@ -310,17 +445,16 @@ def prompt(bundle: EvidenceBundle, passages: Sequence[Passage]) -> list[Message]
             for p in passages
         ],
     }
-    system = SYSTEM + (SELF_REPORT_RULE if bundle.self_report else "")
+    system = SYSTEM + (INTERVENTION_RULE if is_intervention(bundle.finding) else "")
+    system += SELF_REPORT_RULE if bundle.self_report else ""
     return [
         {"role": "system", "content": system},
         {"role": "user", "content": json.dumps(data, indent=1, ensure_ascii=False, allow_nan=False)},
     ]
 
 
-def parse(
-    reply: str, passages: dict[str, Passage], self_report: bool
-) -> tuple[tuple[Claim, ...], tuple[Citation, ...], tuple[Citation, ...], tuple[ProposedTest, ...]]:
-    """The four LLM-written sections of a reply; raises `Malformed` saying what is wrong."""
+def parse(reply: str, passages: dict[str, Passage], self_report: bool) -> Sections:
+    """The four LLM-written sections of a reply and its candidates; raises `Malformed` saying what is wrong."""
     answer = _json_object(reply)
     if set(answer) != set(SECTIONS):
         missing, extra = set(SECTIONS) - set(answer), set(answer) - set(SECTIONS)
@@ -364,7 +498,10 @@ def parse(
             "the finding comes from self-reports, so at least one test must not rely on self-reports "
             f'(a measure other than "{SELF_REPORT_MEASURE}")'
         )
-    return mechanism, filed["supporting"], filed["contradicting"], tests
+    candidates = tuple(
+        e["intervention"] for e in _entries(answer, "candidates", ("intervention",), required=False)
+    )
+    return mechanism, filed["supporting"], filed["contradicting"], tests, candidates
 
 
 def _json_object(reply: str) -> dict[str, Any]:
@@ -400,6 +537,131 @@ def _entries(
     return [{k: entry[k].strip() for k in keys} for entry in entries]
 
 
+# --- treatment candidates (spec H3) ------------------------------------------------------
+
+
+def candidate_names(bundle: EvidenceBundle, checked: _Checked, interventions: Iterable[str]) -> list[str]:
+    """Every intervention the hypothesis names, once each (case aside), in this order: the
+    finding's own when it is an intervention's, those the LLM listed, then those of
+    `interventions` found anywhere in what the hypothesis shows but not listed. The finding's
+    group names (the drug said to cause the condition) are not looked for."""
+    shown = " ".join(
+        [c.text + " " + c.quote for c in checked.mechanism]
+        + [f"{c.title} {c.quote} {c.why}" for c in (*checked.supporting, *checked.contradicting)]
+        + [t.design for t in checked.tests]
+    )
+    groups = {g.casefold() for g in (bundle.finding.group_a, bundle.finding.group_b) if g}
+    own = [bundle.finding.marker_name] if is_intervention(bundle.finding) else []
+    found = [n for n in interventions if n.casefold() not in groups and _names(n, shown)]
+    names: dict[str, str] = {}
+    for name in (*own, *checked.candidates, *found):
+        names.setdefault(name.casefold(), name)
+    return list(names.values())
+
+
+def _names(name: str, text: str) -> bool:
+    """Whether `text` names the intervention, as a whole word or words, case aside."""
+    words = r"[\s_-]+".join(re.escape(w) for w in re.split(r"[\s_-]+", name.strip()) if w)
+    return bool(words) and re.search(rf"(?<!\w){words}(?!\w)", text, re.IGNORECASE) is not None
+
+
+def risk_queries(name: str) -> list[str]:
+    """The searches for an intervention's known risks: names only."""
+    return [
+        f"adverse effects of {name}",
+        f"{name} side effects",
+        f"risks and safety of {name}",
+        f"{name} worsened symptoms",
+    ]
+
+
+def risk_passages(name: str, searcher: Searcher, k: int = RISK_PASSAGES) -> list[Passage]:
+    """Up to `k` public library passages naming the intervention, found by `risk_queries`, best
+    first. A passage that does not name it cannot state its risks; private passages are never sent."""
+    best: dict[str, Passage] = {}
+    for query in risk_queries(name):
+        for hit in searcher.search(query, k):
+            if hit.private or hit.text.strip() == hit.title.strip() or not _names(name, hit.text):
+                continue
+            if hit.passage_id not in best or hit.score > best[hit.passage_id].score:
+                best[hit.passage_id] = Passage(
+                    hit.passage_id, hit.paper_id, hit.private, hit.title, hit.text, query, hit.score
+                )
+    return sorted(best.values(), key=lambda p: (-p.score, p.passage_id))[:k]
+
+
+def risks_for(
+    name: str, llm: LLM, library: Library, searcher: Searcher, version: int, attempts: int = ATTEMPTS
+) -> Candidate:
+    """The candidate `name` with the risks library passages state for it, each quote checked
+    against its paper (spec H1); retried and cleaned like a hypothesis. With none: no risk, and
+    the note "risks not established in the library"."""
+    record: dict[str, object] = {"prompt_version": RISK_PROMPT_VERSION, "attempts": 0, "risks_removed": []}
+    passages = {p.passage_id: p for p in risk_passages(name, searcher)}
+    record["passages_offered"] = list(passages)
+    if not passages:
+        return Candidate(name, (), None, record)
+    data = {
+        "intervention": name,
+        "passages": [
+            {"passage_id": p.passage_id, "paper_title": p.title, "text": p.text} for p in passages.values()
+        ],
+    }
+    messages: list[Message] = [
+        {"role": "system", "content": RISK_SYSTEM},
+        {"role": "user", "content": json.dumps(data, indent=1, ensure_ascii=False, allow_nan=False)},
+    ]
+    best: tuple[tuple[Risk, ...], tuple[Problem, ...]] | None = None
+    error_reason = None
+    for attempt in range(1, attempts + 1):
+        record["attempts"] = attempt
+        try:
+            completion = llm.complete(messages)
+        except LLMError as error:
+            error_reason = f"the risk search did not finish: {error}"
+            break
+        try:
+            risks = parse_risks(completion.text, passages)
+        except Malformed as error:
+            feedback = f"That reply cannot be used: {error}."
+        else:
+            found = [(r, problem(r, "a risk", library, version)) for r in risks]
+            checked = (
+                tuple(r for r, p in found if p is None),
+                tuple(p for _, p in found if p is not None),
+            )
+            if best is None or len(checked[1]) <= len(best[1]):
+                best = checked
+            if not checked[1]:
+                break
+            feedback = _quotes_not_found(checked[1])
+        messages = [
+            *messages,
+            {"role": "assistant", "content": completion.text},
+            {"role": "user", "content": f"{feedback} Reply again with only the JSON object."},
+        ]
+    if best is None:
+        return Candidate(name, (), error_reason or "no usable reply on its risks", record)
+    record["risks_removed"] = [str(p) for p in best[1]]
+    return Candidate(name, best[0], None, record)
+
+
+def parse_risks(reply: str, passages: dict[str, Passage]) -> tuple[Risk, ...]:
+    """The risks of a reply to the risk prompt; raises `Malformed` saying what is wrong."""
+    answer = _json_object(reply)
+    if set(answer) != {"risks"}:
+        raise Malformed('the object must have exactly the key "risks"')
+    risks = []
+    for entry in _entries(answer, "risks", ("risk", "passage_id", "quote"), required=False):
+        passage = passages.get(entry["passage_id"])
+        if passage is None:
+            raise Malformed(f'a risk cites passage "{entry["passage_id"]}", which was not given')
+        risks.append(
+            Risk(entry["risk"], entry["passage_id"], passage.paper_id, passage.title, entry["quote"])
+        )
+    return tuple(risks)
+
+
 # --- section 1 --------------------------------------------------------------------------
 
 
@@ -427,6 +689,8 @@ def finding_section(bundle: EvidenceBundle) -> FindingSection:
 def statement(bundle: EvidenceBundle) -> str:
     """The finding in one line, from its names and statistics: what differs, by how much, how sure."""
     finding, stats = bundle.finding, bundle.finding.statistics
+    if is_intervention(finding):
+        return _intervention_statement(finding.marker_name, stats)
     sign = direction(finding)
     a, b = finding.group_a or "the group", finding.group_b
     sex = f" ({finding.sex})" if finding.sex else ""
@@ -454,6 +718,26 @@ def statement(bundle: EvidenceBundle) -> str:
     if all(isinstance(n, int) for n in sizes):
         numbers.append(f"n {sizes[0]} and {sizes[1]}")
     return f"{what}{sex}: " + ", ".join(numbers) + f"; {finding.label}"
+
+
+def _intervention_statement(name: str, stats: dict[str, int | float | str | None]) -> str:
+    """An intervention's reported outcomes in one line, hidden values read "hidden"."""
+    clear = stats.get("n_clear")
+    authors = f"{clear} authors" if isinstance(clear, int) else "the authors"
+    improved = _share(stats, "share_improved", "improved_low", "improved_high")
+    worse = _share(stats, "share_worse", "worse_low", "worse_high")
+    rank = stats.get("rank")
+    ranked = f"; ranked {rank}" if isinstance(rank, int) else ""
+    return f"{name}: improvement reported by {improved} of {authors} with a clear outcome, worse by {worse}{ranked}; {REPORTED}"
+
+
+def _share(stats: dict[str, int | float | str | None], share: str, low: str, high: str) -> str:
+    value, a, b = stats.get(share), stats.get(low), stats.get(high)
+    if not isinstance(value, float):
+        return "a hidden share"
+    if isinstance(a, float) and isinstance(b, float):
+        return f"{value:.0%} (95% CI {a:.0%} to {b:.0%})"
+    return f"{value:.0%}"
 
 
 def _number(value: object) -> str:

@@ -178,6 +178,27 @@ def test_an_unexpected_error_is_not_exported_word_for_word(tmp_path, monkeypatch
     assert step["message"] == "Unexpected error; the details are shown in the app only."
 
 
+def test_the_csv_has_one_row_per_intervention_of_the_ranking(self_report_run):
+    """The hypothesis engine (M4-07) reads interventions from the export, so each one the page ranks
+    is a row, with its counts and shares exactly as shown and its labels."""
+    rows = read_findings_csv(self_report_run.export_csv())
+    [section] = [s for s in self_report_run.findings()["sections"] if s["kind"] == "intervention outcomes"]
+    assert section["ranking"], "the run ranks interventions"
+    mine = [r for r in rows if r["section"] == "intervention outcomes"]
+    assert [r["row"] for r in mine] == ["intervention"] * len(section["ranking"])
+    for row, shown in zip(mine, section["ranking"], strict=True):
+        assert row["comparison"] == "intervention outcome"
+        assert row["marker_name"] == shown["intervention"]
+        assert row["marker_id"] == "intervention:" + shown["intervention"].replace(" ", "_")
+        for key, value in shown.items():
+            if key != "intervention":
+                assert row[key] == value, key
+                assert type(row[key]) is type(value), key
+        assert row["statement"] == section["statement"]
+        assert "reported outcome, not evidence that it works" in row["labels"]
+        assert "self-report, no controls" in row["labels"]
+
+
 def test_a_hidden_intervention_count_reads_hidden_not_fewer_than_5():
     from asclepius.web.export import _hidden_counts
 

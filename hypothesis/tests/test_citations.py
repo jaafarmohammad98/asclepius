@@ -164,7 +164,7 @@ def test_of_two_replies_as_good_the_later_one_is_kept(generate):
     assert hypothesis.contradicting == ()
 
 
-def test_an_llm_error_on_a_retry_keeps_the_reply_already_given(generate, library):
+def test_an_llm_error_on_a_retry_keeps_the_reply_already_given(generate, library, searcher):
     replies = iter([mechanism_quoting(INVENTED), REPLY])
 
     def then_down(url: str, body: dict[str, Any]) -> dict[str, Any]:
@@ -173,7 +173,7 @@ def test_an_llm_error_on_a_retry_keeps_the_reply_already_given(generate, library
             raise LLMError("no local model server answered")
         return {"model": "m", "choices": [{"message": {"content": json.dumps(reply)}}]}
 
-    [failure] = generate_hypotheses([bundle()], connect(LOCAL, local_transport=then_down), library)
+    [failure] = generate_hypotheses([bundle()], connect(LOCAL, local_transport=then_down), library, searcher)
     assert isinstance(failure, Failure)  # the reply kept had no verified mechanism claim
     assert failure.reasons[1] == "no local model server answered"
 

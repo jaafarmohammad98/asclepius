@@ -5,8 +5,9 @@ is allowed to cite: paper records (title, abstract, identifiers) downloaded from
 the topics in the plan, the full text of those with an open-access copy, and the
 researcher's own private PDFs, and a local search index over it, gathers the passages
 it finds for each analysis finding, has the LLM turn them into hypotheses in a fixed
-format, and checks every quote against the paper it cites. Treatment candidates and the web
-app come in later issues.
+format, checks every quote against the paper it cites, and marks every intervention a
+hypothesis names as a candidate for study with its known risks. The web app comes in a later
+issue.
 
 ```sh
 cd hypothesis
@@ -149,9 +150,15 @@ bundles[0].as_dict()  # finding, labels, queries, supporting, contradicting, ver
 ```
 
 - **Which findings.** Strong and suggestive ones only. Noise-level findings get no bundle
-  (spec H2), and neither do reference-range descriptions, which test nothing. Intervention
-  outcomes are counts, not tests, and are not in the findings export, so they get none either;
-  M4-07 gathers evidence for them.
+  (spec H2), and neither do reference-range descriptions, which test nothing.
+- **Interventions.** The export has one `intervention` row per intervention of the outcomes
+  ranking (analysis spec A7): authors per reported outcome, the shares improved and worse with
+  their intervals, the rank and the safety flag. These are counts, not tests, so they have no
+  strength label; an intervention gets a bundle when the analysis ranked it (at least 10 authors
+  with a clear outcome and a share improved that can be shown). Its queries are its name and
+  the syndrome (`bupropion improved post-SSRI sexual dysfunction`, `... had no effect on ...`,
+  `... worsened sexual dysfunction`), and its bundle carries "reported outcome, not evidence
+  that it works" after "self-report, no controls", even if the export lost it.
 - **Group statistics only.** A bundle holds the finding's names (marker, groups, sex), its
   group sizes, medians or shares, effect size and interval, p and q values and Tier A
   re-run, exactly as the export shows them (counts below 5 already hidden there). No other
@@ -186,8 +193,8 @@ from hypothesis_engine.hypotheses import generate_hypotheses
 from hypothesis_engine.library import Library
 
 with Library.open(path) as library:  # every quote is checked against it (below)
-    results = generate_hypotheses(bundles, llm, library)  # a Hypothesis or a Failure per bundle
-results[0].as_dict()  # finding, mechanism, supporting, contradicting, test, record
+    results = generate_hypotheses(bundles, llm, library, index)  # a Hypothesis or a Failure per bundle
+results[0].as_dict()  # finding, mechanism, supporting, contradicting, test, candidates, record
 ```
 
 Every hypothesis has the five sections of the spec:
@@ -226,9 +233,25 @@ Every hypothesis has the five sections of the spec:
   contradicting sections is kept, since every claim it still makes is verified.
 - **The record** (spec H6): the model that answered, the back end and its settings (no
   key), the library version, the search model, the analysis tool, `prompt_version`
-  (`hypothesis-2`; it changes whenever the prompt does) and how many attempts it took.
+  (`hypothesis-3`; it changes whenever the prompt does) and how many attempts it took.
+- **Treatment candidates** (spec H3). The reply also lists in `candidates` every intervention
+  (drug, supplement, procedure, therapy) it names. The engine adds an intervention finding's own
+  intervention, and any of the export's interventions the hypothesis mentions without listing
+  (whole words, case aside; the finding's causal drug is not looked for). Each is written with
+  `"label": "candidate for study"` and its **known risks**: the library is searched for
+  passages naming it (`adverse effects of bupropion`, `bupropion side effects`, ...; public
+  passages only, at most 8), and the LLM lists the risks they state, each with a passage id
+  and a quote (prompt `risks-1`). Every quote is checked like any citation; failing ones are
+  sent back, then removed (`record.risks_removed`). With no risk left, or no passage naming it,
+  `risks_note` is "risks not established in the library" (with why, when the LLM could not be
+  asked). The prompts say an intervention may be named only as something to study.
+- **The notice.** Any hypothesis with a candidate, any intervention's hypothesis or failure,
+  and the file holding them start with `"notice"`: "For researchers only: treatment candidates
+  are ideas for study, not treatment advice. No one should start, stop or change a treatment
+  because of them." `Hypothesis.as_dict`, `Failure.as_dict` and `hypotheses.export` add it
+  themselves, so nothing holding a candidate can be written without it.
 - **What is sent.** The finding's group statistics and labels, and the bundle's public
-  passages. Private papers' passages are left out of the prompt for now, so a finding whose
+  passages; for risks, the intervention's name and public passages naming it. Private papers' passages are left out of the prompt for now, so a finding whose
   only evidence is private fails without the LLM being asked. A finding with no passage
   at all fails the same way.
 

@@ -14,7 +14,16 @@ import pytest
 from test_search import FILLER, WordEmbedder
 
 from hypothesis_engine import build
-from hypothesis_engine.evidence import CONTRADICTING, SUPPORTING, gather_evidence, queries_for, read_findings
+from hypothesis_engine.evidence import (
+    CONTRADICTING,
+    REPORTED,
+    SUPPORTING,
+    gather_evidence,
+    is_intervention,
+    queries_for,
+    read_findings,
+    worth_testing,
+)
 from hypothesis_engine.library import write_build
 from hypothesis_engine.pubmed import Paper
 from hypothesis_engine.search import Index, build_index
@@ -34,6 +43,7 @@ PAPERS = [
     paper("12", "Paroxetine and mood", "Depression was reported more often after paroxetine."),
     paper("13", "Hair loss", "Minoxidil grew hair in most men."),
     Paper("14", "Lower androsterone in post-SSRI sexual dysfunction", None, None, None, None, 2021),
+    paper("15", "Bupropion safety", "Seizures were reported with bupropion at high doses."),
 ]
 
 
@@ -93,7 +103,9 @@ def test_no_bundle_contains_a_record_id_or_individual_value(index, tmp_path):
 
 
 def test_a_self_report_bundle_keeps_its_self_report_label(index):
-    (bundle,) = gather_evidence(read_findings(SELF_REPORT), index)
+    (bundle,) = [
+        b for b in gather_evidence(read_findings(SELF_REPORT), index) if not is_intervention(b.finding)
+    ]
     assert bundle.finding.marker_name == "depression"
     assert bundle.self_report
     assert "self-report, no controls" in bundle.as_dict()["labels"]
@@ -230,3 +242,52 @@ def test_an_onset_or_trajectory_finding_is_searched_as_a_course_not_a_symptom():
     )
     supporting, _ = by_stance(onset)
     assert supporting == ["symptom onset during use more often after paroxetine than after other drugs"]
+
+
+# --- interventions (M4-07) ------------------------------------------------------------------
+
+
+def interventions():
+    return {f.marker_name: f for f in read_findings(SELF_REPORT) if is_intervention(f)}
+
+
+def test_the_export_s_interventions_are_read_with_their_counts_and_shares():
+    sildenafil = interventions()["sildenafil"]
+    assert sildenafil.marker_id == "intervention:sildenafil"
+    assert sildenafil.label is None  # reported outcomes have no strength label
+    stats = sildenafil.statistics
+    assert (stats["rank"], stats["n_clear"], stats["worse"]) == (1, 44, 6)
+    assert stats["share_improved"] == pytest.approx(0.318, abs=1e-3)
+    assert stats["safety_signal"] is False
+    assert REPORTED in sildenafil.labels
+
+
+def test_a_ranked_intervention_is_worth_gathering_evidence_for_and_an_unranked_one_is_not():
+    found = interventions()
+    assert worth_testing(found["sildenafil"]) and worth_testing(found["bupropion"])
+    assert not worth_testing(found["tadalafil"])  # its share improved is hidden, so it is not ranked
+
+
+def test_an_intervention_is_searched_by_its_name():
+    supporting, contradicting = by_stance(interventions()["bupropion"])
+    assert "bupropion improved post-SSRI sexual dysfunction" in supporting
+    assert "bupropion for sexual dysfunction caused by antidepressants" in supporting
+    assert "bupropion had no effect on post-SSRI sexual dysfunction" in contradicting
+    assert "bupropion worsened sexual dysfunction" in contradicting
+    assert all(any(c.isdigit() for c in q) is False for q in supporting + contradicting)
+
+
+def test_an_intervention_bundle_keeps_reported_outcome_not_evidence_that_it_works(index):
+    bundles = [b for b in gather_evidence(read_findings(SELF_REPORT), index) if is_intervention(b.finding)]
+    assert [b.finding.marker_name for b in bundles] == ["sildenafil", "bupropion"]
+    for bundle in bundles:
+        assert bundle.self_report
+        assert bundle.labels[:2] == ("self-report, no controls", REPORTED)
+        assert "rank" in bundle.as_dict()["finding"]
+
+
+def test_an_intervention_bundle_keeps_the_label_even_if_the_export_lost_it():
+    sildenafil = replace(interventions()["sildenafil"], labels=("self-report, no controls",))
+    from hypothesis_engine.evidence import EvidenceBundle
+
+    assert REPORTED in EvidenceBundle(sildenafil, (), (), (), 1, "m").labels

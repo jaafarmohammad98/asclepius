@@ -91,6 +91,7 @@ REPLY = {
         }
     ],
     "test": [{"design": "Measure urinary androsterone by GC-MS in new patients.", "measure": "lab test"}],
+    "candidates": [],
 }
 
 
@@ -112,8 +113,10 @@ def test_a_well_formed_reply_gives_a_hypothesis_with_all_five_sections(generate)
         "supporting",
         "contradicting",
         "test",
+        "candidates",
         "record",
     ]
+    assert "notice" not in hypothesis.as_dict()  # no candidate, no intervention
 
 
 def test_each_hypothesis_records_model_library_version_and_prompt_version(generate):
@@ -213,11 +216,13 @@ def test_a_finding_with_nothing_to_cite_fails_without_asking_the_llm(generate):
     assert server.received == []
 
 
-def test_an_llm_error_reports_the_finding_as_failed_and_goes_on_to_the_next(library):
+def test_an_llm_error_reports_the_finding_as_failed_and_goes_on_to_the_next(library, searcher):
     def down(url: str, body: dict[str, Any]) -> dict[str, Any]:
         raise LLMError("no local model server answered")
 
-    failure, other = generate_hypotheses([bundle(), bundle()], connect(LOCAL, local_transport=down), library)
+    failure, other = generate_hypotheses(
+        [bundle(), bundle()], connect(LOCAL, local_transport=down), library, searcher
+    )
     assert isinstance(failure, Failure) and isinstance(other, Failure)
     assert failure.reasons == ("no local model server answered",)
 
@@ -236,6 +241,7 @@ def citing_the_first_passage(url: str, body: dict[str, Any]) -> dict[str, Any]:
         "supporting": [{"passage_id": passage["passage_id"], "quote": quote, "why": "Agrees."}],
         "contradicting": [],
         "test": [{"design": "Measure it again.", "measure": "lab test"}],
+        "candidates": [],
     }
     return {"model": "m", "choices": [{"message": {"content": json.dumps(reply)}}]}
 
