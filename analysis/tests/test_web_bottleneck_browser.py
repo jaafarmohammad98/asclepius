@@ -1,0 +1,41 @@
+"""The bottleneck map in Google Chrome (M6-04): drawn from the app alone, re-ranked by the weight
+sliders as the Python scores rank, and a clicked link showing its passages (`browser/bottleneck_map.mjs`).
+
+Skipped when node, the extractor's packages (`npm install` in `extractor`) or Chrome are absent.
+"""
+
+import json
+import shutil
+import subprocess
+from pathlib import Path
+
+import pytest
+from hypothesis_engine.bottlenecks import Weights, bottlenecks
+from knowledge_fixture import serving
+
+SCRIPT = Path(__file__).parent / "browser" / "bottleneck_map.mjs"
+PLAYWRIGHT = Path(__file__).resolve().parents[2] / "extractor" / "node_modules" / "playwright-core"
+
+pytestmark = pytest.mark.skipif(
+    not (shutil.which("node") and PLAYWRIGHT.is_dir()), reason="needs node and `npm install` in extractor"
+)
+
+
+def test_the_map_works_in_the_browser(tmp_path):
+    with serving(tmp_path) as (server, url):
+        graph = server.knowledge.graph
+        ranked = bottlenecks(graph)
+        expected = {
+            "default": [b.name for b in ranked],
+            "top_score": f"{ranked[0].score:.2f}",
+            "cascade_only": [
+                b.name for b in bottlenecks(graph, Weights(overlap=0, cascade=1, betweenness=0))
+            ],
+        }
+        done = subprocess.run(
+            ["node", str(SCRIPT), url, json.dumps(expected)], capture_output=True, text=True, timeout=120
+        )
+    if done.returncode == 77:
+        pytest.skip("Google Chrome is not installed")
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert "PASSED" in done.stdout
