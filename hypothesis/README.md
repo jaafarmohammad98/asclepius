@@ -277,6 +277,38 @@ progress per finding, and returns each bundle's result with `sources`, the text 
 (DOI, PMCID, journal, year) of every passage cited, so a reader can be shown the quote in its
 passage (`citations.quote_span` finds where) and a link to the paper.
 
+## Co-mentions
+
+The systems analysis (milestone 6) builds its knowledge graph from terms of a curated
+vocabulary, `hypothesis_engine/vocabulary.toml`: 360 HGNC gene symbols (steroid,
+neurotransmitter, inflammation, neuropathy, epigenetic, retinoid and metabolic biology) with
+their aliases, plus hormones, neurosteroids, receptors, symptoms and the three syndromes.
+`library_co_mentions` finds the terms in every passage of the library and joins two terms
+found in the same passage.
+
+```python
+from hypothesis_engine.comentions import library_co_mentions
+from hypothesis_engine.library import DEFAULT_LIBRARY, Library
+from hypothesis_engine.vocabulary import load_vocabulary
+
+with Library.open(DEFAULT_LIBRARY) as library:
+    found = library_co_mentions(library, load_vocabulary())
+found.edges[0]  # Edge(a, b, papers, passage_ids), label "co-mentioned in N papers"
+found.nodes["BDNF"]  # Node(name, kind, papers, passage_ids)
+```
+
+- **Matching.** Symbols match case-sensitively and whole ("AR" is not found in "ARX" or
+  "Ar"); lower-case names match with case aside. Ambiguous symbols ("AR", "CAT", "REST"...)
+  count only with a gene word ("gene", "receptor", "expression", "polymorphism"...) within
+  three words, so "AR (augmented reality)" is no node and "AR gene expression" is.
+- **Edges.** An edge's weight is the number of distinct papers, and it keeps the id of every
+  passage it was counted from. It says the terms were mentioned together, never that one
+  causes the other.
+- **Seeds.** Every term names a library paper in which it is found (`pmid`). A term whose
+  paper has left the library, or no longer names it, is left out (`left_out` says why), so
+  nothing uncited enters the graph. The full library (some 40,000 passages) takes about
+  5 seconds.
+
 ## The LLM
 
 The engine reaches an LLM only through `hypothesis_engine.llm`, and the researcher pays for

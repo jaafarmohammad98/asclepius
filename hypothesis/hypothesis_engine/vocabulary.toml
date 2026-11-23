@@ -1,0 +1,2819 @@
+# The curated vocabulary the knowledge graph's nodes come from (spec G1, G2, G5).
+#
+# Each [[term]] is a node: `name` (an HGNC gene symbol, or the usual name), `kind` (gene,
+# hormone, neurosteroid, receptor, symptom, syndrome), `aliases` (other names that count as
+# it) and `pmid`, a paper of the library in which the term is found. A term whose paper is not
+# in the library, or does not name it, is left out of the graph (`seed_problems`).
+#
+# Names with a capital letter or a digit match case-sensitively; lower-case names match with
+# case aside (vocabulary.py). The syndromes are named in full: "PSSD" also names a nerve-testing
+# device, "PFS" progression-free survival and "PAS" periodic acid-Schiff staining.
+#
+# Source: gene symbols from HGNC (genenames.org) in steroid, neurotransmitter, inflammation,
+# neuropathy, epigenetic, retinoid and metabolic biology, hormones, neurosteroids, receptors
+# and the symptoms reported in PSSD, PFS and PAS, chosen by hand (Nov 2026). Only the terms found
+# in some paper of the built library were kept, each with the first such paper as its PMID.
+#
+# `ambiguous` names are also ordinary words or abbreviations ("CAT", "REST", "STAR" a trial,
+# "ER" the emergency room, "GLA" gamma-linolenic acid): one counts only with a gene word
+# ("gene", "receptor", "expression", "polymorphism"...) within three words. Left out, as the
+# gene word is often near their other meaning in this literature: GC (granule cells, genomic
+# control), ARC (the arcuate nucleus), NTS (the nucleus of the solitary tract), SET (the SET
+# domain), C3 (carbon 3 of a steroid). MAX and IMPACT are found in no paper of the library.
+ambiguous = [
+  "ACE",
+  "AR",
+  "CAT",
+  "CBP",
+  "ER",
+  "FOS",
+  "GAL",
+  "GLA",
+  "INS",
+  "KL",
+  "NR1",
+  "POR",
+  "RAR",
+  "REST",
+  "RXR",
+  "STAR",
+  "STS",
+  "TH",
+  "VIP",
+]
+
+# --- steroid synthesis and metabolism ---
+
+[[term]]
+name = "STAR"
+kind = "gene"
+aliases = ["steroidogenic acute regulatory protein", "StAR"]
+pmid = "19397962"
+
+[[term]]
+name = "TSPO"
+kind = "gene"
+aliases = ["translocator protein"]
+pmid = "21439354"
+
+[[term]]
+name = "CYP11A1"
+kind = "gene"
+aliases = ["P450scc", "cholesterol side-chain cleavage enzyme"]
+pmid = "15338057"
+
+[[term]]
+name = "CYP17A1"
+kind = "gene"
+aliases = ["17α-hydroxylase"]
+pmid = "20173016"
+
+[[term]]
+name = "CYP19A1"
+kind = "gene"
+aliases = ["aromatase"]
+pmid = "748049"
+
+[[term]]
+name = "CYP21A2"
+kind = "gene"
+aliases = ["21-hydroxylase"]
+pmid = "28894435"
+
+[[term]]
+name = "CYP11B1"
+kind = "gene"
+aliases = ["11β-hydroxylase"]
+pmid = "22194715"
+
+[[term]]
+name = "CYP11B2"
+kind = "gene"
+aliases = ["aldosterone synthase"]
+pmid = "30721712"
+
+[[term]]
+name = "CYP3A4"
+kind = "gene"
+pmid = "18001838"
+
+[[term]]
+name = "CYP2D6"
+kind = "gene"
+pmid = "18001838"
+
+[[term]]
+name = "CYP2C19"
+kind = "gene"
+pmid = "18001838"
+
+[[term]]
+name = "CYP1A2"
+kind = "gene"
+pmid = "18001838"
+
+[[term]]
+name = "CYP2B6"
+kind = "gene"
+pmid = "18001838"
+
+[[term]]
+name = "CYP7B1"
+kind = "gene"
+pmid = "32756865"
+
+[[term]]
+name = "HSD3B1"
+kind = "gene"
+pmid = "28894435"
+
+[[term]]
+name = "HSD3B2"
+kind = "gene"
+pmid = "32318648"
+
+[[term]]
+name = "HSD17B1"
+kind = "gene"
+pmid = "30148158"
+
+[[term]]
+name = "HSD17B2"
+kind = "gene"
+pmid = "35688208"
+
+[[term]]
+name = "HSD17B3"
+kind = "gene"
+pmid = "24919541"
+
+[[term]]
+name = "HSD17B10"
+kind = "gene"
+pmid = "25007702"
+
+[[term]]
+name = "HSD11B1"
+kind = "gene"
+aliases = ["11β-HSD1"]
+pmid = "30717815"
+
+[[term]]
+name = "HSD11B2"
+kind = "gene"
+aliases = ["11β-HSD2"]
+pmid = "30717815"
+
+[[term]]
+name = "SRD5A1"
+kind = "gene"
+aliases = ["5α-reductase type 1"]
+pmid = "16155734"
+
+[[term]]
+name = "SRD5A2"
+kind = "gene"
+aliases = ["5α-reductase type 2"]
+pmid = "10905384"
+
+[[term]]
+name = "SRD5A3"
+kind = "gene"
+aliases = ["5α-reductase type 3"]
+pmid = "20852264"
+
+[[term]]
+name = "AKR1C1"
+kind = "gene"
+pmid = "9792917"
+
+[[term]]
+name = "AKR1C2"
+kind = "gene"
+pmid = "11513593"
+
+[[term]]
+name = "AKR1C3"
+kind = "gene"
+pmid = "9792917"
+
+[[term]]
+name = "AKR1C4"
+kind = "gene"
+pmid = "9792917"
+
+[[term]]
+name = "AKR1D1"
+kind = "gene"
+aliases = ["5β-reductase"]
+pmid = "22654852"
+
+[[term]]
+name = "SULT2A1"
+kind = "gene"
+pmid = "35688208"
+
+[[term]]
+name = "STS"
+kind = "gene"
+aliases = ["steroid sulfatase"]
+pmid = "15012600"
+
+[[term]]
+name = "UGT2B7"
+kind = "gene"
+pmid = "32357528"
+
+[[term]]
+name = "UGT2B15"
+kind = "gene"
+pmid = "32357528"
+
+[[term]]
+name = "POR"
+kind = "gene"
+aliases = ["cytochrome P450 oxidoreductase"]
+pmid = "31669572"
+
+[[term]]
+name = "SHBG"
+kind = "gene"
+aliases = ["sex hormone-binding globulin", "sex hormone binding globulin"]
+pmid = "9859027"
+
+[[term]]
+name = "ABCB1"
+kind = "gene"
+aliases = ["P-glycoprotein", "MDR1"]
+pmid = "23356581"
+
+[[term]]
+name = "COMT"
+kind = "gene"
+aliases = ["catechol-O-methyltransferase"]
+pmid = "27527165"
+
+# --- nuclear receptors and steroid signalling ---
+
+[[term]]
+name = "AR"
+kind = "gene"
+aliases = ["androgen receptor"]
+pmid = "513759"
+
+[[term]]
+name = "ESR1"
+kind = "gene"
+aliases = ["ERα", "estrogen receptor alpha", "oestrogen receptor alpha"]
+pmid = "19605792"
+
+[[term]]
+name = "ESR2"
+kind = "gene"
+aliases = ["ERβ", "estrogen receptor beta", "oestrogen receptor beta"]
+pmid = "20173016"
+
+[[term]]
+name = "GPER1"
+kind = "gene"
+aliases = ["GPR30", "GPER"]
+pmid = "22194715"
+
+[[term]]
+name = "PGR"
+kind = "gene"
+aliases = ["progesterone receptor"]
+pmid = "8398145"
+
+[[term]]
+name = "NR3C1"
+kind = "gene"
+aliases = ["glucocorticoid receptor"]
+pmid = "10569251"
+
+[[term]]
+name = "NR3C2"
+kind = "gene"
+aliases = ["mineralocorticoid receptor"]
+pmid = "27147972"
+
+[[term]]
+name = "RARA"
+kind = "gene"
+aliases = ["RARα"]
+pmid = "23782583"
+
+[[term]]
+name = "RARB"
+kind = "gene"
+aliases = ["RARβ"]
+pmid = "19154613"
+
+[[term]]
+name = "RXRA"
+kind = "gene"
+aliases = ["RXRα"]
+pmid = "36356843"
+
+[[term]]
+name = "NR1I2"
+kind = "gene"
+aliases = ["pregnane X receptor", "PXR"]
+pmid = "28611376"
+
+[[term]]
+name = "NR1I3"
+kind = "gene"
+aliases = ["constitutive androstane receptor"]
+pmid = "32357528"
+
+[[term]]
+name = "NR5A1"
+kind = "gene"
+aliases = ["steroidogenic factor 1", "SF-1"]
+pmid = "17394235"
+
+[[term]]
+name = "VDR"
+kind = "gene"
+aliases = ["vitamin D receptor"]
+pmid = "28894435"
+
+[[term]]
+name = "PPARA"
+kind = "gene"
+aliases = ["PPARα"]
+pmid = "32157292"
+
+[[term]]
+name = "PPARG"
+kind = "gene"
+aliases = ["PPARγ"]
+pmid = "25285035"
+
+[[term]]
+name = "FKBP5"
+kind = "gene"
+pmid = "24167346"
+
+[[term]]
+name = "FKBP4"
+kind = "gene"
+pmid = "38609904"
+
+[[term]]
+name = "NCOA1"
+kind = "gene"
+aliases = ["SRC-1"]
+pmid = "25221668"
+
+[[term]]
+name = "NCOA2"
+kind = "gene"
+pmid = "38881534"
+
+[[term]]
+name = "PGRMC1"
+kind = "gene"
+pmid = "32670200"
+
+[[term]]
+name = "CRABP2"
+kind = "gene"
+pmid = "37998335"
+
+[[term]]
+name = "FOXO1"
+kind = "gene"
+pmid = "31974313"
+
+[[term]]
+name = "FOXO3"
+kind = "gene"
+pmid = "33036809"
+
+[[term]]
+name = "TP53"
+kind = "gene"
+aliases = ["p53"]
+pmid = "20465648"
+
+# --- serotonin ---
+
+[[term]]
+name = "TPH1"
+kind = "gene"
+pmid = "27527165"
+
+[[term]]
+name = "TPH2"
+kind = "gene"
+aliases = ["tryptophan hydroxylase 2"]
+pmid = "20977922"
+
+[[term]]
+name = "DDC"
+kind = "gene"
+aliases = ["aromatic L-amino acid decarboxylase"]
+pmid = "20520823"
+
+[[term]]
+name = "SLC6A4"
+kind = "gene"
+aliases = ["SERT", "5-HTT", "serotonin transporter"]
+pmid = "7541286"
+
+[[term]]
+name = "HTR1A"
+kind = "gene"
+aliases = ["5-HT1A receptor", "5-HT1A"]
+pmid = "1619520"
+
+[[term]]
+name = "HTR1B"
+kind = "gene"
+aliases = ["5-HT1B receptor", "5-HT1B"]
+pmid = "15996810"
+
+[[term]]
+name = "HTR1D"
+kind = "gene"
+aliases = ["5-HT1D"]
+pmid = "29396460"
+
+[[term]]
+name = "HTR2A"
+kind = "gene"
+aliases = ["5-HT2A receptor", "5-HT2A"]
+pmid = "15936112"
+
+[[term]]
+name = "HTR2B"
+kind = "gene"
+aliases = ["5-HT2B"]
+pmid = "37168254"
+
+[[term]]
+name = "HTR2C"
+kind = "gene"
+aliases = ["5-HT2C receptor", "5-HT2C"]
+pmid = "9728669"
+
+[[term]]
+name = "HTR3A"
+kind = "gene"
+aliases = ["5-HT3 receptor", "5-HT3"]
+pmid = "1780336"
+
+[[term]]
+name = "HTR6"
+kind = "gene"
+aliases = ["5-HT6"]
+pmid = "30968339"
+
+[[term]]
+name = "HTR7"
+kind = "gene"
+aliases = ["5-HT7"]
+pmid = "24165478"
+
+[[term]]
+name = "MAOA"
+kind = "gene"
+aliases = ["monoamine oxidase A"]
+pmid = "10830148"
+
+[[term]]
+name = "MAOB"
+kind = "gene"
+aliases = ["monoamine oxidase B"]
+pmid = "30242487"
+
+[[term]]
+name = "SLC18A2"
+kind = "gene"
+aliases = ["VMAT2"]
+pmid = "32357528"
+
+[[term]]
+name = "IDO1"
+kind = "gene"
+aliases = ["indoleamine 2,3-dioxygenase"]
+pmid = "32157292"
+
+[[term]]
+name = "TDO2"
+kind = "gene"
+pmid = "41258325"
+
+[[term]]
+name = "KMO"
+kind = "gene"
+pmid = "41258325"
+
+# --- dopamine, noradrenaline and other monoamines ---
+
+[[term]]
+name = "TH"
+kind = "gene"
+aliases = ["tyrosine hydroxylase"]
+pmid = "17045250"
+
+[[term]]
+name = "DBH"
+kind = "gene"
+aliases = ["dopamine beta-hydroxylase", "dopamine β-hydroxylase"]
+pmid = "2033719"
+
+[[term]]
+name = "SLC6A3"
+kind = "gene"
+aliases = ["DAT1", "dopamine transporter"]
+pmid = "14978512"
+
+[[term]]
+name = "SLC6A2"
+kind = "gene"
+aliases = ["norepinephrine transporter", "noradrenaline transporter"]
+pmid = "14978512"
+
+[[term]]
+name = "DRD1"
+kind = "gene"
+aliases = ["D1 receptor"]
+pmid = "10553694"
+
+[[term]]
+name = "DRD2"
+kind = "gene"
+aliases = ["D2 receptor"]
+pmid = "18391559"
+
+[[term]]
+name = "DRD3"
+kind = "gene"
+aliases = ["D3 receptor"]
+pmid = "32357528"
+
+[[term]]
+name = "DRD4"
+kind = "gene"
+aliases = ["D4 receptor"]
+pmid = "22509378"
+
+[[term]]
+name = "DRD5"
+kind = "gene"
+pmid = "30287754"
+
+[[term]]
+name = "ADRA1A"
+kind = "gene"
+pmid = "34861466"
+
+[[term]]
+name = "ADRB1"
+kind = "gene"
+pmid = "32357528"
+
+[[term]]
+name = "ADRB2"
+kind = "gene"
+pmid = "37175987"
+
+[[term]]
+name = "HRH1"
+kind = "gene"
+aliases = ["histamine H1 receptor"]
+pmid = "28232472"
+
+[[term]]
+name = "HDC"
+kind = "gene"
+aliases = ["histidine decarboxylase"]
+pmid = "37186582"
+
+[[term]]
+name = "PPP1R1B"
+kind = "gene"
+aliases = ["DARPP-32"]
+pmid = "36878398"
+
+[[term]]
+name = "GCH1"
+kind = "gene"
+pmid = "37175987"
+
+# --- GABA, glutamate and other neurotransmission ---
+
+[[term]]
+name = "GAD1"
+kind = "gene"
+aliases = ["GAD67"]
+pmid = "19943853"
+
+[[term]]
+name = "GAD2"
+kind = "gene"
+aliases = ["GAD65"]
+pmid = "23906988"
+
+[[term]]
+name = "GABRA1"
+kind = "gene"
+pmid = "32357528"
+
+[[term]]
+name = "GABRA2"
+kind = "gene"
+pmid = "32357528"
+
+[[term]]
+name = "GABRA4"
+kind = "gene"
+pmid = "39075243"
+
+[[term]]
+name = "GABRA5"
+kind = "gene"
+pmid = "37239455"
+
+[[term]]
+name = "GABRB2"
+kind = "gene"
+pmid = "32357528"
+
+[[term]]
+name = "GABRB3"
+kind = "gene"
+pmid = "39596221"
+
+[[term]]
+name = "GABRD"
+kind = "gene"
+pmid = "39075243"
+
+[[term]]
+name = "GABRG2"
+kind = "gene"
+pmid = "32357528"
+
+[[term]]
+name = "GABBR1"
+kind = "gene"
+pmid = "32968808"
+
+[[term]]
+name = "GABBR2"
+kind = "gene"
+pmid = "32968808"
+
+[[term]]
+name = "SLC6A1"
+kind = "gene"
+aliases = ["GAT1", "GAT-1"]
+pmid = "32357528"
+
+[[term]]
+name = "SLC32A1"
+kind = "gene"
+aliases = ["VGAT"]
+pmid = "26973459"
+
+[[term]]
+name = "SLC12A2"
+kind = "gene"
+aliases = ["NKCC1"]
+pmid = "27147972"
+
+[[term]]
+name = "SLC12A5"
+kind = "gene"
+aliases = ["KCC2"]
+pmid = "27147972"
+
+[[term]]
+name = "GRIN1"
+kind = "gene"
+aliases = ["NR1"]
+pmid = "26627246"
+
+[[term]]
+name = "GRIN2A"
+kind = "gene"
+aliases = ["NR2A"]
+pmid = "30968339"
+
+[[term]]
+name = "GRIN2B"
+kind = "gene"
+aliases = ["NR2B"]
+pmid = "25285035"
+
+[[term]]
+name = "GRIA1"
+kind = "gene"
+aliases = ["GluA1"]
+pmid = "19295509"
+
+[[term]]
+name = "GRIA2"
+kind = "gene"
+aliases = ["GluA2"]
+pmid = "34635127"
+
+[[term]]
+name = "GRM2"
+kind = "gene"
+aliases = ["mGluR2"]
+pmid = "41213078"
+
+[[term]]
+name = "GRM5"
+kind = "gene"
+aliases = ["mGluR5"]
+pmid = "32357528"
+
+[[term]]
+name = "SLC1A2"
+kind = "gene"
+aliases = ["EAAT2", "GLT-1"]
+pmid = "30769838"
+
+[[term]]
+name = "SLC17A7"
+kind = "gene"
+aliases = ["VGLUT1"]
+pmid = "28185898"
+
+[[term]]
+name = "GLUL"
+kind = "gene"
+aliases = ["glutamine synthetase"]
+pmid = "2423195"
+
+[[term]]
+name = "DLG4"
+kind = "gene"
+aliases = ["PSD-95", "PSD95"]
+pmid = "25221668"
+
+[[term]]
+name = "CHRNA4"
+kind = "gene"
+pmid = "32357528"
+
+[[term]]
+name = "CHRNA7"
+kind = "gene"
+pmid = "32357528"
+
+[[term]]
+name = "CHRNB2"
+kind = "gene"
+pmid = "32357528"
+
+[[term]]
+name = "CHAT"
+kind = "gene"
+aliases = ["choline acetyltransferase"]
+pmid = "27041457"
+
+[[term]]
+name = "ACHE"
+kind = "gene"
+aliases = ["acetylcholinesterase"]
+pmid = "27404492"
+
+[[term]]
+name = "OPRM1"
+kind = "gene"
+aliases = ["mu-opioid receptor", "μ-opioid receptor"]
+pmid = "20368901"
+
+[[term]]
+name = "OPRK1"
+kind = "gene"
+aliases = ["kappa-opioid receptor", "κ-opioid receptor"]
+pmid = "36289509"
+
+[[term]]
+name = "OPRD1"
+kind = "gene"
+aliases = ["delta-opioid receptor"]
+pmid = "36289509"
+
+[[term]]
+name = "PENK"
+kind = "gene"
+aliases = ["proenkephalin"]
+pmid = "19458216"
+
+[[term]]
+name = "CNR1"
+kind = "gene"
+aliases = ["CB1 receptor", "CB1"]
+pmid = "27404492"
+
+[[term]]
+name = "CNR2"
+kind = "gene"
+aliases = ["CB2 receptor", "CB2"]
+pmid = "27404492"
+
+[[term]]
+name = "FAAH"
+kind = "gene"
+aliases = ["fatty acid amide hydrolase"]
+pmid = "33668469"
+
+[[term]]
+name = "TRPV1"
+kind = "gene"
+pmid = "27215701"
+
+[[term]]
+name = "TRPA1"
+kind = "gene"
+pmid = "34377152"
+
+[[term]]
+name = "TRPM8"
+kind = "gene"
+pmid = "19700243"
+
+[[term]]
+name = "SIGMAR1"
+kind = "gene"
+aliases = ["sigma-1 receptor", "σ1 receptor"]
+pmid = "19595736"
+
+[[term]]
+name = "NOS1"
+kind = "gene"
+aliases = ["nNOS", "neuronal nitric oxide synthase"]
+pmid = "11704638"
+
+[[term]]
+name = "NOS2"
+kind = "gene"
+aliases = ["iNOS", "inducible nitric oxide synthase"]
+pmid = "24242893"
+
+[[term]]
+name = "NOS3"
+kind = "gene"
+aliases = ["eNOS", "endothelial nitric oxide synthase"]
+pmid = "14723556"
+
+[[term]]
+name = "PDE5A"
+kind = "gene"
+aliases = ["PDE5", "phosphodiesterase type 5", "phosphodiesterase 5"]
+pmid = "9934946"
+
+[[term]]
+name = "PDE4B"
+kind = "gene"
+pmid = "34521053"
+
+[[term]]
+name = "SNAP25"
+kind = "gene"
+pmid = "28937692"
+
+[[term]]
+name = "SYP"
+kind = "gene"
+aliases = ["synaptophysin"]
+pmid = "27147972"
+
+[[term]]
+name = "SYN1"
+kind = "gene"
+aliases = ["synapsin I"]
+pmid = "27041457"
+
+[[term]]
+name = "GNB3"
+kind = "gene"
+pmid = "16710319"
+
+[[term]]
+name = "KCNQ2"
+kind = "gene"
+pmid = "32357528"
+
+[[term]]
+name = "HCN1"
+kind = "gene"
+pmid = "36430572"
+
+# --- neuropeptides and hypothalamic-pituitary hormones ---
+
+[[term]]
+name = "OXT"
+kind = "gene"
+pmid = "30040918"
+
+[[term]]
+name = "OXTR"
+kind = "gene"
+aliases = ["oxytocin receptor"]
+pmid = "16422954"
+
+[[term]]
+name = "AVP"
+kind = "gene"
+aliases = ["arginine vasopressin"]
+pmid = "17928160"
+
+[[term]]
+name = "CRH"
+kind = "gene"
+aliases = ["corticotropin-releasing hormone", "corticotropin-releasing factor"]
+pmid = "9626145"
+
+[[term]]
+name = "CRHR1"
+kind = "gene"
+pmid = "27610205"
+
+[[term]]
+name = "CRHR2"
+kind = "gene"
+pmid = "27610205"
+
+[[term]]
+name = "CRHBP"
+kind = "gene"
+pmid = "30717815"
+
+[[term]]
+name = "POMC"
+kind = "gene"
+aliases = ["proopiomelanocortin", "pro-opiomelanocortin"]
+pmid = "27034666"
+
+[[term]]
+name = "MC1R"
+kind = "gene"
+pmid = "37175987"
+
+[[term]]
+name = "MC3R"
+kind = "gene"
+pmid = "41266337"
+
+[[term]]
+name = "MC4R"
+kind = "gene"
+aliases = ["melanocortin 4 receptor", "melanocortin-4 receptor"]
+pmid = "23485949"
+
+[[term]]
+name = "KISS1"
+kind = "gene"
+pmid = "36699037"
+
+[[term]]
+name = "KISS1R"
+kind = "gene"
+aliases = ["GPR54"]
+pmid = "30686017"
+
+[[term]]
+name = "TAC3"
+kind = "gene"
+pmid = "34996447"
+
+[[term]]
+name = "LHB"
+kind = "gene"
+pmid = "20173016"
+
+[[term]]
+name = "LHCGR"
+kind = "gene"
+aliases = ["LH receptor"]
+pmid = "20173016"
+
+[[term]]
+name = "FSHB"
+kind = "gene"
+pmid = "37998335"
+
+[[term]]
+name = "FSHR"
+kind = "gene"
+aliases = ["FSH receptor"]
+pmid = "37115241"
+
+[[term]]
+name = "PRL"
+kind = "gene"
+pmid = "11197"
+
+[[term]]
+name = "IGF1"
+kind = "gene"
+aliases = ["insulin-like growth factor 1", "IGF-1", "IGF-I"]
+pmid = "14667889"
+
+[[term]]
+name = "IGF1R"
+kind = "gene"
+pmid = "27590073"
+
+[[term]]
+name = "TRH"
+kind = "gene"
+pmid = "6792869"
+
+[[term]]
+name = "NPY"
+kind = "gene"
+aliases = ["neuropeptide Y"]
+pmid = "1745553"
+
+[[term]]
+name = "HCRT"
+kind = "gene"
+aliases = ["orexin", "hypocretin"]
+pmid = "32357528"
+
+[[term]]
+name = "GAL"
+kind = "gene"
+pmid = "17573119"
+
+[[term]]
+name = "SST"
+kind = "gene"
+aliases = ["somatostatin"]
+pmid = "2033719"
+
+[[term]]
+name = "VIP"
+kind = "gene"
+aliases = ["vasoactive intestinal peptide"]
+pmid = "3022670"
+
+[[term]]
+name = "ADCYAP1"
+kind = "gene"
+aliases = ["PACAP"]
+pmid = "32849313"
+
+[[term]]
+name = "CALCA"
+kind = "gene"
+aliases = ["CGRP", "calcitonin gene-related peptide"]
+pmid = "2033719"
+
+[[term]]
+name = "CCK"
+kind = "gene"
+aliases = ["cholecystokinin"]
+pmid = "12578433"
+
+[[term]]
+name = "LEP"
+kind = "gene"
+aliases = ["leptin"]
+pmid = "12230820"
+
+[[term]]
+name = "LEPR"
+kind = "gene"
+aliases = ["leptin receptor"]
+pmid = "26303856"
+
+[[term]]
+name = "GHRL"
+kind = "gene"
+aliases = ["ghrelin"]
+pmid = "23719026"
+
+[[term]]
+name = "INS"
+kind = "gene"
+aliases = ["insulin"]
+pmid = "3022670"
+
+[[term]]
+name = "INSR"
+kind = "gene"
+aliases = ["insulin receptor"]
+pmid = "27354525"
+
+[[term]]
+name = "AMH"
+kind = "gene"
+aliases = ["anti-Müllerian hormone"]
+pmid = "1301219"
+
+[[term]]
+name = "INHBB"
+kind = "gene"
+aliases = ["inhibin B"]
+pmid = "35135181"
+
+# --- neurotrophins, plasticity and myelin ---
+
+[[term]]
+name = "BDNF"
+kind = "gene"
+aliases = ["brain-derived neurotrophic factor"]
+pmid = "14598072"
+
+[[term]]
+name = "NTRK2"
+kind = "gene"
+aliases = ["TrkB"]
+pmid = "25285035"
+
+[[term]]
+name = "NTRK1"
+kind = "gene"
+aliases = ["TrkA"]
+pmid = "28894435"
+
+[[term]]
+name = "NGF"
+kind = "gene"
+aliases = ["nerve growth factor"]
+pmid = "15249139"
+
+[[term]]
+name = "NGFR"
+kind = "gene"
+aliases = ["p75NTR"]
+pmid = "28951257"
+
+[[term]]
+name = "NTF3"
+kind = "gene"
+aliases = ["neurotrophin-3"]
+pmid = "33578758"
+
+[[term]]
+name = "GDNF"
+kind = "gene"
+pmid = "14598072"
+
+[[term]]
+name = "VEGFA"
+kind = "gene"
+aliases = ["VEGF"]
+pmid = "17020619"
+
+[[term]]
+name = "CREB1"
+kind = "gene"
+aliases = ["CREB"]
+pmid = "19535594"
+
+[[term]]
+name = "FOS"
+kind = "gene"
+aliases = ["c-Fos", "c-fos"]
+pmid = "10553694"
+
+[[term]]
+name = "EGR1"
+kind = "gene"
+pmid = "31780813"
+
+[[term]]
+name = "MTOR"
+kind = "gene"
+aliases = ["mTOR"]
+pmid = "20354178"
+
+[[term]]
+name = "AKT1"
+kind = "gene"
+pmid = "31780813"
+
+[[term]]
+name = "GSK3B"
+kind = "gene"
+aliases = ["GSK-3β", "GSK3β"]
+pmid = "25285035"
+
+[[term]]
+name = "MAPK1"
+kind = "gene"
+aliases = ["ERK2"]
+pmid = "25285035"
+
+[[term]]
+name = "MAPK3"
+kind = "gene"
+aliases = ["ERK1"]
+pmid = "23300985"
+
+[[term]]
+name = "RELN"
+kind = "gene"
+aliases = ["reelin"]
+pmid = "25311363"
+
+[[term]]
+name = "NRG1"
+kind = "gene"
+aliases = ["neuregulin 1"]
+pmid = "28675388"
+
+[[term]]
+name = "DISC1"
+kind = "gene"
+pmid = "28916331"
+
+[[term]]
+name = "MBP"
+kind = "gene"
+aliases = ["myelin basic protein"]
+pmid = "9622253"
+
+[[term]]
+name = "MPZ"
+kind = "gene"
+aliases = ["myelin protein zero"]
+pmid = "38338934"
+
+[[term]]
+name = "PMP22"
+kind = "gene"
+pmid = "16632878"
+
+[[term]]
+name = "S100B"
+kind = "gene"
+pmid = "39596221"
+
+[[term]]
+name = "GFAP"
+kind = "gene"
+aliases = ["glial fibrillary acidic protein"]
+pmid = "10987130"
+
+[[term]]
+name = "NEFL"
+kind = "gene"
+aliases = ["neurofilament light chain", "neurofilament light"]
+pmid = "37977814"
+
+[[term]]
+name = "UCHL1"
+kind = "gene"
+aliases = ["PGP9.5", "PGP 9.5"]
+pmid = "17494514"
+
+[[term]]
+name = "ENO2"
+kind = "gene"
+aliases = ["neuron-specific enolase"]
+pmid = "3022670"
+
+[[term]]
+name = "MAPT"
+kind = "gene"
+pmid = "32357528"
+
+[[term]]
+name = "APOE"
+kind = "gene"
+pmid = "32357528"
+
+[[term]]
+name = "SIRT1"
+kind = "gene"
+pmid = "27511015"
+
+[[term]]
+name = "PPARGC1A"
+kind = "gene"
+aliases = ["PGC-1α"]
+pmid = "25285035"
+
+[[term]]
+name = "NFE2L2"
+kind = "gene"
+aliases = ["Nrf2", "NRF2"]
+pmid = "33668469"
+
+[[term]]
+name = "HMOX1"
+kind = "gene"
+aliases = ["heme oxygenase-1"]
+pmid = "39596221"
+
+[[term]]
+name = "SOD1"
+kind = "gene"
+pmid = "25285035"
+
+[[term]]
+name = "SOD2"
+kind = "gene"
+pmid = "32281745"
+
+[[term]]
+name = "CAT"
+kind = "gene"
+aliases = ["catalase"]
+pmid = "2175753"
+
+[[term]]
+name = "GPX1"
+kind = "gene"
+pmid = "33804455"
+
+# --- inflammation and immunity ---
+
+[[term]]
+name = "IL1B"
+kind = "gene"
+aliases = ["IL-1β", "interleukin-1β", "interleukin-1 beta"]
+pmid = "22034468"
+
+[[term]]
+name = "IL1A"
+kind = "gene"
+aliases = ["IL-1α"]
+pmid = "31912349"
+
+[[term]]
+name = "IL2"
+kind = "gene"
+aliases = ["IL-2", "interleukin-2"]
+pmid = "24146801"
+
+[[term]]
+name = "IL4"
+kind = "gene"
+aliases = ["IL-4", "interleukin-4"]
+pmid = "27606422"
+
+[[term]]
+name = "IL6"
+kind = "gene"
+aliases = ["IL-6", "interleukin-6"]
+pmid = "22034468"
+
+[[term]]
+name = "IL6R"
+kind = "gene"
+pmid = "37796021"
+
+[[term]]
+name = "IL10"
+kind = "gene"
+aliases = ["IL-10", "interleukin-10"]
+pmid = "23736221"
+
+[[term]]
+name = "IL13"
+kind = "gene"
+aliases = ["IL-13"]
+pmid = "27853192"
+
+[[term]]
+name = "IL17A"
+kind = "gene"
+aliases = ["IL-17A", "IL-17"]
+pmid = "29396460"
+
+[[term]]
+name = "IL18"
+kind = "gene"
+aliases = ["IL-18"]
+pmid = "27853192"
+
+[[term]]
+name = "IL23A"
+kind = "gene"
+aliases = ["IL-23"]
+pmid = "36381776"
+
+[[term]]
+name = "CXCL8"
+kind = "gene"
+aliases = ["IL-8", "interleukin-8"]
+pmid = "33036809"
+
+[[term]]
+name = "TNF"
+kind = "gene"
+aliases = ["TNF-α", "TNFα", "tumor necrosis factor alpha", "tumour necrosis factor"]
+pmid = "11022133"
+
+[[term]]
+name = "TNFRSF1A"
+kind = "gene"
+aliases = ["TNFR1"]
+pmid = "30148158"
+
+[[term]]
+name = "IFNG"
+kind = "gene"
+aliases = ["IFN-γ", "interferon gamma", "interferon-γ"]
+pmid = "15160865"
+
+[[term]]
+name = "TGFB1"
+kind = "gene"
+aliases = ["TGF-β1", "TGF-β"]
+pmid = "25285035"
+
+[[term]]
+name = "CRP"
+kind = "gene"
+aliases = ["C-reactive protein"]
+pmid = "17761669"
+
+[[term]]
+name = "CCL2"
+kind = "gene"
+aliases = ["MCP-1"]
+pmid = "29112774"
+
+[[term]]
+name = "CX3CL1"
+kind = "gene"
+aliases = ["fractalkine"]
+pmid = "38792602"
+
+[[term]]
+name = "CX3CR1"
+kind = "gene"
+pmid = "39757281"
+
+[[term]]
+name = "NFKB1"
+kind = "gene"
+aliases = ["NF-κB", "NF-kB", "NFκB", "NF-kappaB"]
+pmid = "24275522"
+
+[[term]]
+name = "NLRP3"
+kind = "gene"
+pmid = "28677866"
+
+[[term]]
+name = "CASP1"
+kind = "gene"
+aliases = ["caspase-1"]
+pmid = "28677866"
+
+[[term]]
+name = "TLR2"
+kind = "gene"
+pmid = "30718548"
+
+[[term]]
+name = "TLR4"
+kind = "gene"
+pmid = "30718548"
+
+[[term]]
+name = "MYD88"
+kind = "gene"
+pmid = "30718548"
+
+[[term]]
+name = "PTGS2"
+kind = "gene"
+aliases = ["COX-2", "cyclooxygenase-2"]
+pmid = "23652932"
+
+[[term]]
+name = "PTGES"
+kind = "gene"
+pmid = "32357528"
+
+[[term]]
+name = "ALOX5"
+kind = "gene"
+pmid = "37998335"
+
+[[term]]
+name = "HLA-DRB1"
+kind = "gene"
+pmid = "36386264"
+
+[[term]]
+name = "HLA-B"
+kind = "gene"
+pmid = "32357528"
+
+[[term]]
+name = "CD4"
+kind = "gene"
+pmid = "11408787"
+
+[[term]]
+name = "CD68"
+kind = "gene"
+pmid = "32915470"
+
+[[term]]
+name = "AIF1"
+kind = "gene"
+aliases = ["Iba1", "IBA1"]
+pmid = "29229502"
+
+[[term]]
+name = "ITGAM"
+kind = "gene"
+aliases = ["CD11b"]
+pmid = "27853192"
+
+[[term]]
+name = "TREM2"
+kind = "gene"
+pmid = "38002991"
+
+[[term]]
+name = "MMP9"
+kind = "gene"
+aliases = ["MMP-9"]
+pmid = "36614002"
+
+[[term]]
+name = "MMP2"
+kind = "gene"
+aliases = ["MMP-2"]
+pmid = "28369282"
+
+[[term]]
+name = "HMGB1"
+kind = "gene"
+pmid = "30718548"
+
+[[term]]
+name = "MIF"
+kind = "gene"
+pmid = "34761434"
+
+[[term]]
+name = "JAK2"
+kind = "gene"
+pmid = "31594917"
+
+[[term]]
+name = "STAT3"
+kind = "gene"
+pmid = "19393092"
+
+[[term]]
+name = "SOCS3"
+kind = "gene"
+pmid = "27853192"
+
+[[term]]
+name = "PTPN22"
+kind = "gene"
+pmid = "39916529"
+
+[[term]]
+name = "FOXP3"
+kind = "gene"
+pmid = "38637882"
+
+[[term]]
+name = "MPO"
+kind = "gene"
+aliases = ["myeloperoxidase"]
+pmid = "8730654"
+
+# --- pain, small fibres and ion channels ---
+
+[[term]]
+name = "SCN9A"
+kind = "gene"
+aliases = ["Nav1.7"]
+pmid = "27363506"
+
+[[term]]
+name = "SCN10A"
+kind = "gene"
+aliases = ["Nav1.8"]
+pmid = "27363506"
+
+[[term]]
+name = "SCN11A"
+kind = "gene"
+aliases = ["Nav1.9"]
+pmid = "27363506"
+
+[[term]]
+name = "SCN3A"
+kind = "gene"
+pmid = "36430572"
+
+[[term]]
+name = "SCN1A"
+kind = "gene"
+pmid = "29127345"
+
+[[term]]
+name = "SCN2A"
+kind = "gene"
+pmid = "32357528"
+
+[[term]]
+name = "SCN8A"
+kind = "gene"
+pmid = "32357528"
+
+[[term]]
+name = "SCN5A"
+kind = "gene"
+pmid = "32357528"
+
+[[term]]
+name = "KCNQ3"
+kind = "gene"
+pmid = "36430572"
+
+[[term]]
+name = "CACNA1H"
+kind = "gene"
+aliases = ["Cav3.2"]
+pmid = "32357528"
+
+[[term]]
+name = "CACNA2D1"
+kind = "gene"
+pmid = "36011346"
+
+[[term]]
+name = "P2RX3"
+kind = "gene"
+aliases = ["P2X3"]
+pmid = "30503201"
+
+[[term]]
+name = "P2RX4"
+kind = "gene"
+pmid = "41303496"
+
+[[term]]
+name = "P2RX7"
+kind = "gene"
+aliases = ["P2X7"]
+pmid = "37040816"
+
+[[term]]
+name = "ASIC3"
+kind = "gene"
+pmid = "33322727"
+
+[[term]]
+name = "GLA"
+kind = "gene"
+aliases = ["alpha-galactosidase A", "α-galactosidase A"]
+pmid = "28672034"
+
+[[term]]
+name = "TTR"
+kind = "gene"
+aliases = ["transthyretin"]
+pmid = "21179661"
+
+[[term]]
+name = "SPTLC1"
+kind = "gene"
+pmid = "26573920"
+
+[[term]]
+name = "SPTLC2"
+kind = "gene"
+pmid = "26573920"
+
+[[term]]
+name = "COL6A5"
+kind = "gene"
+pmid = "28665811"
+
+[[term]]
+name = "FGFR3"
+kind = "gene"
+pmid = "31773305"
+
+[[term]]
+name = "TRPV4"
+kind = "gene"
+pmid = "33911568"
+
+[[term]]
+name = "PRDM12"
+kind = "gene"
+pmid = "38713210"
+
+[[term]]
+name = "SARM1"
+kind = "gene"
+pmid = "40851429"
+
+[[term]]
+name = "PRX"
+kind = "gene"
+aliases = ["periaxin"]
+pmid = "36740106"
+
+[[term]]
+name = "GJB1"
+kind = "gene"
+aliases = ["connexin 32"]
+pmid = "32848567"
+
+[[term]]
+name = "MFN2"
+kind = "gene"
+pmid = "29351809"
+
+[[term]]
+name = "LGI1"
+kind = "gene"
+pmid = "32357528"
+
+[[term]]
+name = "CNTNAP2"
+kind = "gene"
+aliases = ["CASPR2"]
+pmid = "27187441"
+
+# --- epigenetics ---
+
+[[term]]
+name = "DNMT1"
+kind = "gene"
+pmid = "22880885"
+
+[[term]]
+name = "DNMT3A"
+kind = "gene"
+pmid = "27187441"
+
+[[term]]
+name = "DNMT3B"
+kind = "gene"
+pmid = "27187441"
+
+[[term]]
+name = "TET1"
+kind = "gene"
+pmid = "25364288"
+
+[[term]]
+name = "TET2"
+kind = "gene"
+pmid = "25364288"
+
+[[term]]
+name = "MECP2"
+kind = "gene"
+pmid = "27187441"
+
+[[term]]
+name = "HDAC1"
+kind = "gene"
+pmid = "19767015"
+
+[[term]]
+name = "HDAC2"
+kind = "gene"
+pmid = "19759294"
+
+[[term]]
+name = "HDAC3"
+kind = "gene"
+pmid = "21220410"
+
+[[term]]
+name = "HDAC4"
+kind = "gene"
+pmid = "19767015"
+
+[[term]]
+name = "HDAC5"
+kind = "gene"
+pmid = "16501568"
+
+[[term]]
+name = "HDAC6"
+kind = "gene"
+pmid = "19767015"
+
+[[term]]
+name = "SIRT6"
+kind = "gene"
+pmid = "41099447"
+
+[[term]]
+name = "KDM1A"
+kind = "gene"
+aliases = ["LSD1"]
+pmid = "16793513"
+
+[[term]]
+name = "EZH2"
+kind = "gene"
+pmid = "31780813"
+
+[[term]]
+name = "EHMT2"
+kind = "gene"
+aliases = ["G9a"]
+pmid = "22880885"
+
+[[term]]
+name = "KMT2A"
+kind = "gene"
+pmid = "38818577"
+
+[[term]]
+name = "EP300"
+kind = "gene"
+aliases = ["p300"]
+pmid = "20016856"
+
+[[term]]
+name = "CREBBP"
+kind = "gene"
+aliases = ["CBP"]
+pmid = "23652932"
+
+[[term]]
+name = "KAT2A"
+kind = "gene"
+pmid = "34996447"
+
+[[term]]
+name = "BRD4"
+kind = "gene"
+pmid = "40507292"
+
+[[term]]
+name = "SMARCA4"
+kind = "gene"
+pmid = "42581369"
+
+[[term]]
+name = "REST"
+kind = "gene"
+aliases = ["NRSF"]
+pmid = "25285035"
+
+[[term]]
+name = "MIR34A"
+kind = "gene"
+aliases = ["miR-34a"]
+pmid = "27527165"
+
+[[term]]
+name = "MIR16-1"
+kind = "gene"
+aliases = ["miR-16"]
+pmid = "27527165"
+
+[[term]]
+name = "MIR132"
+kind = "gene"
+aliases = ["miR-132"]
+pmid = "27527165"
+
+[[term]]
+name = "MIR135A1"
+kind = "gene"
+aliases = ["miR-135a"]
+pmid = "27527165"
+
+[[term]]
+name = "MIR124-1"
+kind = "gene"
+aliases = ["miR-124"]
+pmid = "27383599"
+
+[[term]]
+name = "H19"
+kind = "gene"
+pmid = "27187441"
+
+[[term]]
+name = "IGF2"
+kind = "gene"
+pmid = "27187441"
+
+[[term]]
+name = "GADD45B"
+kind = "gene"
+pmid = "28374847"
+
+# --- skin, retinoid and sebaceous (isotretinoin) ---
+
+[[term]]
+name = "KRT5"
+kind = "gene"
+pmid = "38741659"
+
+[[term]]
+name = "KRT14"
+kind = "gene"
+pmid = "38741659"
+
+[[term]]
+name = "FLG"
+kind = "gene"
+aliases = ["filaggrin"]
+pmid = "33036809"
+
+[[term]]
+name = "SREBF1"
+kind = "gene"
+aliases = ["SREBP-1"]
+pmid = "28852375"
+
+[[term]]
+name = "TYR"
+kind = "gene"
+aliases = ["tyrosinase"]
+pmid = "39817790"
+
+[[term]]
+name = "LCN2"
+kind = "gene"
+aliases = ["lipocalin-2", "NGAL"]
+pmid = "42795306"
+
+[[term]]
+name = "TNFSF10"
+kind = "gene"
+aliases = ["TRAIL"]
+pmid = "32626921"
+
+# --- metabolism and mitochondria ---
+
+[[term]]
+name = "MTHFR"
+kind = "gene"
+pmid = "32357528"
+
+[[term]]
+name = "FTO"
+kind = "gene"
+pmid = "38637882"
+
+[[term]]
+name = "PRKAA1"
+kind = "gene"
+aliases = ["AMPK"]
+pmid = "29672450"
+
+[[term]]
+name = "UCP2"
+kind = "gene"
+pmid = "33308222"
+
+[[term]]
+name = "ADIPOQ"
+kind = "gene"
+aliases = ["adiponectin"]
+pmid = "36169757"
+
+[[term]]
+name = "LPL"
+kind = "gene"
+aliases = ["lipoprotein lipase"]
+pmid = "2438878"
+
+[[term]]
+name = "HMGCR"
+kind = "gene"
+aliases = ["HMG-CoA reductase"]
+pmid = "15379720"
+
+[[term]]
+name = "LDLR"
+kind = "gene"
+pmid = "32357528"
+
+[[term]]
+name = "CYP27B1"
+kind = "gene"
+pmid = "35688208"
+
+[[term]]
+name = "CYP24A1"
+kind = "gene"
+pmid = "35688208"
+
+[[term]]
+name = "SLC2A1"
+kind = "gene"
+aliases = ["GLUT1"]
+pmid = "32357528"
+
+[[term]]
+name = "SLC2A4"
+kind = "gene"
+aliases = ["GLUT4"]
+pmid = "39596221"
+
+[[term]]
+name = "TFAM"
+kind = "gene"
+pmid = "39000217"
+
+[[term]]
+name = "OPA1"
+kind = "gene"
+pmid = "29351809"
+
+[[term]]
+name = "PINK1"
+kind = "gene"
+pmid = "31818365"
+
+[[term]]
+name = "PRKN"
+kind = "gene"
+aliases = ["parkin"]
+pmid = "31178336"
+
+[[term]]
+name = "ACE"
+kind = "gene"
+pmid = "32357528"
+
+[[term]]
+name = "AGT"
+kind = "gene"
+pmid = "19393092"
+
+[[term]]
+name = "KL"
+kind = "gene"
+aliases = ["klotho"]
+pmid = "30945158"
+
+[[term]]
+name = "TERT"
+kind = "gene"
+pmid = "30550360"
+
+[[term]]
+name = "HIF1A"
+kind = "gene"
+aliases = ["HIF-1α"]
+pmid = "37032761"
+
+# --- hormone ---
+
+[[term]]
+name = "testosterone"
+kind = "hormone"
+pmid = "135926"
+
+[[term]]
+name = "dihydrotestosterone"
+kind = "hormone"
+aliases = ["DHT", "5α-dihydrotestosterone"]
+pmid = "431680"
+
+[[term]]
+name = "estradiol"
+kind = "hormone"
+aliases = ["oestradiol", "17β-estradiol"]
+pmid = "748049"
+
+[[term]]
+name = "estrone"
+kind = "hormone"
+aliases = ["oestrone"]
+pmid = "748049"
+
+[[term]]
+name = "estriol"
+kind = "hormone"
+aliases = ["oestriol"]
+pmid = "7151744"
+
+[[term]]
+name = "progesterone"
+kind = "hormone"
+pmid = "558037"
+
+[[term]]
+name = "cortisol"
+kind = "hormone"
+aliases = ["hydrocortisone"]
+pmid = "6390695"
+
+[[term]]
+name = "cortisone"
+kind = "hormone"
+pmid = "10487705"
+
+[[term]]
+name = "corticosterone"
+kind = "hormone"
+pmid = "8728559"
+
+[[term]]
+name = "aldosterone"
+kind = "hormone"
+pmid = "11502277"
+
+[[term]]
+name = "androstenedione"
+kind = "hormone"
+pmid = "748049"
+
+[[term]]
+name = "androstenediol"
+kind = "hormone"
+pmid = "31866547"
+
+[[term]]
+name = "androsterone"
+kind = "hormone"
+pmid = "3740084"
+
+[[term]]
+name = "etiocholanolone"
+kind = "hormone"
+pmid = "3740084"
+
+[[term]]
+name = "dehydroepiandrosterone"
+kind = "hormone"
+aliases = ["DHEA"]
+pmid = "1347506"
+
+[[term]]
+name = "dehydroepiandrosterone sulfate"
+kind = "hormone"
+aliases = ["DHEA-S", "DHEAS", "DHEA sulfate", "dehydroepiandrosterone sulphate"]
+pmid = "2965551"
+
+[[term]]
+name = "17-hydroxyprogesterone"
+kind = "hormone"
+aliases = ["17-OHP"]
+pmid = "9471921"
+
+[[term]]
+name = "11-deoxycortisol"
+kind = "hormone"
+pmid = "33918915"
+
+[[term]]
+name = "luteinizing hormone"
+kind = "hormone"
+aliases = ["luteinising hormone", "LH"]
+pmid = "532989"
+
+[[term]]
+name = "follicle-stimulating hormone"
+kind = "hormone"
+aliases = ["follicle stimulating hormone", "FSH"]
+pmid = "532989"
+
+[[term]]
+name = "prolactin"
+kind = "hormone"
+pmid = "11197"
+
+[[term]]
+name = "oxytocin"
+kind = "hormone"
+pmid = "7827623"
+
+[[term]]
+name = "vasopressin"
+kind = "hormone"
+pmid = "7894546"
+
+[[term]]
+name = "melatonin"
+kind = "hormone"
+pmid = "561958"
+
+[[term]]
+name = "thyroxine"
+kind = "hormone"
+aliases = ["levothyroxine"]
+pmid = "11592446"
+
+[[term]]
+name = "triiodothyronine"
+kind = "hormone"
+pmid = "11592446"
+
+[[term]]
+name = "thyroid-stimulating hormone"
+kind = "hormone"
+aliases = ["thyrotropin", "TSH"]
+pmid = "11197"
+
+[[term]]
+name = "adrenocorticotropic hormone"
+kind = "hormone"
+aliases = ["ACTH", "corticotropin"]
+pmid = "3022670"
+
+[[term]]
+name = "growth hormone"
+kind = "hormone"
+pmid = "2052602"
+
+[[term]]
+name = "gonadotropin-releasing hormone"
+kind = "hormone"
+aliases = ["GnRH"]
+pmid = "1979499"
+
+[[term]]
+name = "kisspeptin"
+kind = "hormone"
+pmid = "22194715"
+
+[[term]]
+name = "serotonin"
+kind = "hormone"
+aliases = ["5-hydroxytryptamine", "5-HT"]
+pmid = "135926"
+
+[[term]]
+name = "dopamine"
+kind = "hormone"
+pmid = "561958"
+
+[[term]]
+name = "norepinephrine"
+kind = "hormone"
+aliases = ["noradrenaline"]
+pmid = "561958"
+
+[[term]]
+name = "epinephrine"
+kind = "hormone"
+aliases = ["adrenaline"]
+pmid = "6676583"
+
+[[term]]
+name = "acetylcholine"
+kind = "hormone"
+pmid = "2560359"
+
+[[term]]
+name = "histamine"
+kind = "hormone"
+pmid = "2560359"
+
+[[term]]
+name = "glutamate"
+kind = "hormone"
+pmid = "15158162"
+
+[[term]]
+name = "GABA"
+kind = "hormone"
+aliases = ["γ-aminobutyric acid", "gamma-aminobutyric acid"]
+pmid = "1347506"
+
+[[term]]
+name = "glycine"
+kind = "hormone"
+pmid = "11720889"
+
+[[term]]
+name = "anandamide"
+kind = "hormone"
+pmid = "33668469"
+
+[[term]]
+name = "2-arachidonoylglycerol"
+kind = "hormone"
+aliases = ["2-AG"]
+pmid = "37298078"
+
+[[term]]
+name = "nitric oxide"
+kind = "hormone"
+pmid = "9934946"
+
+[[term]]
+name = "kynurenine"
+kind = "hormone"
+pmid = "32157292"
+
+[[term]]
+name = "kynurenic acid"
+kind = "hormone"
+pmid = "37257315"
+
+[[term]]
+name = "quinolinic acid"
+kind = "hormone"
+pmid = "25285035"
+
+[[term]]
+name = "tryptophan"
+kind = "hormone"
+pmid = "302380"
+
+[[term]]
+name = "tyrosine"
+kind = "hormone"
+pmid = "1082812"
+
+[[term]]
+name = "retinoic acid"
+kind = "hormone"
+aliases = ["all-trans retinoic acid", "ATRA"]
+pmid = "1805431"
+
+[[term]]
+name = "vitamin D"
+kind = "hormone"
+aliases = ["calcitriol", "25-hydroxyvitamin D", "cholecalciferol"]
+pmid = "19116788"
+
+[[term]]
+name = "homocysteine"
+kind = "hormone"
+pmid = "11592446"
+
+# --- neurosteroid ---
+
+[[term]]
+name = "allopregnanolone"
+kind = "neurosteroid"
+aliases = ["3α,5α-tetrahydroprogesterone", "brexanolone"]
+pmid = "1347506"
+
+[[term]]
+name = "pregnenolone"
+kind = "neurosteroid"
+pmid = "1347506"
+
+[[term]]
+name = "pregnenolone sulfate"
+kind = "neurosteroid"
+aliases = ["pregnenolone sulphate"]
+pmid = "8547600"
+
+[[term]]
+name = "dihydroprogesterone"
+kind = "neurosteroid"
+aliases = ["5α-dihydroprogesterone"]
+pmid = "8274416"
+
+[[term]]
+name = "tetrahydrodeoxycorticosterone"
+kind = "neurosteroid"
+aliases = ["THDOC"]
+pmid = "8398145"
+
+[[term]]
+name = "3α-androstanediol"
+kind = "neurosteroid"
+aliases = ["3α-diol", "androstanediol"]
+pmid = "2965551"
+
+[[term]]
+name = "3β-androstanediol"
+kind = "neurosteroid"
+aliases = ["3β-diol"]
+pmid = "22194715"
+
+[[term]]
+name = "isopregnanolone"
+kind = "neurosteroid"
+pmid = "10066142"
+
+[[term]]
+name = "pregnanolone"
+kind = "neurosteroid"
+pmid = "9200546"
+
+[[term]]
+name = "ganaxolone"
+kind = "neurosteroid"
+pmid = "10760361"
+
+[[term]]
+name = "zuranolone"
+kind = "neurosteroid"
+pmid = "31275559"
+
+[[term]]
+name = "deoxycorticosterone"
+kind = "neurosteroid"
+pmid = "1347506"
+
+[[term]]
+name = "dihydrocorticosterone"
+kind = "neurosteroid"
+pmid = "31866547"
+
+[[term]]
+name = "tetrahydroprogesterone"
+kind = "neurosteroid"
+pmid = "8737416"
+
+# --- receptor ---
+
+[[term]]
+name = "GABA-A receptor"
+kind = "receptor"
+aliases = ["GABAA receptor", "GABA(A) receptor", "GABAA", "GABA-AR", "GABAAR", "GABAA-R"]
+pmid = "1347506"
+
+[[term]]
+name = "GABA-B receptor"
+kind = "receptor"
+aliases = ["GABAB receptor", "GABA(B) receptor"]
+pmid = "12878269"
+
+[[term]]
+name = "NMDA receptor"
+kind = "receptor"
+aliases = ["N-methyl-D-aspartate receptor", "NMDAR"]
+pmid = "10087031"
+
+[[term]]
+name = "AMPA receptor"
+kind = "receptor"
+pmid = "20230766"
+
+[[term]]
+name = "nicotinic acetylcholine receptor"
+kind = "receptor"
+aliases = ["nAChR"]
+pmid = "27404492"
+
+[[term]]
+name = "muscarinic receptor"
+kind = "receptor"
+aliases = ["muscarinic acetylcholine receptor"]
+pmid = "16620364"
+
+[[term]]
+name = "estrogen receptor"
+kind = "receptor"
+aliases = ["oestrogen receptor", "ER"]
+pmid = "2334847"
+
+[[term]]
+name = "opioid receptor"
+kind = "receptor"
+pmid = "16422954"
+
+[[term]]
+name = "cannabinoid receptor"
+kind = "receptor"
+pmid = "32357528"
+
+[[term]]
+name = "melatonin receptor"
+kind = "receptor"
+pmid = "10996140"
+
+[[term]]
+name = "adrenergic receptor"
+kind = "receptor"
+aliases = ["adrenoceptor"]
+pmid = "2560359"
+
+[[term]]
+name = "dopamine receptor"
+kind = "receptor"
+pmid = "943291"
+
+[[term]]
+name = "serotonin receptor"
+kind = "receptor"
+aliases = ["5-HT receptor"]
+pmid = "943291"
+
+[[term]]
+name = "retinoic acid receptor"
+kind = "receptor"
+aliases = ["RAR"]
+pmid = "10569251"
+
+[[term]]
+name = "retinoid X receptor"
+kind = "receptor"
+aliases = ["RXR"]
+pmid = "10569251"
+
+[[term]]
+name = "toll-like receptor"
+kind = "receptor"
+pmid = "29396460"
+
+[[term]]
+name = "membrane progesterone receptor"
+kind = "receptor"
+aliases = ["mPR"]
+pmid = "31239352"
+
+# --- symptom ---
+
+[[term]]
+name = "erectile dysfunction"
+kind = "symptom"
+aliases = ["impotence"]
+pmid = "135926"
+
+[[term]]
+name = "loss of libido"
+kind = "symptom"
+aliases = ["low libido", "decreased libido", "reduced libido", "hypoactive sexual desire"]
+pmid = "1383816"
+
+[[term]]
+name = "genital anesthesia"
+kind = "symptom"
+aliases = ["genital anaesthesia", "genital numbness", "penile numbness", "genital hypoesthesia"]
+pmid = "16709553"
+
+[[term]]
+name = "anorgasmia"
+kind = "symptom"
+aliases = ["orgasmic dysfunction", "pleasureless orgasm"]
+pmid = "1920732"
+
+[[term]]
+name = "delayed ejaculation"
+kind = "symptom"
+pmid = "7591493"
+
+[[term]]
+name = "premature ejaculation"
+kind = "symptom"
+pmid = "8889910"
+
+[[term]]
+name = "ejaculatory dysfunction"
+kind = "symptom"
+pmid = "9722759"
+
+[[term]]
+name = "sexual dysfunction"
+kind = "symptom"
+pmid = "1281075"
+
+[[term]]
+name = "anhedonia"
+kind = "symptom"
+pmid = "11098410"
+
+[[term]]
+name = "emotional blunting"
+kind = "symptom"
+aliases = ["emotional numbing", "emotional flattening"]
+pmid = "12135539"
+
+[[term]]
+name = "depression"
+kind = "symptom"
+aliases = ["depressive symptoms", "depressive disorder"]
+pmid = "459989"
+
+[[term]]
+name = "anxiety"
+kind = "symptom"
+pmid = "1927559"
+
+[[term]]
+name = "suicidal ideation"
+kind = "symptom"
+aliases = ["suicidality"]
+pmid = "11568740"
+
+[[term]]
+name = "cognitive impairment"
+kind = "symptom"
+aliases = ["cognitive dysfunction", "brain fog", "memory impairment"]
+pmid = "12450781"
+
+[[term]]
+name = "insomnia"
+kind = "symptom"
+aliases = ["sleep disturbance"]
+pmid = "7521327"
+
+[[term]]
+name = "fatigue"
+kind = "symptom"
+pmid = "7758639"
+
+[[term]]
+name = "depersonalization"
+kind = "symptom"
+aliases = ["depersonalisation", "derealization"]
+pmid = "20438240"
+
+[[term]]
+name = "gynecomastia"
+kind = "symptom"
+aliases = ["gynaecomastia"]
+pmid = "11197"
+
+[[term]]
+name = "testicular pain"
+kind = "symptom"
+pmid = "20300365"
+
+[[term]]
+name = "penile shrinkage"
+kind = "symptom"
+aliases = ["penile curvature", "Peyronie's disease"]
+pmid = "1101504"
+
+[[term]]
+name = "muscle atrophy"
+kind = "symptom"
+aliases = ["muscle wasting"]
+pmid = "27278802"
+
+[[term]]
+name = "dry skin"
+kind = "symptom"
+aliases = ["xerosis"]
+pmid = "16703787"
+
+[[term]]
+name = "dry eye"
+kind = "symptom"
+aliases = ["dry eyes"]
+pmid = "1363080"
+
+[[term]]
+name = "tinnitus"
+kind = "symptom"
+pmid = "29318957"
+
+[[term]]
+name = "neuropathic pain"
+kind = "symptom"
+pmid = "15338057"
+
+[[term]]
+name = "paresthesia"
+kind = "symptom"
+aliases = ["paraesthesia", "tingling"]
+pmid = "20368901"
+
+[[term]]
+name = "burning pain"
+kind = "symptom"
+aliases = ["burning sensation"]
+pmid = "19639097"
+
+[[term]]
+name = "hypoesthesia"
+kind = "symptom"
+aliases = ["numbness"]
+pmid = "10475369"
+
+[[term]]
+name = "allodynia"
+kind = "symptom"
+pmid = "19700243"
+
+[[term]]
+name = "hyperalgesia"
+kind = "symptom"
+pmid = "25161074"
+
+[[term]]
+name = "dysautonomia"
+kind = "symptom"
+aliases = ["autonomic dysfunction", "postural orthostatic tachycardia"]
+pmid = "12086764"
+
+[[term]]
+name = "orthostatic hypotension"
+kind = "symptom"
+pmid = "11284380"
+
+[[term]]
+name = "constipation"
+kind = "symptom"
+pmid = "11001240"
+
+[[term]]
+name = "urinary dysfunction"
+kind = "symptom"
+pmid = "36175394"
+
+[[term]]
+name = "hair loss"
+kind = "symptom"
+aliases = ["alopecia"]
+pmid = "9301590"
+
+[[term]]
+name = "weight gain"
+kind = "symptom"
+pmid = "7997146"
+
+[[term]]
+name = "hot flushes"
+kind = "symptom"
+aliases = ["hot flashes"]
+pmid = "7997146"
+
+[[term]]
+name = "headache"
+kind = "symptom"
+pmid = "6236956"
+
+[[term]]
+name = "irritability"
+kind = "symptom"
+pmid = "10847310"
+
+[[term]]
+name = "apathy"
+kind = "symptom"
+pmid = "15147109"
+
+[[term]]
+name = "akathisia"
+kind = "symptom"
+pmid = "24830690"
+
+[[term]]
+name = "joint pain"
+kind = "symptom"
+aliases = ["arthralgia"]
+pmid = "7918010"
+
+[[term]]
+name = "myalgia"
+kind = "symptom"
+aliases = ["muscle pain"]
+pmid = "9747221"
+
+[[term]]
+name = "infertility"
+kind = "symptom"
+pmid = "11197"
+
+[[term]]
+name = "hypogonadism"
+kind = "symptom"
+pmid = "10220123"
+
+[[term]]
+name = "night sweats"
+kind = "symptom"
+pmid = "37440735"
+
+[[term]]
+name = "restless legs"
+kind = "symptom"
+aliases = ["restless legs syndrome"]
+pmid = "27332991"
+
+[[term]]
+name = "psychosis"
+kind = "symptom"
+pmid = "1082812"
+
+[[term]]
+name = "inflammatory bowel disease"
+kind = "symptom"
+aliases = ["Crohn's disease", "ulcerative colitis"]
+pmid = "6236956"
+
+# --- syndrome ---
+
+[[term]]
+name = "post-SSRI sexual dysfunction"
+kind = "syndrome"
+aliases = ["post SSRI sexual dysfunction"]
+pmid = "22509378"
+
+[[term]]
+name = "post-finasteride syndrome"
+kind = "syndrome"
+aliases = ["post finasteride syndrome"]
+pmid = "24855036"
+
+[[term]]
+name = "post-accutane syndrome"
+kind = "syndrome"
+aliases = ["post-isotretinoin syndrome", "post accutane syndrome"]
+pmid = "34719438"
