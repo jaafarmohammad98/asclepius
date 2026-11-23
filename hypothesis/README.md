@@ -147,7 +147,8 @@ bundles[0].as_dict()  # finding, labels, queries, supporting, contradicting, ver
 
 - **Which findings.** Strong and suggestive ones only. Noise-level findings get no bundle
   (spec H2), and neither do reference-range descriptions, which test nothing. Intervention
-  outcomes are counts, not tests, and are not in the findings export, so they get none either.
+  outcomes are counts, not tests, and are not in the findings export, so they get none either;
+  M4-07 gathers evidence for them.
 - **Group statistics only.** A bundle holds the finding's names (marker, groups, sex), its
   group sizes, medians or shares, effect size and interval, p and q values and Tier A
   re-run, exactly as the export shows them (counts below 5 already hidden there). No other
