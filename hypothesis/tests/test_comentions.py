@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
-from hypothesis_engine.comentions import co_mentions
+import pytest
+
+from hypothesis_engine.comentions import co_mentions, library_co_mentions, seed_problems
+from hypothesis_engine.library import Library, write_build
 from hypothesis_engine.passages import Passage
+from hypothesis_engine.private import PrivatePaper
+from hypothesis_engine.pubmed import Paper
 from hypothesis_engine.vocabulary import Term, Vocabulary
 
 VOCABULARY = Vocabulary(
@@ -113,3 +118,62 @@ def test_a_plural_in_capitals_counts():
 def test_a_symbol_followed_by_a_greek_letter_is_another_name():
     assert _nodes("BDNFα and BDNF-β were measured.") == {"BDNF"}  # the second, after a hyphen, counts
     assert _nodes("BDNFα was measured.") == set()
+
+
+SEEDED = Vocabulary(
+    terms=(
+        Term("AR", "gene", ("androgen receptor",), "100"),
+        Term("BDNF", "gene", (), "100"),
+        Term("SET", "gene", (), "100"),
+        Term("anhedonia", "symptom", (), "200"),
+        Term("tinnitus", "symptom", (), "999"),
+    ),
+    ambiguous=frozenset({"SET"}),
+)
+
+
+@pytest.fixture
+def seeded_library(tmp_path):
+    path = tmp_path / "library.sqlite"
+    papers = [
+        Paper("100", "A study", "In a set of men, androgen receptor and BDNF fell.", None, None, None, 2020),
+        Paper(
+            "200",
+            "Emotional blunting",
+            "Anhedonia persisted after the drug was stopped.",
+            None,
+            None,
+            None,
+            2021,
+        ),
+    ]
+    # a private PDF naming both: it has no PMID, so it is not counted (spec G5)
+    private = [PrivatePaper("private-0123456789abcdef", "cohort.pdf", "Cohort", "Anhedonia and BDNF.")]
+    found_by = {"100": [("PFS", 1)], "200": [("PSSD", 1)]}
+    write_build(path, papers, found_by, "sha", "2026-11-23T00:00:00+00:00", private)
+    with Library.open(path) as library:
+        yield library
+
+
+def test_a_seed_is_verified_when_its_paper_is_in_the_library_and_names_the_term(seeded_library):
+    problems = seed_problems(SEEDED, seeded_library)
+    assert set(problems) == {"SET", "tinnitus"}
+    assert problems["tinnitus"] == "its paper 999 is not in the library"
+    assert problems["SET"] == "it is not found in its paper 100"
+
+
+def test_the_library_s_co_mentions_leave_out_terms_whose_seed_fails(seeded_library):
+    found = library_co_mentions(seeded_library, SEEDED)
+    assert set(found.nodes) == {"AR", "BDNF", "anhedonia"}
+    (edge,) = found.edges
+    assert (edge.a, edge.b, edge.passage_ids) == ("AR", "BDNF", ("100:1",))
+    assert found.left_out == {
+        "SET": "it is not found in its paper 100",
+        "tinnitus": "its paper 999 is not in the library",
+    }
+
+
+def test_a_private_paper_s_passages_make_no_node_or_edge(seeded_library):
+    found = library_co_mentions(seeded_library, SEEDED)
+    assert found.nodes["anhedonia"].passage_ids == ("200:1",)
+    assert found.nodes["BDNF"].passage_ids == ("100:1",)

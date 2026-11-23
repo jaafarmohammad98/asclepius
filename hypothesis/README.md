@@ -280,11 +280,12 @@ passage (`citations.quote_span` finds where) and a link to the paper.
 ## Co-mentions
 
 The systems analysis (milestone 6) builds its knowledge graph from terms of a curated
-vocabulary, `hypothesis_engine/vocabulary.toml`: 360 HGNC gene symbols (steroid,
+vocabulary, `hypothesis_engine/vocabulary.toml`: some 350 HGNC gene symbols (steroid,
 neurotransmitter, inflammation, neuropathy, epigenetic, retinoid and metabolic biology) with
 their aliases, plus hormones, neurosteroids, receptors, symptoms and the three syndromes.
-`library_co_mentions` finds the terms in every passage of the library and joins two terms
-found in the same passage.
+`library_co_mentions` finds the terms in every passage of the library's PubMed papers and
+joins two terms found in the same passage. The researcher's private PDFs are not read: what
+enters the graph must trace to a PMID.
 
 ```python
 from hypothesis_engine.comentions import library_co_mentions
@@ -299,15 +300,14 @@ found.nodes["BDNF"]  # Node(name, kind, papers, passage_ids)
 
 - **Matching.** Symbols match case-sensitively and whole ("AR" is not found in "ARX" or
   "Ar"); lower-case names match with case aside. Ambiguous symbols ("AR", "CAT", "REST"...)
-  count only with a gene word ("gene", "receptor", "expression", "polymorphism"...) within
-  three words, so "AR (augmented reality)" is no node and "AR gene expression" is.
+  count only with a gene word ("gene", "receptor", "expression", "polymorphism"...) nearby
+  (`GENE_WORD_WINDOW` words), so "AR (augmented reality)" is no node and "AR gene expression" is.
 - **Edges.** An edge's weight is the number of distinct papers, and it keeps the id of every
   passage it was counted from. It says the terms were mentioned together, never that one
   causes the other.
 - **Seeds.** Every term names a library paper in which it is found (`pmid`). A term whose
   paper has left the library, or no longer names it, is left out (`left_out` says why), so
-  nothing uncited enters the graph. The full library (some 40,000 passages) takes about
-  5 seconds.
+  nothing uncited enters the graph. The full library takes a few seconds.
 
 ## The LLM
 

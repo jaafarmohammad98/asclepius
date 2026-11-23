@@ -10,12 +10,12 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Iterable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from itertools import combinations
 
 from hypothesis_engine.library import Library
 from hypothesis_engine.passages import Passage, split
-from hypothesis_engine.vocabulary import Vocabulary, seed_problems
+from hypothesis_engine.vocabulary import Kind, Vocabulary
 
 
 @dataclass(frozen=True)
@@ -33,7 +33,7 @@ class Edge:
 @dataclass(frozen=True)
 class Node:
     name: str
-    kind: str
+    kind: Kind
     papers: int  # distinct papers it is found in
     passage_ids: tuple[str, ...]  # every passage it is found in, in the order read
 
@@ -69,13 +69,29 @@ def _ids(passages: list[Passage]) -> tuple[str, ...]:
     return tuple(p.id for p in passages)
 
 
-def library_co_mentions(library: Library, vocabulary: Vocabulary) -> CoMentions:
-    """The co-mentions in every passage of the library's current version.
+def seed_problems(vocabulary: Vocabulary, library: Library) -> dict[str, str]:
+    """Why each term whose seed citation fails cannot enter the graph, by name (spec G5).
 
-    Terms whose seed citation fails (`seed_problems`) are left out, so nothing uncited enters
-    the graph (spec G5); `left_out` says which and why.
+    A seed holds when its PMID is a PubMed paper of the library's current version and the term
+    is found in that paper's title or text, by the same rules as in passages.
+    """
+    problems = {}
+    for term in vocabulary.terms:
+        paper = library.document(term.pmid)
+        if paper is None or paper.private:
+            problems[term.name] = f"its paper {term.pmid} is not in the library"
+        elif term.name not in vocabulary.find(f"{paper.title}\n{paper.text}"):
+            problems[term.name] = f"it is not found in its paper {term.pmid}"
+    return problems
+
+
+def library_co_mentions(library: Library, vocabulary: Vocabulary) -> CoMentions:
+    """The co-mentions in the passages of the library's current version's PubMed papers.
+
+    Only what traces to a PMID enters the graph (spec G5): the researcher's private PDFs are not
+    read, and terms whose seed citation fails (`seed_problems`) are left out; `left_out` says
+    which and why.
     """
     problems = seed_problems(vocabulary, library)
-    cited = vocabulary.without(problems)
-    passages = (p for document in library.documents() for p in split(document))
-    return CoMentions(**{**co_mentions(passages, cited).__dict__, "left_out": problems})
+    passages = (p for d in library.documents() if not d.private for p in split(d))
+    return replace(co_mentions(passages, vocabulary.without(problems)), left_out=problems)

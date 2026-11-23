@@ -22,12 +22,23 @@ import tomllib
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-
-from hypothesis_engine.library import Library
+from typing import Literal, cast, get_args
 
 DEFAULT_VOCABULARY = Path(__file__).with_name("vocabulary.toml")
-KINDS = ("gene", "hormone", "neurosteroid", "receptor", "symptom", "syndrome")
+Kind = Literal["gene", "hormone", "neurosteroid", "receptor", "symptom", "syndrome"]
+KINDS: tuple[Kind, ...] = get_args(Kind)
+GENE_WORD_WINDOW = 3  # words either side of an ambiguous name
+GENE_WORDS = frozenset(
+    {
+        "gene", "genes", "genetic", "receptor", "receptors", "expression", "expressed",
+        "polymorphism", "polymorphisms", "variant", "variants", "allele", "alleles",
+        "mrna", "snp", "snps", "knockout", "transcript", "transcripts",
+    }
+)  # fmt: skip
+
 _PMID = re.compile(r"[1-9][0-9]*")
+_NAME_CHARS = "A-Za-z0-9α-ωΑ-Ω"  # a name is not found next to one of these, as it would go on
+_WORD = re.compile(r"[A-Za-z0-9]+")
 
 
 class VocabularyError(Exception):
@@ -37,7 +48,7 @@ class VocabularyError(Exception):
 @dataclass(frozen=True)
 class Term:
     name: str  # the node's name: an HGNC symbol, or the usual name
-    kind: str  # one of KINDS
+    kind: Kind
     aliases: tuple[str, ...]
     pmid: str  # a library paper in which the term is found (spec G5)
 
@@ -50,7 +61,10 @@ class Term:
 class Vocabulary:
     terms: tuple[Term, ...]
     ambiguous: frozenset[str] = frozenset()
-    _matcher: _Matcher | None = field(default=None, init=False, repr=False, compare=False)
+    _matcher: _Matcher = field(init=False, repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "_matcher", _Matcher(self))  # a frozen dataclass's derived field
 
     def without(self, names: Iterable[str]) -> Vocabulary:
         """This vocabulary less the terms named."""
@@ -61,9 +75,6 @@ class Vocabulary:
 
     def find(self, text: str) -> set[str]:
         """The names of the terms found in `text`."""
-        if self._matcher is None:
-            object.__setattr__(self, "_matcher", _Matcher(self))
-        assert self._matcher is not None
         return self._matcher.find(text)
 
 
@@ -74,12 +85,12 @@ def load_vocabulary(path: Path = DEFAULT_VOCABULARY) -> Vocabulary:
     try:
         data = tomllib.loads(path.read_text(encoding="utf-8"))
     except (OSError, tomllib.TOMLDecodeError) as error:
-        raise VocabularyError(f"{path}: {error}") from error
+        raise fail(str(error)) from error
     entries = data.get("term")
     if not isinstance(entries, list) or not entries:
         raise fail("no [[term]] entries")
     terms: list[Term] = []
-    owner: dict[str, str] = {}  # each name to its term
+    term_of: dict[str, str] = {}  # each name (a term's own or an alias) to its term's name
     for number, entry in enumerate(entries, start=1):
         name, kind, aliases, pmid = (entry.get(k) for k in ("name", "kind", "aliases", "pmid"))
         if not isinstance(name, str) or not name.strip():
@@ -93,47 +104,19 @@ def load_vocabulary(path: Path = DEFAULT_VOCABULARY) -> Vocabulary:
             raise fail(f"term {name!r} has aliases that are not a list of names")
         if not isinstance(pmid, str) or not _PMID.fullmatch(pmid):
             raise fail(f"term {name!r} has no PMID")
-        term = Term(name, kind, tuple(a.strip() for a in aliases), pmid)
+        term = Term(name, cast(Kind, kind), tuple(a.strip() for a in aliases), pmid)
         for each in term.names:
-            if each in owner:
+            if each in term_of:
                 raise fail(f"{each!r} names two terms")
-            owner[each] = name
+            term_of[each] = name
         terms.append(term)
     ambiguous = data.get("ambiguous", [])
     if not isinstance(ambiguous, list) or not all(isinstance(a, str) for a in ambiguous):
         raise fail("ambiguous is not a list of names")
     for each in ambiguous:
-        if each not in owner:
+        if each not in term_of:
             raise fail(f"ambiguous name {each!r} is no term's name")
     return Vocabulary(tuple(terms), frozenset(ambiguous))
-
-
-def seed_problems(vocabulary: Vocabulary, library: Library) -> dict[str, str]:
-    """Why each term whose seed citation fails cannot enter the graph, by name (spec G5).
-
-    A seed holds when its PMID is a paper of the library's current version and the term is
-    found in that paper's title or text, by the same rules as in passages.
-    """
-    problems = {}
-    for term in vocabulary.terms:
-        paper = library.document(term.pmid)
-        if paper is None or paper.private:
-            problems[term.name] = f"its paper {term.pmid} is not in the library"
-        elif term.name not in vocabulary.find(f"{paper.title}\n{paper.text}"):
-            problems[term.name] = f"it is not found in its paper {term.pmid}"
-    return problems
-
-
-GENE_WORD_WINDOW = 3  # words either side of an ambiguous name
-GENE_WORDS = frozenset(
-    {
-        "gene", "genes", "genetic", "receptor", "receptors", "expression", "expressed",
-        "polymorphism", "polymorphisms", "variant", "variants", "allele", "alleles",
-        "mrna", "snp", "snps", "knockout", "transcript", "transcripts",
-    }
-)  # fmt: skip
-_EDGE = "A-Za-z0-9α-ωΑ-Ω"  # a name is not found next to one of these
-_WORD = re.compile(r"[A-Za-z0-9]+")
 
 
 def _folds(name: str) -> bool:
@@ -179,7 +162,7 @@ class _Matcher:
         for name, term_name in list(self._exact.items()):
             if name[0].islower():  # it may also start a sentence
                 self._exact.setdefault(name[0].upper() + name[1:], term_name)
-        around = f"(?<![{_EDGE}])(?:{{}})(?![{_EDGE}])"
+        around = f"(?<![{_NAME_CHARS}])(?:{{}})(?![{_NAME_CHARS}])"
         self._patterns = []
         if self._exact:
             self._patterns.append(re.compile(around.format(f"{_trie(self._exact)}s?")))
@@ -196,6 +179,7 @@ class _Matcher:
         raise AssertionError(matched)
 
     def _counts(self, match: re.Match[str], name: str) -> bool:
+        """Whether the match counts: always, unless the name is ambiguous and no gene word is near."""
         if name not in self._ambiguous:
             return True
         text = match.string

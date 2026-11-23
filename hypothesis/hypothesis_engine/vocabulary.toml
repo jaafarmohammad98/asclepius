@@ -15,7 +15,8 @@
 # in some paper of the built library were kept, each with the first such paper as its PMID.
 #
 # `ambiguous` names are also ordinary words or abbreviations ("CAT", "REST", "STAR" a trial,
-# "ER" the emergency room, "GLA" gamma-linolenic acid): one counts only with a gene word
+# "ER" the emergency room, "GLA" gamma-linolenic acid, "PRX" paroxetine, "LEP" laser-evoked
+# potentials, "KMO" the Kaiser-Meyer-Olkin statistic): one counts only with a gene word
 # ("gene", "receptor", "expression", "polymorphism"...) within three words. Left out, as the
 # gene word is often near their other meaning in this literature: GC (granule cells, genomic
 # control), ARC (the arcuate nucleus), NTS (the nucleus of the solitary tract), SET (the SET
@@ -31,6 +32,9 @@ ambiguous = [
   "GLA",
   "INS",
   "KL",
+  "KMO",
+  "LEP",
+  "MBP",
   "NR1",
   "POR",
   "RAR",
@@ -1718,12 +1722,6 @@ pmid = "38713210"
 name = "SARM1"
 kind = "gene"
 pmid = "40851429"
-
-[[term]]
-name = "PRX"
-kind = "gene"
-aliases = ["periaxin"]
-pmid = "36740106"
 
 [[term]]
 name = "GJB1"
