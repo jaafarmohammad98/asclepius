@@ -339,7 +339,10 @@ To make a leak show, the datasets' record ids read `pt-...-x` and every lab valu
 digits of its own after the decimal point (`1140.0000123`); the lab groups are of even size,
 so no median is one record's value. They are in `tests/fixtures/privacy/` with their findings
 exports; after a change to either engine's findings, write them again with the analysis
-engine's environment: `uv run --project ../analysis python tests/privacy_fixture.py`.
+engine's environment: `uv run --project ../analysis python tests/privacy_fixture.py`. The
+analysis engine's suite does the same into a temporary folder
+(`analysis/tests/test_privacy_fixture.py`) and fails when the result differs from the committed
+files (the run date aside), so a change to its export cannot leave them stale.
 
 ## Topics
 

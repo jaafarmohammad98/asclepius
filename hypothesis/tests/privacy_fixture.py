@@ -9,6 +9,9 @@ Run it from `hypothesis/` with the analysis engine's environment (it is not one 
 package's dependencies), after a change to either engine's findings:
 
     uv run --project ../analysis python tests/privacy_fixture.py
+
+The analysis engine's suite (`analysis/tests/test_privacy_fixture.py`) writes them again and
+fails when they differ from these, so a change to the analysis export cannot leave them stale.
 """
 
 from __future__ import annotations
@@ -113,11 +116,16 @@ def _finish(workspace: Workspace) -> None:
         sys.exit(f"the analysis run did not finish: {status}")
 
 
+def write(out: Path) -> None:
+    """Write the two datasets and their findings exports to `out`, replacing what is there."""
+    shutil.rmtree(out, ignore_errors=True)
+    lab(out / "lab")
+    self_report(out / "self_report")
+    shutil.rmtree(out / "work")
+
+
 def main() -> None:
-    shutil.rmtree(OUT, ignore_errors=True)
-    lab(OUT / "lab")
-    self_report(OUT / "self_report")
-    shutil.rmtree(OUT / "work")
+    write(OUT)
     print(f"wrote {OUT}")
 
 
