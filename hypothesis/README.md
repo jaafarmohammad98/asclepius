@@ -160,7 +160,8 @@ bundles[0].as_dict()  # finding, labels, queries, supporting, contradicting, ver
   activity in ...`; free cortisol / free cortisone is read as 11-beta-HSD2 the other way),
   and for self-report findings the drug and the symptom, onset or course (`depression more
   often after paroxetine than after other drugs`, `persistent depression after stopping
-  paroxetine`). Group names that name no one ("cluster 2", "other causal drugs") are left out.
+  paroxetine`; an onset or course reads `symptoms recovered more often after ...`, with no
+  "persistent" search). Group names that name no one ("cluster 2", "other causal drugs") are left out.
 - **Supporting and contradicting.** Every query has a stance: the finding's direction is
   supporting, the opposite direction or "no difference" contradicting. A passage is filed
   under the stance of the search that ranked it best (on a tie, contradicting), and offered

@@ -208,3 +208,25 @@ def test_a_marker_is_also_searched_on_its_own():
     marker = next(f for f in read_findings(LAB) if f.marker_id == "androsterone")
     supporting, contradicting = by_stance(marker)
     assert "lower Androsterone levels" in supporting and "higher Androsterone levels" in contradicting
+
+
+def test_an_onset_or_trajectory_finding_is_searched_as_a_course_not_a_symptom():
+    (symptom,) = [f for f in read_findings(SELF_REPORT) if f.marker_name == "depression"]
+    recovered = replace(
+        symptom,
+        comparison="drug profile: trajectory",
+        marker_id="trajectory:recovered",
+        marker_name="recovered",
+    )
+    supporting, contradicting = by_stance(recovered)  # recovery reported more often after paroxetine
+    assert "symptoms recovered more often after paroxetine than after other drugs" in supporting
+    assert "symptoms recovered less often after paroxetine than after other drugs" in contradicting
+    assert not [q for q in supporting + contradicting if "persistent" in q]
+    onset = replace(
+        symptom,
+        comparison="drug profile: onset",
+        marker_id="onset:during_use",
+        marker_name="onset during use",
+    )
+    supporting, _ = by_stance(onset)
+    assert supporting == ["symptom onset during use more often after paroxetine than after other drugs"]

@@ -2,7 +2,7 @@
 
 The input is the analysis findings export (the web app's `findings.csv`, `asclepius.web.export`),
 of a lab-report or a self-report run. `read_findings` keeps the finding rows and, of each, the
-group statistics only: no column outside `GROUP_COLUMNS` is read, so a record id or an
+group statistics only: no column outside `REQUIRED`, `COUNTS`, `STATISTICS` and `TEXTS` is read, so a record id or an
 individual value cannot reach a bundle even if a later export carried one.
 """
 
@@ -56,7 +56,8 @@ COMPARATORS = {
     "healthy control": "healthy controls",
     "SSRI-exposed control": "SSRI users without lasting symptoms",
 }
-# The enzyme an enzyme-activity ratio stands for (analysis spec A2), and whether the ratio rises
+# The enzyme an enzyme-activity ratio stands for (analysis spec A2; asclepius.ratios.RATIOS, worded
+# as papers name the enzyme; a ratio added there needs a line here), and whether the ratio rises
 # with its activity. Free cortisol / free cortisone falls as 11-beta-HSD2 turns cortisol into cortisone.
 ENZYMES = {
     "androsterone/etiocholanolone": ("5-alpha reductase", True),
@@ -187,7 +188,7 @@ REQUIRED = (
 )
 
 
-class FindingsError(ValueError):
+class FindingsError(Exception):
     """The file is not an analysis findings export."""
 
 
@@ -237,6 +238,8 @@ def _finding(row: dict[str, str]) -> Finding:
 
 @dataclass(frozen=True)
 class Query:
+    """One search of the library for a finding, and the stance a passage it finds is filed under."""
+
     text: str
     stance: str  # SUPPORTING: what a passage agreeing with the finding would say; CONTRADICTING: the opposite
 
@@ -300,22 +303,23 @@ def _marker_queries(finding: Finding, direction: int) -> list[Query]:
 
 
 def _report_queries(finding: Finding, direction: int) -> list[Query]:
-    """A self-report finding: how often authors who took a drug report a symptom, onset or course."""
+    """A self-report finding: how often authors who took a drug report a symptom, an onset or a
+    course (`onset:` and `trajectory:` rows, which are not symptoms: "recovered" is no lasting harm)."""
     word = {1: "more", -1: "less"}
-    what = finding.marker_name
+    kind = finding.marker_id.split(":", 1)[0]
+    what = {"onset": "symptom ", "trajectory": "symptoms "}.get(kind, "") + finding.marker_name
     drug = _named(finding.group_a)
     if drug is None:  # a symptom subgroup: the cluster has no name, what it differs in has
-        return [
-            Query(f"{what} {word[direction]} often in a subgroup with lasting symptoms", SUPPORTING),
-            Query(f"{what} {word[-direction]} often in a subgroup with lasting symptoms", CONTRADICTING),
-        ]
+        where = "in a subgroup with lasting symptoms"
+    else:
+        where = f"after {drug} than after {_named(finding.group_b) or 'other drugs'}"
     queries = [
-        Query(f"{what} {word[direction]} often after {drug} than after other drugs", SUPPORTING),
-        Query(f"{what} {word[-direction]} often after {drug} than after other drugs", CONTRADICTING),
+        Query(f"{what} {word[sign]} often {where}", stance)
+        for stance, sign in ((SUPPORTING, direction), (CONTRADICTING, -direction))
     ]
-    queries.append(
-        Query(f"persistent {what} after stopping {drug}", SUPPORTING if direction > 0 else CONTRADICTING)
-    )
+    if drug is not None and kind == "symptom":
+        stance = SUPPORTING if direction > 0 else CONTRADICTING
+        queries.append(Query(f"persistent {what} after stopping {drug}", stance))
     return queries
 
 
