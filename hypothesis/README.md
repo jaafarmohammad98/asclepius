@@ -241,14 +241,16 @@ Every hypothesis has the five sections of the spec:
   `"label": "candidate for study"` and its **known risks**: the library is searched for
   passages naming it (`adverse effects of bupropion`, `bupropion side effects`, ...; public
   passages only, at most 8), and the LLM lists the risks they state, each with a passage id
-  and a quote (prompt `risks-1`). Every quote is checked like any citation; failing ones are
-  sent back, then removed (`record.risks_removed`). With no risk left, or no passage naming it,
-  `risks_note` is "risks not established in the library" (with why, when the LLM could not be
-  asked). The prompts say an intervention may be named only as something to study.
-- **The notice.** Any hypothesis with a candidate, any intervention's hypothesis or failure,
-  and the file holding them start with `"notice"`: "For researchers only: treatment candidates
+  and a quote (prompt `risks-1`). Every quote is checked like any citation, and must also be in
+  the passage it cites (the one naming the intervention: elsewhere in the paper it may be
+  another drug's risk); failing ones are sent back, then removed (`record.risks_removed`). With
+  no risk left, or no passage naming it, `risks_note` is "risks not established in the library";
+  when the LLM gave no usable answer it is "risks not checked: ..." with why. An intervention
+  named only in the LLM's prose, neither listed by it nor in the export, cannot be recognised. The prompts say an intervention may be named only as something to study.
+- **The notice.** Every candidate, any hypothesis with one, any intervention's hypothesis or
+  failure, and the file holding them start with `"notice"`: "For researchers only: treatment candidates
   are ideas for study, not treatment advice. No one should start, stop or change a treatment
-  because of them." `Hypothesis.as_dict`, `Failure.as_dict` and `hypotheses.export` add it
+  because of them." `Candidate.as_dict`, `Hypothesis.as_dict`, `Failure.as_dict` and `hypotheses.export` add it
   themselves, so nothing holding a candidate can be written without it.
 - **What is sent.** The finding's group statistics and labels, and the bundle's public
   passages; for risks, the intervention's name and public passages naming it. Private papers' passages are left out of the prompt for now, so a finding whose

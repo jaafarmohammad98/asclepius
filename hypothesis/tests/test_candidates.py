@@ -79,6 +79,15 @@ def test_a_risk_whose_quote_is_not_in_the_paper_is_removed(generate):
     assert "damaged the liver" in server.received[2]["messages"][-1]["content"]  # sent back to fix
 
 
+def test_a_risk_quote_from_the_paper_but_not_the_passage_offered_is_removed(generate):
+    # paper 15's title is in the paper, not in the passage naming bupropion: not this risk's evidence
+    title = {"risks": [{"risk": "Unsafe.", "passage_id": "15:1", "quote": "Bupropion safety"}]}
+    [hypothesis] = generate(FakeServer(NAMING_BUPROPION, title, title, title))
+    [candidate] = hypothesis.candidates
+    assert candidate.risks == ()
+    assert "not found word for word in passage 15:1" in candidate.record["risks_removed"][0]
+
+
 def test_a_risk_citing_a_passage_not_given_is_sent_back(generate):
     elsewhere = {"risks": [{"risk": "Something.", "passage_id": "10:1", "quote": "Androsterone was lower"}]}
     server = FakeServer(NAMING_BUPROPION, elsewhere, RISK)
@@ -88,7 +97,7 @@ def test_a_risk_citing_a_passage_not_given_is_sent_back(generate):
     assert "which was not given" in server.received[2]["messages"][-1]["content"]
 
 
-def test_an_llm_error_on_the_risks_still_says_risks_not_established(generate):
+def test_an_llm_error_on_the_risks_says_they_were_not_checked(generate):
     def answers_once(url: str, body: dict[str, Any]) -> dict[str, Any]:
         if "known risks" in body["messages"][0]["content"]:
             raise LLMError("no local model server answered")
@@ -96,8 +105,9 @@ def test_an_llm_error_on_the_risks_still_says_risks_not_established(generate):
 
     [hypothesis] = generate(answers_once)
     [candidate] = hypothesis.candidates
-    assert candidate.risks_note is not None and candidate.risks_note.startswith(NO_RISKS)
-    assert "did not finish" in candidate.risks_note
+    assert (
+        candidate.risks_note == "risks not checked: the LLM did not answer (no local model server answered)"
+    )
 
 
 def test_an_export_intervention_mentioned_but_not_listed_is_still_a_candidate(generate):
@@ -217,7 +227,8 @@ def test_the_hypotheses_command_marks_candidates_and_writes_the_notice(built, tm
     assert {"sildenafil", "bupropion"} <= names
     for candidate in every_candidate(written):
         assert candidate["label"] == CANDIDATE
-        assert candidate["risks"] or candidate["risks_note"].startswith(NO_RISKS)
+        assert candidate["notice"] == NOTICE
+        assert candidate["risks"] or candidate["risks_note"] == NO_RISKS
     bupropion = next(c for c in every_candidate(written) if c["intervention"] == "bupropion")
     assert [r["paper_id"] for r in bupropion["risks"]] == ["15"]
 

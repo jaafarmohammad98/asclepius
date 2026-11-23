@@ -33,7 +33,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass
 from typing import Any
 
-from hypothesis_engine.citations import Problem, problem
+from hypothesis_engine.citations import Problem, problem, quoted
 from hypothesis_engine.evidence import (
     INTERVENTION,
     REPORTED,
@@ -67,6 +67,7 @@ MEASURES = (
 SECTIONS = ("mechanism", "supporting", "contradicting", "test", "candidates")
 CANDIDATE = "candidate for study"  # on every intervention a hypothesis names (spec H3)
 NO_RISKS = "risks not established in the library"
+UNCHECKED = "risks not checked"  # the lookup did not finish: not a finding that there are none
 NOTICE = (
     "For researchers only: treatment candidates are ideas for study, not treatment advice. "
     "No one should start, stop or change a treatment because of them."
@@ -137,6 +138,11 @@ class FindingSection:
     dataset_fingerprint: str
     run_date: str | None
 
+    @property
+    def is_intervention(self) -> bool:
+        """An intervention's reported outcomes, not a finding of a test."""
+        return self.comparison == INTERVENTION
+
 
 @dataclass(frozen=True)
 class Claim:
@@ -194,14 +200,16 @@ class Candidate:
 
     @property
     def risks_note(self) -> str | None:
-        """With no risk: "risks not established in the library", and why when it was not looked for."""
+        """With no risk: "risks not established in the library", or "risks not checked" and why
+        when the lookup did not finish."""
         if self.risks:
             return None
-        return NO_RISKS + (f" ({self.unchecked})" if self.unchecked else "")
+        return f"{UNCHECKED}: {self.unchecked}" if self.unchecked else NO_RISKS
 
     def as_dict(self) -> dict[str, object]:
-        """The candidate with its label and its risks, or the note saying none are established."""
+        """The candidate with the notice, its label and its risks, or the note saying why there are none."""
         return {
+            "notice": NOTICE,
             "intervention": self.intervention,
             "label": self.label,
             "risks": [asdict(r) for r in self.risks],
@@ -226,7 +234,7 @@ class Hypothesis:
         """The five sections in order, the candidates, then the record, as plain JSON-ready values;
         `NOTICE` first whenever there is a candidate or the finding is an intervention's."""
         return _noticed(
-            bool(self.candidates) or self.finding.comparison == INTERVENTION,
+            bool(self.candidates) or self.finding.is_intervention,
             {
                 "finding": asdict(self.finding),
                 "mechanism": [asdict(c) for c in self.mechanism],
@@ -250,7 +258,7 @@ class Failure:
     def as_dict(self) -> dict[str, object]:
         """The failure as plain JSON-ready values; `NOTICE` first when the finding is an intervention's."""
         return _noticed(
-            self.finding.comparison == INTERVENTION,
+            self.finding.is_intervention,
             {"finding": asdict(self.finding), "reasons": list(self.reasons), "record": self.record},
         )
 
@@ -265,7 +273,8 @@ def export(results: Iterable[Hypothesis | Failure]) -> dict[str, object]:
     results = list(results)
     made = [r.as_dict() for r in results if isinstance(r, Hypothesis)]
     failed = [r.as_dict() for r in results if isinstance(r, Failure)]
-    return _noticed(any("notice" in r for r in (*made, *failed)), {"hypotheses": made, "failed": failed})
+    applies = any(r.finding.is_intervention or isinstance(r, Hypothesis) and r.candidates for r in results)
+    return _noticed(applies, {"hypotheses": made, "failed": failed})
 
 
 class Malformed(Exception):
@@ -552,14 +561,14 @@ def candidate_names(bundle: EvidenceBundle, checked: _Checked, interventions: It
     )
     groups = {g.casefold() for g in (bundle.finding.group_a, bundle.finding.group_b) if g}
     own = [bundle.finding.marker_name] if is_intervention(bundle.finding) else []
-    found = [n for n in interventions if n.casefold() not in groups and _names(n, shown)]
+    found = [n for n in interventions if n.casefold() not in groups and _mentions(n, shown)]
     names: dict[str, str] = {}
     for name in (*own, *checked.candidates, *found):
         names.setdefault(name.casefold(), name)
     return list(names.values())
 
 
-def _names(name: str, text: str) -> bool:
+def _mentions(name: str, text: str) -> bool:
     """Whether `text` names the intervention, as a whole word or words, case aside."""
     words = r"[\s_-]+".join(re.escape(w) for w in re.split(r"[\s_-]+", name.strip()) if w)
     return bool(words) and re.search(rf"(?<!\w){words}(?!\w)", text, re.IGNORECASE) is not None
@@ -581,7 +590,7 @@ def risk_passages(name: str, searcher: Searcher, k: int = RISK_PASSAGES) -> list
     best: dict[str, Passage] = {}
     for query in risk_queries(name):
         for hit in searcher.search(query, k):
-            if hit.private or hit.text.strip() == hit.title.strip() or not _names(name, hit.text):
+            if hit.private or hit.text.strip() == hit.title.strip() or not _mentions(name, hit.text):
                 continue
             if hit.passage_id not in best or hit.score > best[hit.passage_id].score:
                 best[hit.passage_id] = Passage(
@@ -618,17 +627,17 @@ def risks_for(
         try:
             completion = llm.complete(messages)
         except LLMError as error:
-            error_reason = f"the risk search did not finish: {error}"
+            error_reason = f"the LLM did not answer ({error})"
             break
         try:
             risks = parse_risks(completion.text, passages)
         except Malformed as error:
             feedback = f"That reply cannot be used: {error}."
         else:
-            found = [(r, problem(r, "a risk", library, version)) for r in risks]
+            judged = [(r, _risk_problem(r, passages, library, version)) for r in risks]
             checked = (
-                tuple(r for r, p in found if p is None),
-                tuple(p for _, p in found if p is not None),
+                tuple(r for r, p in judged if p is None),
+                tuple(p for _, p in judged if p is not None),
             )
             if best is None or len(checked[1]) <= len(best[1]):
                 best = checked
@@ -644,6 +653,16 @@ def risks_for(
         return Candidate(name, (), error_reason or "no usable reply on its risks", record)
     record["risks_removed"] = [str(p) for p in best[1]]
     return Candidate(name, best[0], None, record)
+
+
+def _risk_problem(risk: Risk, passages: dict[str, Passage], library: Library, version: int) -> Problem | None:
+    """Why the risk cannot be shown: its citation fails (spec H1), or its quote is not in the
+    passage offered, which names the intervention (elsewhere in the paper it may be another's risk)."""
+    found = problem(risk, "a risk", library, version)
+    if found is None and not quoted(risk.quote, passages[risk.passage_id].text):
+        why = f"quotes words not found word for word in passage {risk.passage_id}"
+        found = Problem("a risk", risk.passage_id, risk.quote, why)
+    return found
 
 
 def parse_risks(reply: str, passages: dict[str, Passage]) -> tuple[Risk, ...]:
