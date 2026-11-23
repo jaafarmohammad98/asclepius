@@ -11,7 +11,7 @@
 The LLM answers in JSON. A reply that is not the JSON asked for, cites a passage the bundle
 does not hold, or (self-report findings) tests only by self-reports is sent back with what was
 wrong, up to `ATTEMPTS` times in all; then the finding is reported as a `Failure`. Whether a
-quote is found word for word in its paper is checked later (M4-06, spec H1).
+quote is found word for word in its paper is checked afterwards, in `citations.py` (spec H1).
 
 Only the finding's group statistics and the library's public passages are sent. Private
 papers' passages are left out of the prompt, so their text never reaches an LLM here.

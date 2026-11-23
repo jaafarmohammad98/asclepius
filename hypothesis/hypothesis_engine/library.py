@@ -295,6 +295,21 @@ class Library:
         for paper in self.private_papers(version):
             yield Document(paper.id, paper.title, paper.text, private=True)
 
+    def document(self, paper_id: str, version: int | None = None) -> Document | None:
+        """The paper as text (see `documents`), if that version (the current one) holds it."""
+        version = self._version(version)
+        row = self._db.execute(
+            f"""SELECT p.pmid, p.title, coalesce(o.text, p.abstract, '') FROM papers p
+            LEFT JOIN open_access o ON o.pmid = p.pmid AND o.version <= ?
+            WHERE p.pmid = ? AND p.{_IN_VERSION}""",
+            (version, paper_id, version),
+        ).fetchone()
+        if row:
+            pmid, title, text = row
+            return Document(pmid, title, text, private=False)
+        paper = self.private_paper(paper_id, version)
+        return Document(paper.id, paper.title, paper.text, private=True) if paper else None
+
     def find(self, passage: str, version: int | None = None) -> list[str]:
         """Ids of the papers whose title or text holds `passage` word for word (case and spacing aside)."""
         wanted = _normal(passage)

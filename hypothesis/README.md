@@ -4,8 +4,9 @@ The hypothesis engine (milestone 4). So far it builds the local library of paper
 is allowed to cite: paper records (title, abstract, identifiers) downloaded from PubMed for
 the topics in the plan, the full text of those with an open-access copy, and the
 researcher's own private PDFs, and a local search index over it, gathers the passages
-it finds for each analysis finding, and has the LLM turn them into hypotheses in a fixed
-format. Citation checks, treatment candidates and the web app come in later issues.
+it finds for each analysis finding, has the LLM turn them into hypotheses in a fixed
+format, and checks every quote against the paper it cites. Treatment candidates and the web
+app come in later issues.
 
 ```sh
 cd hypothesis
@@ -206,8 +207,22 @@ Every hypothesis has the five sections of the spec:
   out or empty, cites a passage not in the bundle, files a passage both ways, names an
   unknown measure, or tests a self-report finding by self-reports only is sent back with
   what was wrong. After 3 replies, or on an LLM error, the finding is reported as failed,
-  with the reason of each attempt. Quotes are checked word for word against the paper in
-  M4-06 (spec H1), not here.
+  with the reason of each attempt.
+- **Citation check** (spec H1, `citations.py`). Before anything is written, every mechanism
+  claim and every supporting or contradicting entry must carry a paper id and a quote; the
+  paper must be in the library version the hypothesis was built from, and the quote must be
+  found word for word in its title or text (full text when that version has it, else the
+  abstract). Case, white space and hyphens do not count (`reduc-\ntase`, `post finasteride`
+  for `post-finasteride`), but the quote must start and end on whole words. Citations that
+  fail are removed and `record.citations_removed` says why (never with the quote); a
+  hypothesis left with no mechanism claim is reported as failed instead:
+
+  ```python
+  from hypothesis_engine.citations import verify_hypotheses
+
+  with Library.open(path) as library:
+      results = verify_hypotheses(generate_hypotheses(bundles, llm), library)
+  ```
 - **The record** (spec H6): the model that answered, the back end and its settings (no
   key), the library version, the search model, the analysis tool, `prompt_version`
   (`hypothesis-1`; it changes whenever the prompt does) and how many attempts it took.
