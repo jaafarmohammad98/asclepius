@@ -336,6 +336,32 @@ graph.edges["post-SSRI sexual dysfunction", "BDNF"]  # kind, papers, passage_ids
   (`ENZYME_GENES`: 5-alpha reductase is SRD5A1 and SRD5A2).
 - Every node and link has passages or findings behind it.
 
+## Bottlenecks
+
+`bottlenecks` ranks the graph's terms by how much they sit where the three syndromes converge.
+The syndromes themselves are not ranked.
+
+```python
+from hypothesis_engine.bottlenecks import Weights, bottlenecks
+
+ranked = bottlenecks(graph)  # highest score first
+ranked[0]  # Bottleneck(name, kind, score, betweenness, syndromes, cascade); .overlap is len(syndromes)
+bottlenecks(graph, Weights(overlap=0.45, cascade=0.35, betweenness=0.20))  # the defaults
+```
+
+- **Betweenness** is networkx's normalised betweenness centrality on the graph taken as
+  undirected, syndromes included, counting hops.
+- **Overlap** is which of PSSD, PFS and PAS link to the term, by literature or by a finding.
+- **Cascade** is downstream reach: over every other term reached by co-mentions, the strength
+  of the strongest path there, summed. A path's strength is the product of its edges'
+  strengths, an edge's being its papers over the most papers of any co-mention. Paths do not
+  pass through a syndrome.
+- **Score.** Overlap is scaled over the three syndromes, the other two over the graph's
+  highest, and the score (0 to 1) is their weighted sum. The weights are any non-negative
+  numbers, used as shares of their sum; the defaults keep a generic hub from outranking a point
+  where the syndromes converge. A score says where to look, not what causes what. The built
+  library takes a few seconds.
+
 ## The LLM
 
 The engine reaches an LLM only through `hypothesis_engine.llm`, and the researcher pays for
