@@ -25,7 +25,8 @@ uv run pytest                     # tests; they replay recorded PubMed answers, 
 uv run ruff check . && uv run ruff format --check . && uv run mypy
 ```
 
-`build` writes to `hypothesis/data/` from any folder. It takes `--library PATH` for another file and `--topics PATH` for another topic list
+`build` writes to the data folder from any folder: `hypothesis/data/` in a source checkout,
+a folder of the researcher's own once installed (`hypothesis_engine.home`; `ASCLEPIUS_DATA` names another). It takes `--library PATH` for another file and `--topics PATH` for another topic list
 (`refresh` too), and `--private PATH` for another private folder.
 It needs no account. With an NCBI API key in `NCBI_API_KEY` (free, from an NCBI account) it
 sends 10 requests a second instead of 3. No email or other detail about the researcher is sent.

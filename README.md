@@ -13,6 +13,23 @@ Asclepius is a research tool. It does not diagnose and does not give treatment a
 | `hypothesis/` | Literature search plus LLM reasoning, with verified citations | Paper library from PubMed; no hypotheses yet |
 | Patient platform | Consented upload and symptom questionnaire | Not started |
 
+## Install the researcher tool
+
+One install gives the extractor page, the analysis and the hypothesis engine. It needs [uv](https://docs.astral.sh/uv/getting-started/installation/) and nothing else (no Node, no git):
+
+```sh
+uv tool install --python 3.14 asclepius-0.1.0-py3-none-any.whl
+asclepius-library build    # the paper library from PubMed and open-access full text
+asclepius-library index    # its search index; the first build and index take an hour or more
+asclepius                  # starts the app and opens it in the browser
+```
+
+In the app, **Example: lab reports** and **Example: self-reports** load an invented dataset of each kind (no real patient or post is in either), so the whole path, from findings to hypotheses with quoted sources, can be tried before any real data is at hand. The extractor page is at `/extractor/` in the same app. Hypotheses need an LLM: your own Anthropic API key or a local model, set in the app's Settings.
+
+The library, its index, the embedding model and the LLM settings are kept in a folder of your own: `~/Library/Application Support/Asclepius` on a Mac, `%LOCALAPPDATA%\Asclepius` on Windows, `~/.local/share/asclepius` on Linux (`ASCLEPIUS_DATA` names another). Upgrading or removing the tool (`uv tool uninstall asclepius`) leaves it in place.
+
+To build the wheel from this repository (needs git, npm and uv): `python3 package/build.py` writes `dist/asclepius-<version>-py3-none-any.whl` from the files git tracks, with the dependency versions of `analysis/uv.lock`. `sh package/clean-install.sh` installs it in a fresh Debian container and runs both examples end to end there, the full library included (pass `ANTHROPIC_API_KEY`; the library is kept in a Docker volume between runs).
+
 ## Extractor
 
 Reads a DUTCH report (Precision Analytical) with ordinary code. No AI model is involved, so it cannot invent a number.

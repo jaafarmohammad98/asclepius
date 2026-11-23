@@ -6,8 +6,8 @@ Two back ends, chosen by settings alone:
 - `local`: a model server on the researcher's machine that speaks the OpenAI-style
   `/v1/chat/completions` protocol (Ollama, llama.cpp's `llama-server`, LM Studio, vLLM).
 
-Settings come from environment variables, then `hypothesis/data/llm.toml` (git ignores the
-folder). The key is never written anywhere by this module: it is left out of every repr,
+Settings come from environment variables, then `llm.toml` in the data folder
+(`hypothesis_engine.home`; in a source checkout `hypothesis/data/`, which git ignores). The key is never written anywhere by this module: it is left out of every repr,
 every recorded request, every completion record and every error message.
 """
 

@@ -1,8 +1,8 @@
 """The settings screen: which LLM writes the hypotheses (spec H4), the researcher's own Anthropic API
 key or a model server on this computer.
 
-The settings live in the hypothesis engine's own file (`hypothesis/data/llm.toml`, which git
-ignores), so the app and the `asclepius-library` command use the same ones; environment variables
+The settings live in the hypothesis engine's own file (`llm.toml` in its data folder,
+`hypothesis_engine.home`), so the app and the `asclepius-library` command use the same ones; environment variables
 still override it (`hypothesis_engine.llm`). The key goes from the page into the file and nowhere
 else: `read` and `save` say only whether one is stored, and the file is readable by its owner alone.
 """

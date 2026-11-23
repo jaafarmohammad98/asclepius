@@ -114,6 +114,8 @@
   <h1>Asclepius</h1>
   <p class="muted">Runs on this computer only. Files you pick are not sent anywhere else, and are
     deleted when the app stops. Thresholds are provisional, needs expert review.</p>
+  <p>Reading DUTCH report PDFs? <a href="/extractor/">Open the extractor page</a>: it reads them in
+    the browser and gives the dataset file (CSV) to load below.</p>
 
   <section id="settings-panel">
     <details class="settings" id="settings">
@@ -171,6 +173,11 @@
       <input id="export" type="file" webkitdirectory directory>
     </fieldset>
     <button id="load-button" type="button">Load</button>
+    <p class="muted">No data yet? Try an example, invented by the tool (no real patient or post is in it):</p>
+    <div class="buttons">
+      <button class="example" type="button" data-kind="lab-report">Example: lab reports</button>
+      <button class="example" type="button" data-kind="self-report">Example: self-reports</button>
+    </div>
     <div id="load-error" class="error" role="alert" hidden></div>
   </section>
 
@@ -306,9 +313,28 @@ $("load-button").addEventListener("click", async () => {
   }
 });
 
+for (const button of document.querySelectorAll("button.example")) {
+  button.addEventListener("click", async () => {
+    $("findings").hidden = true;
+    forgetHypotheses();
+    showError("load-error", "");
+    $("review").hidden = $("run").hidden = true;
+    const buttons = [$("load-button"), ...document.querySelectorAll("button.example")];
+    buttons.forEach((b) => { b.disabled = true; });
+    try {
+      showReview(await api(`/api/example/${button.dataset.kind}`, { method: "POST" }));
+    } catch (error) {
+      showError("load-error", error.message);
+    } finally {
+      buttons.forEach((b) => { b.disabled = false; });
+    }
+  });
+}
+
 function showReview(review) {
   const body = $("review-body");
   body.replaceChildren();
+  if (review.example) body.appendChild(el("p", null)).append(el("span", review.example, { class: "label" }));
   if (review.kind === "self-report") {
     body.appendChild(el("p", null)).append(el("span", review.label, { class: "label" }));
     body.append(el("p", `${count(review.authors)} authors, each counted once however many posts they wrote.`));

@@ -25,11 +25,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from types import TracebackType
 
+from hypothesis_engine.home import DATA
 from hypothesis_engine.private import PrivatePaper
 from hypothesis_engine.pubmed import Paper
 
-# inside hypothesis/, whatever folder the command runs from (git ignores hypothesis/data/)
-DEFAULT_LIBRARY = Path(__file__).resolve().parents[1] / "data" / "library.sqlite"
+# in the data folder (`hypothesis_engine.home`), whatever folder the command runs from
+DEFAULT_LIBRARY = DATA / "library.sqlite"
 
 SCHEMA_VERSION = 3
 

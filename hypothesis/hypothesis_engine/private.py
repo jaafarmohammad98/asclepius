@@ -1,4 +1,5 @@
-"""The researcher's private papers: PDFs in a local folder (default `hypothesis/data/private/`).
+"""The researcher's private papers: PDFs in a local folder (default `private/` in the data
+folder, `hypothesis_engine.home`).
 
 Their text is extracted on this machine (pypdf) and stored in the library marked as private.
 They are never looked up or downloaded anywhere, and `privacy.PrivateTextGuard` stops their

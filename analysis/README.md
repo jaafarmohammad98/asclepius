@@ -11,10 +11,16 @@ researchers need no command line after start-up.
 ```sh
 cd analysis
 uv sync
-uv run asclepius-app     # the web app: opens http://127.0.0.1:8765/ in the browser
+uv run asclepius         # the web app: opens http://127.0.0.1:8765/ in the browser
 uv run pytest            # tests
 uv run ruff check . && uv run ruff format --check . && uv run mypy
 ```
+
+The app also serves the extractor's browser page at `/extractor/` (from `extractor/dist/` once
+`npm run build` has run there; the installed app carries its own copy), and loads a built-in example
+of either kind with one click (`asclepius.examples`: invented by `asclepius.synthetic` with fixed
+settings and seeds; the lab example gives strong findings, the self-report one suggestive ones).
+Installing it as one tool is in the [top-level README](../README.md#install-the-researcher-tool).
 
 ## Two kinds of dataset, never pooled
 
