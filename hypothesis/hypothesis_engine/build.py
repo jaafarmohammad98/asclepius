@@ -21,6 +21,10 @@ Both run without the network once the model is downloaded.
 `evidence` reads an analysis findings export and writes, for each strong or suggestive
 finding, the library passages that may support or contradict it (`evidence.py`).
 
+`hypotheses` does what `evidence` does, then has the configured LLM turn each bundle into a
+hypothesis in the fixed five sections (`hypotheses.py`), and writes them with the findings it
+gave no usable hypothesis for.
+
 `llm-check` sends one short question to the configured LLM (`llm.py`) and prints which model
 answered, so a researcher can check their key or local model before a long run.
 
@@ -44,6 +48,7 @@ from hypothesis_engine import europepmc
 from hypothesis_engine.embedding import DEFAULT_MODELS, LocalEmbedder, ModelMissing
 from hypothesis_engine.evidence import FindingsError, gather_evidence, read_findings
 from hypothesis_engine.fulltext import describe, fetch_full_texts
+from hypothesis_engine.hypotheses import Failure, Hypothesis, generate_hypotheses
 from hypothesis_engine.library import (
     DEFAULT_LIBRARY,
     LibraryError,
@@ -204,14 +209,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--out", type=Path, required=True, help="JSON file to write the evidence bundles to"
     )
     evidence.add_argument("-k", type=int, default=5, help="passages each way per finding (default 5)")
-    llm_check = commands.add_parser("llm-check", help="ask the configured LLM one short question")
-    llm_check.add_argument(
-        "--settings",
-        type=Path,
-        default=DEFAULT_SETTINGS,
-        help=f"LLM settings file (default {DEFAULT_SETTINGS})",
+    hypotheses = commands.add_parser(
+        "hypotheses", help="have the configured LLM write a hypothesis for each strong or suggestive finding"
     )
-    for command in (index, search, evidence):
+    hypotheses.add_argument("findings", type=Path, help="the analysis web app's findings.csv")
+    hypotheses.add_argument("--out", type=Path, required=True, help="JSON file to write the hypotheses to")
+    hypotheses.add_argument("-k", type=int, default=5, help="passages each way per finding (default 5)")
+    llm_check = commands.add_parser("llm-check", help="ask the configured LLM one short question")
+    for command in (hypotheses, llm_check):
+        command.add_argument(
+            "--settings",
+            type=Path,
+            default=DEFAULT_SETTINGS,
+            help=f"LLM settings file (default {DEFAULT_SETTINGS})",
+        )
+    for command in (index, search, evidence, hypotheses):
         command.add_argument(
             "--index", type=Path, default=DEFAULT_INDEX, help=f"search index file (default {DEFAULT_INDEX})"
         )
@@ -221,7 +233,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             default=DEFAULT_MODELS,
             help=f"embedding model folder (default {DEFAULT_MODELS})",
         )
-    for command in (build, fulltext, refresh, index, search, evidence):
+    for command in (build, fulltext, refresh, index, search, evidence, hypotheses):
         command.add_argument(
             "--library", type=Path, default=DEFAULT_LIBRARY, help=f"SQLite file (default {DEFAULT_LIBRARY})"
         )
@@ -244,6 +256,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _index_or_search(args, say)
     if args.command == "evidence":
         return _evidence(args, say)
+    if args.command == "hypotheses":
+        return _hypotheses(args, say)
     downloading = args.command == "fulltext"
     try:
         api_key = os.environ.get("NCBI_API_KEY") or None
@@ -325,6 +339,34 @@ def _evidence(args: argparse.Namespace, say: Callable[[str], None]) -> int:
         f"{len(bundles)} of {len(findings)} findings worth testing (strong or suggestive), "
         f"evidence written to {args.out}"
     )
+    return 0
+
+
+def _hypotheses(args: argparse.Namespace, say: Callable[[str], None]) -> int:
+    try:
+        llm = connect(load_settings(os.environ, args.settings))
+        findings = read_findings(args.findings)
+        with Index.open(args.index, args.library, LocalEmbedder(args.models)) as index:
+            bundles = gather_evidence(findings, index, args.k)
+        results = generate_hypotheses(bundles, llm)
+    except KeyboardInterrupt:
+        say("asclepius-library: stopped; nothing was written")
+        return 130
+    except (LLMNotConfigured, FindingsError, LibraryError, SearchIndexError, ModelMissing) as error:
+        say(f"asclepius-library: {error}")
+        return 1
+    made = [r for r in results if isinstance(r, Hypothesis)]
+    failed = [r for r in results if isinstance(r, Failure)]
+    written = {"hypotheses": [h.as_dict() for h in made], "failed": [f.as_dict() for f in failed]}
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    text = json.dumps(written, indent=2, ensure_ascii=False, allow_nan=False)
+    args.out.write_text(text + "\n", encoding="utf-8")
+    say(
+        f"{len(bundles)} of {len(findings)} findings worth testing (strong or suggestive): "
+        f"{len(made)} hypotheses, {len(failed)} failed, written to {args.out}"
+    )
+    for failure in failed:
+        say(f"  failed: {failure.finding.statement}: {failure.reasons[-1]}")
     return 0
 
 

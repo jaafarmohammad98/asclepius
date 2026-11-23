@@ -244,7 +244,7 @@ class Query:
     stance: str  # SUPPORTING: what a passage agreeing with the finding would say; CONTRADICTING: the opposite
 
 
-def _direction(finding: Finding) -> int:
+def direction(finding: Finding) -> int:
     """1 when group a is higher (or reports more often), -1 when lower, 0 when the export does not say."""
     stats = finding.statistics
     effect = stats.get("effect_size")
@@ -268,12 +268,17 @@ def queries_for(finding: Finding) -> list[Query]:
     one would (the opposite direction, or no difference). Built from the marker, the enzyme a
     ratio stands for, the direction, the syndrome and its drug, or the drug and symptom of a
     self-report finding. Only names and directions go in, never a number."""
-    direction = _direction(finding)
-    if not direction:
+    sign = direction(finding)
+    if not sign:
         return []
-    if finding.statistics.get("median_a") is None and finding.statistics.get("share_a") is not None:
-        return _report_queries(finding, direction)
-    return _marker_queries(finding, direction)
+    if is_report(finding):
+        return _report_queries(finding, sign)
+    return _marker_queries(finding, sign)
+
+
+def is_report(finding: Finding) -> bool:
+    """A finding about how often a symptom, onset or course is reported (shares), not a marker's level."""
+    return finding.statistics.get("median_a") is None and finding.statistics.get("share_a") is not None
 
 
 def _marker_queries(finding: Finding, direction: int) -> list[Query]:
