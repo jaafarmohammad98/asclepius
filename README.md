@@ -15,6 +15,8 @@ Asclepius is a research tool. It does not diagnose and does not give treatment a
 
 ## Install the researcher tool
 
+Clinicians and researchers: the [install and usage guide](guide/README.md) walks through every step, with screenshots and no programming assumed. The short version:
+
 One install gives the extractor page, the analysis and the hypothesis engine. It needs [uv](https://docs.astral.sh/uv/getting-started/installation/) and nothing else (no Node, no git):
 
 ```sh
