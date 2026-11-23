@@ -1,8 +1,9 @@
 """Evidence for each finding: what the library says, gathered before any LLM is asked (spec H2, H5, H7).
 
 The input is the analysis findings export (the web app's `findings.csv`, `asclepius.web.export`),
-of a lab-report or a self-report run. `read_findings` keeps the finding rows and, of each, the
-group statistics only: no column outside `REQUIRED`, `COUNTS`, `STATISTICS` and `TEXTS` is read, so a record id or an
+of a lab-report or a self-report run. `read_findings` keeps the finding rows and the intervention
+rows (analysis spec A7) and, of each, the group statistics only: no column outside `REQUIRED`,
+`COUNTS`, `STATISTICS`, `TEXTS` and the `INTERVENTION_*` columns is read, so a record id or an
 individual value cannot reach a bundle even if a later export carried one.
 """
 
@@ -38,6 +39,29 @@ STATISTICS = (
     "tier_a_ci_high",
 )
 TEXTS = ("tier_a_result",)
+# An intervention row's statistics: authors per reported outcome, the shares improved and worse
+# with their intervals, its rank and the analysis's safety flag (analysis spec A7).
+INTERVENTION_COUNTS = (
+    "rank",
+    "n_authors",
+    "n_clear",
+    "major_improvement",
+    "partial_improvement",
+    "no_effect",
+    "worse",
+    "unclear",
+)
+INTERVENTION_SHARES = (
+    "share_improved",
+    "improved_low",
+    "improved_high",
+    "share_worse",
+    "worse_low",
+    "worse_high",
+)
+INTERVENTION_TEXTS = ("not_ranked",)
+INTERVENTION = "intervention outcome"  # an intervention row's `comparison`
+REPORTED = "reported outcome, not evidence that it works"  # on every intervention (analysis spec A7)
 # the analysis labels a finding worth testing has (spec S5); noise-level and descriptions are not
 STRONG, SUGGESTIVE = "strong", "suggestive"
 TESTED = frozenset({STRONG, SUGGESTIVE})
@@ -108,7 +132,9 @@ class Finding:
     group_a: str | None
     group_b: str | None
     label: str | None
-    statistics: dict[str, int | float | str | None]  # COUNTS, STATISTICS and TEXTS, by column
+    statistics: dict[
+        str, int | float | str | None
+    ]  # by column: COUNTS, STATISTICS and TEXTS, or INTERVENTION_*
     labels: tuple[str, ...]  # the export's labels: "self-report, no controls", "provisional, ..."
     tool: str  # the analysis tool and version that found it
     dataset_fingerprint: str
@@ -151,9 +177,12 @@ class EvidenceBundle:
 
     @property
     def labels(self) -> tuple[str, ...]:
-        """The finding's labels, "self-report, no controls" first when it applies."""
-        rest = tuple(label for label in self.finding.labels if label != SELF_REPORT)
-        return ((SELF_REPORT,) if self.self_report else ()) + rest
+        """The finding's labels, "self-report, no controls" first when it applies, then, for an
+        intervention, "reported outcome, not evidence that it works", even if the export lost it."""
+        first = ((SELF_REPORT,) if self.self_report else ()) + (
+            (REPORTED,) if is_intervention(self.finding) else ()
+        )
+        return first + tuple(label for label in self.finding.labels if label not in first)
 
     def as_dict(self) -> dict[str, object]:
         """The bundle as plain JSON-ready values."""
@@ -204,7 +233,11 @@ def read_findings(path: str | PathLike[str]) -> list[Finding]:
                 f"no {', '.join(missing)} column"
             )
         rows = list(reader)
-    return [_finding(r) for r in rows if r["row"] == "finding"]
+    return [
+        _intervention(r) if r["row"] == "intervention" else _finding(r)
+        for r in rows
+        if r["row"] in ("finding", "intervention")
+    ]
 
 
 def _number(cell: str, kind: type[int] | type[float]) -> int | float | None:
@@ -234,6 +267,36 @@ def _finding(row: dict[str, str]) -> Finding:
         dataset_fingerprint=row["dataset_fingerprint"],
         run_date=row.get("run_date") or None,
     )
+
+
+def _intervention(row: dict[str, str]) -> Finding:
+    """An intervention of the outcomes ranking: counts of reported outcomes, never a test."""
+    statistics: dict[str, int | float | str | None] = {
+        c: _number(row.get(c, ""), int) for c in INTERVENTION_COUNTS
+    }
+    statistics |= {c: _number(row.get(c, ""), float) for c in INTERVENTION_SHARES}
+    statistics["safety_signal"] = {"true": True, "false": False}.get(row.get("safety_signal", ""))
+    statistics |= {c: row.get(c) or None for c in INTERVENTION_TEXTS}
+    return Finding(
+        section=row["section"],
+        comparison=INTERVENTION,
+        marker_id=row["marker_id"],
+        marker_name=row["marker_name"],
+        sex=None,
+        group_a=None,
+        group_b=None,
+        label=None,
+        statistics=statistics,
+        labels=tuple(label.strip() for label in row["labels"].split(";") if label.strip()),
+        tool=row["tool"],
+        dataset_fingerprint=row["dataset_fingerprint"],
+        run_date=row.get("run_date") or None,
+    )
+
+
+def is_intervention(finding: Finding) -> bool:
+    """An intervention's reported outcomes (analysis spec A7), not a finding of a test."""
+    return finding.comparison == INTERVENTION
 
 
 @dataclass(frozen=True)
@@ -267,7 +330,9 @@ def queries_for(finding: Finding) -> list[Query]:
     """The searches for a finding: what a supporting passage would say, and what a contradicting
     one would (the opposite direction, or no difference). Built from the marker, the enzyme a
     ratio stands for, the direction, the syndrome and its drug, or the drug and symptom of a
-    self-report finding. Only names and directions go in, never a number."""
+    self-report finding, or an intervention's name. Only names and directions go in, never a number."""
+    if is_intervention(finding):
+        return _intervention_queries(finding)
     sign = direction(finding)
     if not sign:
         return []
@@ -328,8 +393,26 @@ def _report_queries(finding: Finding, direction: int) -> list[Query]:
     return queries
 
 
+def _intervention_queries(finding: Finding) -> list[Query]:
+    """An intervention: what papers say it did for the syndrome, and what they say it did not do
+    or made worse. The exports come from r/PSSD, so the syndrome is PSSD."""
+    name, syndrome = finding.marker_name, SYNDROMES["PSSD"][0]
+    return [
+        Query(f"{name} improved {syndrome}", SUPPORTING),
+        Query(f"{name} for sexual dysfunction caused by antidepressants", SUPPORTING),
+        Query(f"{name} had no effect on {syndrome}", CONTRADICTING),
+        Query(f"{name} worsened sexual dysfunction", CONTRADICTING),
+    ]
+
+
 def worth_testing(finding: Finding) -> bool:
-    """A strong or suggestive finding; noise-level ones and descriptions get no bundle (spec H2)."""
+    """A strong or suggestive finding; noise-level ones and descriptions get no bundle (spec H2).
+
+    Intervention outcomes have no strength label: an intervention is worth it when the analysis
+    ranked it, which needs at least 10 authors with a clear outcome and a share improved that can
+    be shown (analysis spec A7, S4, S11). One left unranked has too few reports to say anything."""
+    if is_intervention(finding):
+        return isinstance(finding.statistics.get("rank"), int)
     return finding.label in TESTED
 
 

@@ -767,8 +767,12 @@ Each step's one-line statement is shown, and when the run finishes, its findings
    - **Findings (CSV)** (`GET /api/export/findings.csv`): one row per finding the page shows
      (`row` is `finding`), every section in run order (`section` names it, `statement` gives its
      statement, "nothing reliable yet" when it is), with the same columns and the same hidden
-     counts. A section with no findings, or that did not finish, has one `statement` row saying
-     why. Reference-range counts are `zone_below`, `zone_within`, `zone_above` and
+     counts. The intervention outcomes ranking has one row per intervention (`row` is
+     `intervention`, `comparison` `intervention outcome`, `marker_id` `intervention:<name>`):
+     `rank` (empty when not ranked), the outcome counts, the shares improved and worse with their
+     intervals, `safety_signal` (`true` or `false`) and `not_ranked`, as shown; the hypothesis
+     engine reads them (M4-07). A section with none of these, or that did not finish, has one
+     `statement` row saying why. Reference-range counts are `zone_below`, `zone_within`, `zone_above` and
      `zone_unclear`. Every row names the `tool` version, the `dataset_fingerprint`, the
      `run_date` and the run's `settings` (as JSON), and its `labels`: "provisional, needs expert
      review" always, "self-report, no controls" on self-report rows. An empty cell is a hidden or missing value. Statistics are written exactly,

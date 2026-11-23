@@ -18,27 +18,34 @@ import json
 from html import escape
 from typing import Any
 
+from asclepius.interventions import COMPARISON as INTERVENTION_COMPARISON
+from asclepius.interventions import SHARES
 from asclepius.run import PROVISIONAL
 from asclepius.selfreport import LABEL as SELF_REPORT_LABEL
-from asclepius.web.findings import COUNTS, FEW, SHOWN_COLUMNS, STATISTICS, ZONES
+from asclepius.web.findings import COUNTS, FEW, INTERVENTION_COUNTS, SHOWN_COLUMNS, STATISTICS, ZONES
 
 ZONE_COLUMNS = tuple(f"zone_{z}" for z in ZONES)
-# `row` is `finding`, or `statement` for a section with no findings, so every step is in the file
+# an `intervention` row's own columns: the intervention outcomes ranking as the page shows it
+INTERVENTION_COLUMNS = ("rank", *INTERVENTION_COUNTS, *SHARES, "safety_signal", "not_ranked")
+# `row` is `finding`, `intervention` for an intervention of the ranking, or `statement` for a
+# section with neither, so every step is in the file
 CSV_COLUMNS = (
     "row",
     "section",
     "statement",
     *SHOWN_COLUMNS,
     *ZONE_COLUMNS,
+    *INTERVENTION_COLUMNS,
     "labels",
     "tool",
     "dataset_fingerprint",
     "run_date",
     "settings",
 )
-FINDING, STATEMENT = "finding", "statement"
-INTEGERS = frozenset((*COUNTS, *ZONE_COLUMNS))
-FLOATS = frozenset(STATISTICS)
+FINDING, INTERVENTION, STATEMENT = "finding", "intervention", "statement"
+INTEGERS = frozenset((*COUNTS, *ZONE_COLUMNS, "rank", *INTERVENTION_COUNTS))
+FLOATS = frozenset((*STATISTICS, *SHARES))
+BOOLEANS = frozenset(("safety_signal",))
 
 
 def labels_of(section: dict[str, Any], finding: dict[str, Any] | None = None) -> list[str]:
@@ -55,8 +62,10 @@ def labels_of(section: dict[str, Any], finding: dict[str, Any] | None = None) ->
 
 def findings_rows(view: dict[str, Any], record: dict[str, Any]) -> list[dict[str, object]]:
     """One CSV row per finding of `view`, in the page's order, each with its section's statement
-    ("nothing reliable yet" when it is, spec S8) and the versions and settings of `record` (S7). A
-    section with no findings, or that did not finish, has one `statement` row saying why."""
+    ("nothing reliable yet" when it is, spec S8) and the versions and settings of `record` (S7). The
+    intervention outcomes ranking has one `intervention` row per intervention, its counts and
+    shares as shown. A section with neither, or that did not finish, has one `statement` row
+    saying why."""
     run = {
         "tool": record["tool"],
         "dataset_fingerprint": record["dataset"]["fingerprint"],
@@ -74,9 +83,22 @@ def findings_rows(view: dict[str, Any], record: dict[str, Any]) -> list[dict[str
             zones = finding.get("zones") or {}
             row |= {f"zone_{z}": zones.get(z) for z in ZONES}
             rows.append(row | {"labels": "; ".join(labels_of(section, finding)), **run})
-        if not section["findings"]:
+        for shown in section.get("ranking", []):
+            row = {"row": INTERVENTION, **head, "comparison": INTERVENTION_COMPARISON}
+            row |= {
+                "marker_id": _intervention_id(shown["intervention"]),
+                "marker_name": shown["intervention"],
+            }
+            row |= {c: shown.get(c) for c in INTERVENTION_COLUMNS}
+            rows.append(row | {"labels": "; ".join(labels_of(section)), **run})
+        if not section["findings"] and not section.get("ranking"):
             rows.append({"row": STATEMENT, **head, "labels": "; ".join(labels_of(section)), **run})
     return rows
+
+
+def _intervention_id(name: str) -> str:
+    """The id `asclepius.interventions` gives an intervention: its name, spaces as underscores."""
+    return "intervention:" + name.replace(" ", "_")
 
 
 def findings_csv(view: dict[str, Any], record: dict[str, Any]) -> str:
@@ -94,11 +116,13 @@ def _cell(column: str, value: object) -> object:
         return ""
     if column in FLOATS:
         return repr(float(value))  # type: ignore[arg-type]  # repr gives the float back exactly
+    if column in BOOLEANS:
+        return "true" if value else "false"
     return value
 
 
 def read_findings_csv(text: str) -> list[dict[str, object]]:
-    """A findings CSV read back: counts as int, statistics as float, empty cells as None."""
+    """A findings CSV read back: counts as int, statistics as float, flags as bool, empty cells as None."""
     rows = []
     for raw in csv.DictReader(io.StringIO(text)):
         row: dict[str, object] = {}
@@ -109,6 +133,8 @@ def read_findings_csv(text: str) -> list[dict[str, object]]:
                 row[column] = int(cell)
             elif column in FLOATS:
                 row[column] = float(cell)
+            elif column in BOOLEANS:
+                row[column] = cell == "true"
             else:
                 row[column] = cell
         rows.append(row)

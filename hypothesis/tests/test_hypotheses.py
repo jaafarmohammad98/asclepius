@@ -14,7 +14,13 @@ from test_search import WordEmbedder
 
 from hypothesis_engine import build
 from hypothesis_engine.evidence import EvidenceBundle, Passage, read_findings
-from hypothesis_engine.hypotheses import PROMPT_VERSION, Failure, Hypothesis, generate_hypotheses
+from hypothesis_engine.hypotheses import (
+    MENTION_SYSTEM,
+    PROMPT_VERSION,
+    Failure,
+    Hypothesis,
+    generate_hypotheses,
+)
 from hypothesis_engine.llm import LLMError, Settings, connect
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -44,19 +50,47 @@ PRIVATE = Passage(
 )
 
 
-class FakeServer:
-    """A local model server that answers each request with the next of `replies`."""
+NONE_NAMED = {"interventions": []}
 
-    def __init__(self, *replies: str | dict[str, Any]) -> None:
-        self.replies = [r if isinstance(r, str) else json.dumps(r) for r in replies]
+
+def is_mention_check(body: dict[str, Any]) -> bool:
+    """A request asking which interventions a hypothesis names (M4-07)."""
+    return bool(body["messages"][0]["content"] == MENTION_SYSTEM)
+
+
+def answer(reply: str | dict[str, Any], model: str = "llama3.1:8b-instruct") -> dict[str, Any]:
+    content = reply if isinstance(reply, str) else json.dumps(reply)
+    return {"model": model, "choices": [{"message": {"content": content}, "finish_reason": "stop"}]}
+
+
+def checking_mentions(transport: Any) -> Any:
+    """`transport`, with the interventions check answered "none named"."""
+
+    def call(url: str, body: dict[str, Any]) -> dict[str, Any]:
+        return answer(NONE_NAMED, "m") if is_mention_check(body) else transport(url, body)
+
+    return call
+
+
+class FakeServer:
+    """A local model server that answers each request with the next of `replies`, and each check
+    of the interventions a hypothesis names with the next of `mentions` (by default: none). The
+    checks are kept apart, in `mention_requests`."""
+
+    def __init__(
+        self, *replies: str | dict[str, Any], mentions: tuple[str | dict[str, Any], ...] = ()
+    ) -> None:
+        self.replies = list(replies)
+        self.mentions = list(mentions)
         self.received: list[dict[str, Any]] = []
+        self.mention_requests: list[dict[str, Any]] = []
 
     def __call__(self, url: str, body: dict[str, Any]) -> dict[str, Any]:
+        if is_mention_check(body):
+            self.mention_requests.append(body)
+            return answer(self.mentions.pop(0) if self.mentions else NONE_NAMED)
         self.received.append(body)
-        return {
-            "model": "llama3.1:8b-instruct",
-            "choices": [{"message": {"content": self.replies.pop(0)}, "finish_reason": "stop"}],
-        }
+        return answer(self.replies.pop(0))
 
 
 def bundle(path: Path = FIXTURES / "findings_lab.csv", *passages: Passage) -> EvidenceBundle:
@@ -91,6 +125,7 @@ REPLY = {
         }
     ],
     "test": [{"design": "Measure urinary androsterone by GC-MS in new patients.", "measure": "lab test"}],
+    "candidates": [],
 }
 
 
@@ -112,8 +147,10 @@ def test_a_well_formed_reply_gives_a_hypothesis_with_all_five_sections(generate)
         "supporting",
         "contradicting",
         "test",
+        "candidates",
         "record",
     ]
+    assert "notice" not in hypothesis.as_dict()  # no candidate, no intervention
 
 
 def test_each_hypothesis_records_model_library_version_and_prompt_version(generate):
@@ -213,11 +250,13 @@ def test_a_finding_with_nothing_to_cite_fails_without_asking_the_llm(generate):
     assert server.received == []
 
 
-def test_an_llm_error_reports_the_finding_as_failed_and_goes_on_to_the_next(library):
+def test_an_llm_error_reports_the_finding_as_failed_and_goes_on_to_the_next(library, searcher):
     def down(url: str, body: dict[str, Any]) -> dict[str, Any]:
         raise LLMError("no local model server answered")
 
-    failure, other = generate_hypotheses([bundle(), bundle()], connect(LOCAL, local_transport=down), library)
+    failure, other = generate_hypotheses(
+        [bundle(), bundle()], connect(LOCAL, local_transport=down), library, searcher
+    )
     assert isinstance(failure, Failure) and isinstance(other, Failure)
     assert failure.reasons == ("no local model server answered",)
 
@@ -236,6 +275,7 @@ def citing_the_first_passage(url: str, body: dict[str, Any]) -> dict[str, Any]:
         "supporting": [{"passage_id": passage["passage_id"], "quote": quote, "why": "Agrees."}],
         "contradicting": [],
         "test": [{"design": "Measure it again.", "measure": "lab test"}],
+        "candidates": [],
     }
     return {"model": "m", "choices": [{"message": {"content": json.dumps(reply)}}]}
 
@@ -246,7 +286,9 @@ def test_the_hypotheses_command_writes_hypotheses_and_failures_as_json(built, tm
     monkeypatch.setattr(
         build,
         "connect",
-        lambda settings, **_kwargs: connect(settings, local_transport=citing_the_first_passage),
+        lambda settings, **_kwargs: connect(
+            settings, local_transport=checking_mentions(citing_the_first_passage)
+        ),
     )
     out = tmp_path / "hypotheses.json"
     assert (

@@ -19,11 +19,14 @@ embedding model the first time; `search` prints the passages most relevant to a 
 Both run without the network once the model is downloaded.
 
 `evidence` reads an analysis findings export and writes, for each strong or suggestive
-finding, the library passages that may support or contradict it (`evidence.py`).
+finding and each ranked intervention, the library passages that may support or contradict it
+(`evidence.py`).
 
 `hypotheses` does what `evidence` does, then has the configured LLM turn each bundle into a
 hypothesis in the fixed five sections (`hypotheses.py`), every quote checked against the paper
-it cites (`citations.py`), and writes them with the findings it gave no usable hypothesis for.
+it cites (`citations.py`), every intervention named a candidate for study with its known risks,
+and writes them with the findings it gave no usable hypothesis for, under the researchers-only
+notice when any intervention is in the file.
 
 `llm-check` sends one short question to the configured LLM (`llm.py`) and prints which model
 answered, so a researcher can check their key or local model before a long run.
@@ -46,9 +49,9 @@ from pathlib import Path
 
 from hypothesis_engine import europepmc
 from hypothesis_engine.embedding import DEFAULT_MODELS, LocalEmbedder, ModelMissing
-from hypothesis_engine.evidence import FindingsError, gather_evidence, read_findings
+from hypothesis_engine.evidence import FindingsError, gather_evidence, is_intervention, read_findings
 from hypothesis_engine.fulltext import describe, fetch_full_texts
-from hypothesis_engine.hypotheses import Failure, Hypothesis, generate_hypotheses
+from hypothesis_engine.hypotheses import Failure, Hypothesis, export, generate_hypotheses
 from hypothesis_engine.library import (
     DEFAULT_LIBRARY,
     Library,
@@ -337,7 +340,7 @@ def _evidence(args: argparse.Namespace, say: Callable[[str], None]) -> int:
     text = json.dumps([b.as_dict() for b in bundles], indent=2, ensure_ascii=False, allow_nan=False)
     args.out.write_text(text + "\n", encoding="utf-8")
     say(
-        f"{len(bundles)} of {len(findings)} findings worth testing (strong or suggestive), "
+        f"{len(bundles)} of {len(findings)} findings worth testing (strong or suggestive, or ranked interventions), "
         f"evidence written to {args.out}"
     )
     return 0
@@ -347,10 +350,13 @@ def _hypotheses(args: argparse.Namespace, say: Callable[[str], None]) -> int:
     try:
         llm = connect(load_settings(os.environ, args.settings))
         findings = read_findings(args.findings)
-        with Index.open(args.index, args.library, LocalEmbedder(args.models)) as index:
+        interventions = [f.marker_name for f in findings if is_intervention(f)]
+        with (
+            Index.open(args.index, args.library, LocalEmbedder(args.models)) as index,
+            Library.open(args.library) as library,
+        ):
             bundles = gather_evidence(findings, index, args.k)
-        with Library.open(args.library) as library:
-            results = generate_hypotheses(bundles, llm, library)
+            results = generate_hypotheses(bundles, llm, library, index, interventions=interventions)
     except KeyboardInterrupt:
         say("asclepius-library: stopped; nothing was written")
         return 130
@@ -359,12 +365,11 @@ def _hypotheses(args: argparse.Namespace, say: Callable[[str], None]) -> int:
         return 1
     made = [r for r in results if isinstance(r, Hypothesis)]
     failed = [r for r in results if isinstance(r, Failure)]
-    written = {"hypotheses": [h.as_dict() for h in made], "failed": [f.as_dict() for f in failed]}
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    text = json.dumps(written, indent=2, ensure_ascii=False, allow_nan=False)
+    text = json.dumps(export(results), indent=2, ensure_ascii=False, allow_nan=False)
     args.out.write_text(text + "\n", encoding="utf-8")
     say(
-        f"{len(bundles)} of {len(findings)} findings worth testing (strong or suggestive): "
+        f"{len(bundles)} of {len(findings)} findings worth testing (strong or suggestive, or ranked interventions): "
         f"{len(made)} hypotheses, {len(failed)} failed, written to {args.out}"
     )
     for failure in failed:
