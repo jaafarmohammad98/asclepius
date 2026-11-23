@@ -18,6 +18,9 @@ second time.
 embedding model the first time; `search` prints the passages most relevant to a question.
 Both run without the network once the model is downloaded.
 
+`llm-check` sends one short question to the configured LLM (`llm.py`) and prints which model
+answered, so a researcher can check their key or local model before a long run.
+
 Set NCBI_API_KEY to an NCBI API key (free, from an NCBI account) to send 10 requests a
 second instead of 3. It is only ever sent to NCBI.
 """
@@ -43,6 +46,7 @@ from hypothesis_engine.library import (
     write_build,
     write_refresh,
 )
+from hypothesis_engine.llm import DEFAULT_SETTINGS, LLMError, LLMNotConfigured, connect, load_settings
 from hypothesis_engine.private import read_private_folder
 from hypothesis_engine.pubmed import (
     PubMed,
@@ -187,6 +191,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     search = commands.add_parser("search", help="print the library passages most relevant to a question")
     search.add_argument("query", help="the question or finding to search for")
     search.add_argument("-k", type=int, default=10, help="how many passages (default 10)")
+    llm_check = commands.add_parser("llm-check", help="ask the configured LLM one short question")
+    llm_check.add_argument(
+        "--settings",
+        type=Path,
+        default=DEFAULT_SETTINGS,
+        help=f"LLM settings file (default {DEFAULT_SETTINGS})",
+    )
     for command in (index, search):
         command.add_argument(
             "--index", type=Path, default=DEFAULT_INDEX, help=f"search index file (default {DEFAULT_INDEX})"
@@ -214,6 +225,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     say = lambda message: print(message, file=sys.stderr)  # noqa: E731
+    if args.command == "llm-check":
+        return _llm_check(args.settings, say)
     if args.command in ("index", "search"):
         return _index_or_search(args, say)
     downloading = args.command == "fulltext"
@@ -276,6 +289,17 @@ def _index_or_search(args: argparse.Namespace, say: Callable[[str], None]) -> in
     except (LibraryError, SearchIndexError, ModelMissing) as error:
         say(f"asclepius-library: {error}")
         return 1
+    return 0
+
+
+def _llm_check(settings_path: Path, say: Callable[[str], None]) -> int:
+    try:
+        llm = connect(load_settings(os.environ, settings_path))
+        completion = llm.complete([{"role": "user", "content": "Reply with the one word: ready"}])
+    except (LLMNotConfigured, LLMError) as error:
+        say(f"asclepius-library: {error}")
+        return 1
+    say(f"{completion.backend} model {completion.model} answered: {completion.text.strip()[:200]}")
     return 0
 
 

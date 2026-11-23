@@ -5,6 +5,7 @@ description = "Hypothesis engine: a local library of papers it may cite, built f
 license = "AGPL-3.0-or-later"
 requires-python = ">=3.12"
 dependencies = [
+    "anthropic>=2.12.0",
     "fastembed>=0.9.1",
     "numpy>=2.5.5",
     "pypdf>=7.1.1",
@@ -15,6 +16,7 @@ asclepius-library = "hypothesis_engine.build:main"
 
 [dependency-groups]
 dev = [
+    "httpx2>=2.16.2",
     "mypy>=2.4.1",
     "pytest>=8",
     "ruff>=0.6",
