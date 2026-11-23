@@ -249,3 +249,12 @@ def test_the_hypotheses_command_writes_hypotheses_and_failures_as_json(built, tm
     assert written["failed"] == []
     assert written["hypotheses"][0]["record"]["prompt_version"] == PROMPT_VERSION
     assert "2 hypotheses, 0 failed" in capsys.readouterr().err
+
+
+def test_a_noise_level_bundle_gets_no_hypothesis_even_when_built_by_hand():
+    noise = next(f for f in read_findings(FIXTURES / "findings_lab.csv") if f.label == "noise-level")
+    server = FakeServer(REPLY)
+    [failure] = generate(server, EvidenceBundle(noise, (), (LOWER,), (), 7, "bge-small"))
+    assert isinstance(failure, Failure)
+    assert "spec H2" in failure.reasons[0]
+    assert server.received == []

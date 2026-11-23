@@ -24,7 +24,14 @@ from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass
 from typing import Any
 
-from hypothesis_engine.evidence import SELF_REPORT, EvidenceBundle, Passage, direction, is_report
+from hypothesis_engine.evidence import (
+    SELF_REPORT,
+    EvidenceBundle,
+    Passage,
+    direction,
+    is_report,
+    worth_testing,
+)
 from hypothesis_engine.llm import LLM, Completion, LLMError, Message
 
 PROMPT_VERSION = "hypothesis-1"
@@ -110,7 +117,7 @@ class Citation:
 
 
 @dataclass(frozen=True)
-class Test:
+class ProposedTest:
     """A way to test the hypothesis, and the kind of data it relies on (one of MEASURES)."""
 
     design: str
@@ -119,11 +126,13 @@ class Test:
 
 @dataclass(frozen=True)
 class Hypothesis:
+    """One finding's hypothesis in the spec's five sections, and what produced it."""
+
     finding: FindingSection
     mechanism: tuple[Claim, ...]
     supporting: tuple[Citation, ...]
     contradicting: tuple[Citation, ...]
-    tests: tuple[Test, ...]
+    tests: tuple[ProposedTest, ...]
     record: dict[str, object]  # what produced it (spec H6)
 
     def as_dict(self) -> dict[str, object]:
@@ -147,6 +156,7 @@ class Failure:
     record: dict[str, object]
 
     def as_dict(self) -> dict[str, object]:
+        """The failure as plain JSON-ready values."""
         return {"finding": asdict(self.finding), "reasons": list(self.reasons), "record": self.record}
 
 
@@ -176,6 +186,8 @@ def generate_hypothesis(bundle: EvidenceBundle, llm: LLM, attempts: int = ATTEMP
         "settings": llm.settings.public(),
         "attempts": 0,
     }
+    if not worth_testing(bundle.finding):
+        return Failure(section, (f"a {bundle.finding.label} finding gets no hypothesis (spec H2)",), record)
     if not passages:
         return Failure(section, ("the library holds no public passage about this finding",), record)
 
@@ -235,7 +247,7 @@ def prompt(bundle: EvidenceBundle, passages: Sequence[Passage]) -> list[Message]
 
 def parse(
     reply: str, passages: dict[str, Passage], self_report: bool
-) -> tuple[tuple[Claim, ...], tuple[Citation, ...], tuple[Citation, ...], tuple[Test, ...]]:
+) -> tuple[tuple[Claim, ...], tuple[Citation, ...], tuple[Citation, ...], tuple[ProposedTest, ...]]:
     """The four LLM-written sections of a reply; raises `Malformed` saying what is wrong."""
     answer = _json_object(reply)
     if set(answer) != set(SECTIONS):
@@ -269,7 +281,7 @@ def parse(
     if both:
         raise Malformed(f"passage {', '.join(sorted(both))} is filed as both supporting and contradicting")
     tests = tuple(
-        Test(e["design"], e["measure"])
+        ProposedTest(e["design"], e["measure"])
         for e in _entries(answer, "test", ("design", "measure"), required=True)
     )
     unknown = sorted({t.measure for t in tests} - set(MEASURES))
@@ -322,9 +334,8 @@ def _entries(
 def finding_section(bundle: EvidenceBundle) -> FindingSection:
     """Section 1, from the bundle alone."""
     finding = bundle.finding
-    # the export's "self-report, no controls" in the spec's words (H7), first
-    rest = tuple(label for label in finding.labels if label != SELF_REPORT)
-    labels = ((SELF_REPORT_LABEL,) if bundle.self_report else ()) + rest
+    # the bundle's labels, "self-report, no controls" (first when it applies) in the spec's words (H7)
+    labels = tuple(SELF_REPORT_LABEL if label == SELF_REPORT else label for label in bundle.labels)
     return FindingSection(
         statement=statement(bundle),
         label=finding.label,
@@ -360,11 +371,11 @@ def statement(bundle: EvidenceBundle) -> str:
         how = {1: "higher", -1: "lower", 0: "differs"}[sign]
         what = f"{finding.marker_name} {how} in {a}" + (f" than in {b}" if b else "")
         numbers = []
-    if isinstance(stats.get("effect_size"), float) and not is_report(finding):
-        numbers.append(
-            f"effect size {_number(stats['effect_size'])}"
-            + _interval(stats.get("ci_low"), stats.get("ci_high"))
-        )
+        if isinstance(stats.get("effect_size"), float):
+            numbers.append(
+                f"effect size {_number(stats['effect_size'])}"
+                + _interval(stats.get("ci_low"), stats.get("ci_high"))
+            )
     if isinstance(stats.get("q_value"), float):
         numbers.append(f"q {_number(stats['q_value'])}")
     sizes = [stats.get("n_a"), stats.get("n_b")]
