@@ -33,6 +33,7 @@ from hypothesis_engine.llm import DEFAULT_SETTINGS, LLMNotConfigured, connect, l
 from hypothesis_engine.pipeline import Connect, Generated, Source, run_hypotheses
 from hypothesis_engine.privacy import PrivateTextLeak
 from hypothesis_engine.search import DEFAULT_INDEX, Embedder, SearchIndexError
+from hypothesis_engine.vocabulary import DEFAULT_VOCABULARY
 
 from asclepius.run import PROVISIONAL
 from asclepius.web.export import STYLE
@@ -58,6 +59,7 @@ class Engine:
     index: Path = DEFAULT_INDEX
     models: Path = DEFAULT_MODELS
     settings: Path = DEFAULT_SETTINGS
+    vocabulary: Path = DEFAULT_VOCABULARY  # the knowledge graph's terms (`asclepius.web.graph`)
     env: Mapping[str, str] = field(default_factory=lambda: os.environ)
     embedder: Callable[[Path], Embedder] = LocalEmbedder
     connect_llm: Connect = connect
