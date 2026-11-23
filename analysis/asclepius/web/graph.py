@@ -1,6 +1,12 @@
 """The knowledge graph in the web app (milestone 6): built from the paper library in the background
 when the app opens, so the page is not kept waiting (a few seconds on the full library), and never
-stored (spec G6). A run's findings add their links with `hypothesis_engine.graph.with_findings`.
+stored (spec G6).
+
+A run's strong and suggestive findings add their finding links (M6-04b): the workspace says a run
+has started (`expect`), and once it finishes hands over its findings (`add`); they are linked in
+(`hypothesis_engine.graph.with_findings`) and the terms re-scored in the background, the map saying
+it is updating until then, and labelled with the run's dataset fingerprint while they are in. A new
+load, run or clear drops them (`drop`), back to the library-only graph, kept in memory, not rebuilt.
 
 The bottleneck map (M6-04) draws it: `map_view` is every term with its bottleneck score and raw
 metrics (`hypothesis_engine.bottlenecks`), each co-mention once and each syndrome link; the page
@@ -16,16 +22,36 @@ from typing import Any
 
 import networkx as nx
 from hypothesis_engine.bottlenecks import Bottleneck, Weights, bottlenecks
-from hypothesis_engine.graph import CO_MENTION, FINDING, LITERATURE, SYNDROME, SYNDROMES, library_graph
+from hypothesis_engine.evidence import Finding
+from hypothesis_engine.graph import (
+    CO_MENTION,
+    FINDING,
+    LITERATURE,
+    SYNDROME,
+    SYNDROMES,
+    library_graph,
+    with_findings,
+)
 from hypothesis_engine.library import Library, LibraryError
 from hypothesis_engine.passages import split
 from hypothesis_engine.pipeline import Source
-from hypothesis_engine.vocabulary import VocabularyError, load_vocabulary
+from hypothesis_engine.vocabulary import Vocabulary, VocabularyError, load_vocabulary
 
 from asclepius.web.hypotheses import BUILD_LIBRARY, Engine, links
 
 BUILDING, READY, FAILED = "building", "ready", "failed"
 MOST_PASSAGES = 50  # shown for one link; a link of hundreds of papers says how many more there are
+UPDATING = "Updating with this run's findings…"
+SHOWN_FINGERPRINT = 12  # characters of a dataset's fingerprint, as the exports' file names have it
+
+
+class Run:
+    """The run whose findings are in the graph, or are being added."""
+
+    def __init__(self, fingerprint: str) -> None:
+        self.fingerprint = fingerprint
+        self.updating = True
+        self.finding_links = 0
 
 
 class KnowledgeGraph:
@@ -38,6 +64,10 @@ class KnowledgeGraph:
         self.graph: nx.DiGraph | None = None
         self.scores: list[Bottleneck] = []  # with the default weights
         self.version: int | None = None  # the library version it was built from
+        self.vocabulary: Vocabulary | None = None
+        self.run: Run | None = None  # whose findings are in `graph`
+        self._library: tuple[nx.DiGraph, list[Bottleneck]] | None = None  # the graph without them
+        self._lock = threading.Lock()  # `run`, `graph` and `scores` change together
         self._done = threading.Event()
 
     def start(self) -> None:
@@ -54,7 +84,9 @@ class KnowledgeGraph:
             with Library.open(self.engine.library) as library:
                 graph = library_graph(library, vocabulary)
                 self.version = library.version
-            self.graph, self.scores = graph, bottlenecks(graph)
+            self.vocabulary, self._library = vocabulary, (graph, bottlenecks(graph))
+            with self._lock:  # findings added while it was built are linked in when they arrive
+                self.graph, self.scores = self._library
             self.state, self.message = READY, f"{self.graph.number_of_nodes()} terms in the knowledge graph."
         except LibraryError as error:
             self.state, self.message = FAILED, f"{error}. {BUILD_LIBRARY}"
@@ -63,20 +95,73 @@ class KnowledgeGraph:
         finally:
             self._done.set()
 
+    def expect(self, fingerprint: str) -> Run:
+        """A run of the dataset `fingerprint` has started: the graph drops any other run's findings and
+        says it is updating until `add` is given this run's. Returns what to give `add`."""
+        run = Run(fingerprint)
+        with self._lock:
+            self._drop()
+            self.run = run
+        return run
+
+    def add(self, run: Run, findings: list[Finding]) -> None:
+        """Link in `run`'s findings and re-score the terms, in the background (once the graph is
+        built); nothing if another run, a load or a clear has come since `expect`."""
+        threading.Thread(target=self._add, args=(run, findings), daemon=True).start()
+
+    def _add(self, run: Run, findings: list[Finding]) -> None:
+        self._done.wait()
+        graph = scores = None
+        if self._library is not None and self.vocabulary is not None:
+            graph = with_findings(self._library[0], findings, self.vocabulary)
+            scores = bottlenecks(graph)
+        with self._lock:
+            if self.run is not run:
+                return
+            if graph is not None and scores is not None:
+                self.graph, self.scores = graph, scores
+                run.finding_links = sum(kind == FINDING for _, _, kind in graph.edges(data="kind"))
+            run.updating = False
+
+    def drop(self) -> None:
+        """Drop the run's findings: the map shows the library's graph alone again."""
+        with self._lock:
+            self._drop()
+
+    def _drop(self) -> None:
+        self.run = None
+        if self._library is not None:
+            self.graph, self.scores = self._library
+
     def map_view(self) -> dict[str, Any]:
-        """The bottleneck map's data once the graph is built; until then its state and why."""
-        graph = self.graph
+        """The bottleneck map's data once the graph is built; until then its state and why. `run` is
+        the run whose findings are in (or being added), with its fingerprint's first characters."""
+        with self._lock:
+            graph, scores, run = self.graph, self.scores, self.run
+            shown = run and {
+                "fingerprint": run.fingerprint[:SHOWN_FINGERPRINT],
+                "updating": run.updating,
+                "finding_links": run.finding_links,
+            }
         if self.state != READY or graph is None:
-            return {"state": self.state, "message": self.message}
+            return {"state": self.state, "message": self.message, "run": shown}
+        message = self.message
+        if shown and shown["updating"]:
+            message = f"{message} {UPDATING}"
+        elif shown:
+            count = shown["finding_links"]
+            message = (
+                f"{message} With the findings of the run on dataset {shown['fingerprint']}: "
+                f"{count} finding link{'' if count == 1 else 's'}."
+            )
         terms = {n for n, kind in graph.nodes(data="kind") if kind != SYNDROME}
         return {
             "state": READY,
-            "message": self.message,
+            "message": message,
+            "run": shown,
             "weights": asdict(Weights()),
             "syndromes": list(SYNDROMES),
-            "terms": [
-                asdict(b) | {"syndromes": list(b.syndromes), "overlap": b.overlap} for b in self.scores
-            ],
+            "terms": [asdict(b) | {"syndromes": list(b.syndromes), "overlap": b.overlap} for b in scores],
             "co_mentions": [
                 {"a": a, "b": b, "papers": data["papers"], "label": data["label"]}
                 for a, b, data in graph.edges(data=True)
@@ -98,9 +183,10 @@ class KnowledgeGraph:
     def edge(self, a: str, b: str) -> dict[str, Any]:
         """The link a → b (a co-mention either way) and the passages behind it; KeyError if the
         graph has no such link, or is not built."""
-        if self.graph is None or not self.graph.has_edge(a, b):
+        graph = self.graph
+        if graph is None or not graph.has_edge(a, b):
             raise KeyError((a, b))
-        data = self.graph.edges[a, b]
+        data = graph.edges[a, b]
         ids = data["passage_ids"]
         with Library.open(self.engine.library) as library:
             passages = [p for p in _passages(library, ids[:MOST_PASSAGES], self.version) if p]

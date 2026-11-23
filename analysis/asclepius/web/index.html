@@ -293,7 +293,8 @@
         <i class="dot" style="background: var(--overlap-2)"></i>two
         <i class="dot" style="background: var(--overlap-3)"></i>all three
         <i class="syndrome"></i>a syndrome. Larger circles score higher; a dashed line
-        joins a syndrome to a term found in its papers.</div>
+        joins a syndrome to a term found in its papers, a solid one to a term in a strong or suggestive
+        finding of this run.</div>
       <div class="map-wrap">
         <div id="network" role="img" aria-label="Network of the top-scoring terms; the ranked table below lists the same terms"></div>
         <div id="map-tip" hidden></div>
@@ -386,6 +387,7 @@ $("load-button").addEventListener("click", async () => {
     showError("load-error", error.message);
   } finally {
     $("load-button").disabled = false;
+    loadMap(); // a new load drops the last run's finding links
   }
 });
 
@@ -403,6 +405,7 @@ for (const button of document.querySelectorAll("button.example")) {
       showError("load-error", error.message);
     } finally {
       buttons.forEach((b) => { b.disabled = false; });
+      loadMap();
     }
   });
 }
@@ -464,6 +467,7 @@ $("run-button").addEventListener("click", async () => {
   try {
     showStatus(await api("/api/run", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(choice) }));
+    loadMap(); // says it is updating with this run's findings, until they are in
     await follow();
   } catch (error) {
     showError("run-error", error.message);
@@ -1083,7 +1087,7 @@ function zonesPlot(sides) {
 // ------------------------------------------------------------------ the bottleneck map (M6-04)
 
 const TOP_ROWS = 50; // the ranked table shows this many terms until "Show all"
-const MAP = { view: null, weights: null, ranked: [], shown: TOP_ROWS, cy: null, picked: null };
+const MAP = { view: null, weights: null, ranked: [], shown: TOP_ROWS, cy: null, picked: null, timer: null, asked: 0 };
 const LABELLED = 15; // the top terms named on the network; every term is named on hover and in the table
 const KIND_NAMES = { gene: "gene", hormone: "hormone or neurosteroid", receptor: "receptor", symptom: "symptom" };
 
@@ -1107,7 +1111,11 @@ function rescore(view, weights) {
     .sort((a, b) => b.score - a.score || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 }
 
+/** Fetch the map, again each second while the graph is built or a run's findings are added. A later
+ * call replaces an earlier one still waiting. */
 async function loadMap() {
+  clearTimeout(MAP.timer);
+  const asked = ++MAP.asked;
   let view;
   try {
     view = await api("/api/graph");
@@ -1116,9 +1124,10 @@ async function loadMap() {
     showError("map-error", error.message);
     return;
   }
+  if (asked !== MAP.asked) return;
   if (view.state === "building") {
     $("map-status").textContent = view.message;
-    setTimeout(loadMap, 1000);
+    MAP.timer = setTimeout(loadMap, 1000);
     return;
   }
   if (view.state !== "ready") {
@@ -1126,10 +1135,14 @@ async function loadMap() {
     showError("map-error", view.message);
     return;
   }
-  MAP.view = view;
+  const before = MAP.view;
+  if (view.run && view.run.updating) MAP.timer = setTimeout(loadMap, 1000);
   $("map-status").textContent = view.message;
+  if (before && before.message === view.message && JSON.stringify(before.run) === JSON.stringify(view.run)) return;
+  MAP.view = view;
   $("map-body").hidden = false;
-  setWeights(view.weights);
+  if (!before) setWeights(view.weights); // a researcher's weights stay as the run's findings come and go
+  if (before && JSON.stringify(before.run) !== JSON.stringify(view.run)) $("edge-panel").hidden = true; // its link may be gone
   redraw();
 }
 
