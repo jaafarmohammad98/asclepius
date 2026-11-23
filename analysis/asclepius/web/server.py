@@ -19,7 +19,7 @@ The page (`index.html`) talks to a small JSON API over `asclepius.web.workspace.
 | `GET /api/settings` | the LLM settings (`asclepius.web.llm_settings`); the key only as whether one is stored |
 | `POST /api/settings` | save them, `{"backend": ..., "anthropic": {...}, "local": {...}}`; 400 when the engine would refuse them |
 | `POST /api/settings/check` | ask the LLM one short question; which model answered |
-| `GET /api/graph` | the bottleneck map (`asclepius.web.graph`): scored terms, co-mentions and syndrome links, or the graph's state while it builds |
+| `GET /api/graph` | the bottleneck map (`asclepius.web.graph`): scored terms, co-mentions and syndrome links (with the latest run's finding links, and `run`, its dataset), or the graph's state while it builds |
 | `GET /api/graph/edge?a=<term>&b=<term>` | the link a → b and the passages it was counted from; 404 when the graph has none |
 | `GET /vendor/cytoscape.min.js` | the network-drawing library, shipped with the app so the page needs no network |
 | `GET /extractor/...` | the extractor's browser page (`extractor/`, built by `npm run build`), for reading report PDFs |
@@ -30,7 +30,8 @@ extractor page is the one `npm run build` writes: the installed app carries a co
 (`asclepius/web/extractor/`, put there by `package/build.py`), and a source checkout serves
 `extractor/dist/`. It reads PDFs in the browser; nothing it reads reaches this server. Picked
 files are kept in a temporary folder that is deleted when the app stops. As it opens, the app builds
-the knowledge graph from the paper library in the background (`asclepius.web.graph`).
+the knowledge graph from the paper library in the background (`asclepius.web.graph`), and adds each
+finished run's findings to it.
 """
 
 from __future__ import annotations
@@ -95,7 +96,7 @@ class App(ThreadingHTTPServer):
         self.workspace = workspace
         self.settings = settings
         self.engine = engine
-        self.knowledge = KnowledgeGraph(engine)  # built by `main` as the app opens
+        self.knowledge = workspace.knowledge or KnowledgeGraph(engine)  # built by `main` as the app opens
         self.lock = threading.Lock()  # one load or upload at a time
 
 
@@ -302,7 +303,7 @@ def make_server(
     engine = engine or Engine()
     if extractor is None:
         extractor = PACKAGED_EXTRACTOR if PACKAGED_EXTRACTOR.is_dir() else CHECKOUT_EXTRACTOR
-    return App(port, Workspace(folder, engine), settings, engine, extractor)
+    return App(port, Workspace(folder, engine, KnowledgeGraph(engine)), settings, engine, extractor)
 
 
 def main(argv: list[str] | None = None) -> None:

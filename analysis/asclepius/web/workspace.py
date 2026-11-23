@@ -3,11 +3,16 @@ up for review and run the full analysis in the background, step by step.
 
 The files are copied into a folder of the workspace's own, so the loaders read the exact bytes
 picked and the fingerprint matches a run made from the command line on the same files.
+
+A finished run's findings are added to the app's knowledge graph (`asclepius.web.graph`), and a new
+load, run or clear drops them, as it drops the hypotheses.
 """
 
 from __future__ import annotations
 
+import os
 import shutil
+import tempfile
 import threading
 from collections.abc import Callable
 from dataclasses import dataclass, replace
@@ -15,6 +20,7 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
+from hypothesis_engine.evidence import Finding, FindingsError, read_findings
 
 from asclepius.cluster import ClusterResult, TooFewPatients, cluster_patients
 from asclepius.dataset import DatasetError, LabDataset, load_lab_reports
@@ -43,6 +49,7 @@ from asclepius.web.findings import (
     shown,
 )
 from asclepius.web.findings import SYNDROMES as SYNDROMES_KIND
+from asclepius.web.graph import KnowledgeGraph, Run
 from asclepius.web.hypotheses import Busy, Engine, HypothesisRun
 
 NO_SEX = "not given"
@@ -100,7 +107,9 @@ def shown_parts(parts: pd.Series) -> pd.Series:
 class Workspace:
     """The files picked, the dataset loaded from them, and the latest run."""
 
-    def __init__(self, folder: str | Path, engine: Engine | None = None) -> None:
+    def __init__(
+        self, folder: str | Path, engine: Engine | None = None, knowledge: KnowledgeGraph | None = None
+    ) -> None:
         self.folder = Path(folder)
         self.folder.mkdir(parents=True, exist_ok=True)
         self.files: dict[str, list[Path]] = {role: [] for role in ROLES}
@@ -111,6 +120,7 @@ class Workspace:
         self._lock = threading.Lock()
         self._thread: threading.Thread | None = None
         self.hypotheses = HypothesisRun(engine or Engine())  # written from the latest run's findings
+        self.knowledge = knowledge  # the graph the latest run's findings are added to, if any
 
     def clear(self) -> None:
         """Forget the files picked and the dataset loaded from them."""
@@ -118,6 +128,7 @@ class Workspace:
             if self.running():
                 raise LoadError("A run is in progress; wait for it to finish.")
             self._forget_hypotheses(LoadError)
+            self._drop_findings()
             for role in ROLES:
                 shutil.rmtree(self.folder / role, ignore_errors=True)
                 self.files[role] = []
@@ -149,6 +160,7 @@ class Workspace:
             if self.running():
                 raise LoadError("A run is in progress; wait for it to finish before loading other files.")
             self._forget_hypotheses(LoadError)
+            self._drop_findings()
             self.data = None
             self.steps, self.results, self.record = [], {}, None
         reports, metadata, export = (self.files[role] for role in ROLES)
@@ -215,10 +227,37 @@ class Workspace:
                 groups = [str(group_a), str(group_b)]
             self.steps, self.results = steps, {}
             self.record = run_record(self.data, groups, settings.record())
-            self._thread = threading.Thread(target=self._run, daemon=True)
+            graph_run = self.knowledge.expect(self.data.fingerprint) if self.knowledge else None
+            self._thread = threading.Thread(target=self._run, args=(graph_run,), daemon=True)
             self._thread.start()
 
-    def _run(self) -> None:
+    def _run(self, graph_run: Run | None = None) -> None:
+        try:
+            self._steps()
+        finally:  # the graph says it is updating until it has the run's findings, even none
+            if self.knowledge is not None and graph_run is not None:
+                # on a thread of its own, so the run has ended once its last step has
+                threading.Thread(target=self._add_to_graph, args=(graph_run,), daemon=True).start()
+
+    def _add_to_graph(self, graph_run: Run) -> None:
+        """Hand the run's findings, as its export holds them (`hypothesis_engine.evidence.read_findings`),
+        to the knowledge graph. A load or run since then has made them another run's, and the graph
+        ignores them."""
+        assert self.knowledge is not None
+        findings: list[Finding] = []
+        file, name = tempfile.mkstemp(suffix=".csv", dir=self.folder)
+        os.close(file)
+        path = Path(name)
+        try:
+            path.write_text(export.findings_csv(*self._snapshot()), encoding="utf-8")
+            findings = read_findings(path)
+        except (RunError, FindingsError, OSError):  # dropped by a load meanwhile, or not exportable
+            pass
+        finally:
+            self.knowledge.add(graph_run, findings)  # first, so the map never stays "updating"
+            path.unlink(missing_ok=True)
+
+    def _steps(self) -> None:
         for step in self.steps:
             if step.work is None:
                 with self._lock:
@@ -269,6 +308,14 @@ class Workspace:
         with self._lock:
             if self.record is None or self.running():
                 raise RunError("Run the analysis, and let it finish, before exporting.")
+        return self._snapshot()
+
+    def _snapshot(self) -> tuple[dict[str, object], dict[str, object]]:
+        """`_exported`, without checking the run has finished (its own thread adds it to the graph
+        as it ends)."""
+        with self._lock:
+            if self.record is None:
+                raise RunError("Run the analysis, and let it finish, before exporting.")
             steps = [
                 replace(s, message=FAILED_EXPORTED) if s.state == FAILED else replace(s) for s in self.steps
             ]
@@ -288,6 +335,11 @@ class Workspace:
             self.hypotheses.reset()
         except Busy as busy:
             raise error(str(busy)) from None
+
+    def _drop_findings(self) -> None:
+        """A new dataset, run or clear drops the latest run's findings from the knowledge graph."""
+        if self.knowledge is not None:
+            self.knowledge.drop()
 
     def start_hypotheses(self) -> None:
         """Write hypotheses from the finished run's findings, in the background (`asclepius.web.hypotheses`);

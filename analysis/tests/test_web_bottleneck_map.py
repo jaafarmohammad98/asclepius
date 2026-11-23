@@ -76,7 +76,7 @@ def test_a_link_that_is_not_in_the_graph_is_refused(knowledge):
 def test_before_the_graph_is_built_the_map_says_why(tmp_path):
     waiting = KnowledgeGraph(knowledge_engine(tmp_path))  # not started
     view = waiting.map_view()
-    assert view == {"state": "building", "message": waiting.message}
+    assert view == {"state": "building", "message": waiting.message, "run": None}
 
 
 @pytest.fixture

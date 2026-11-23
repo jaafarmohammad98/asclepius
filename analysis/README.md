@@ -839,9 +839,14 @@ Each step's one-line statement is shown, and when the run finishes, its findings
      corner of a triangle and each term among the syndromes linking to it: all three in the
      middle, two between their corners, one near its corner, none below. A term's colour says
      how many syndromes link to it (grey none, then light to dark blue); its size, its score. A
-     line's width is its papers; a syndrome's literature links are dashed (finding links, solid,
-     appear once the app adds a run's findings to the graph).
+     line's width is its papers; a syndrome's literature links are dashed, its finding links
+     solid.
      Hovering names a term or line ("co-mentioned in N papers").
+   - **A run's findings.** When a run finishes, its strong and suggestive findings become finding
+     links, syndrome → term (`hypothesis_engine.graph.with_findings`), and the terms are
+     re-scored with them, in the background; the map says "Updating with this run's findings…"
+     until then, and afterwards names the run's dataset by its fingerprint. A new load, run or
+     clear drops them: the library-only graph, kept in memory, is drawn again.
    - **Clicking a line** shows what it was counted from (`GET /api/graph/edge?a=&b=`): each
      passage (up to 50, then how many more) with its paper's title, journal and year and links to
      PubMed, the full text and the DOI, and a finding link's findings.
