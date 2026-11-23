@@ -3,8 +3,8 @@
 The hypothesis engine (milestone 4). So far it builds the local library of papers the engine
 is allowed to cite: paper records (title, abstract, identifiers) downloaded from PubMed for
 the topics in the plan, the full text of those with an open-access copy, and the
-researcher's own private PDFs, and a local search index over it. Hypotheses come in later
-issues.
+researcher's own private PDFs, and a local search index over it, and gathers the passages
+it finds for each analysis finding. Hypotheses come in later issues.
 
 ```sh
 cd hypothesis
@@ -14,6 +14,7 @@ uv run asclepius-library fulltext # only the full-text step; continues an interr
 uv run asclepius-library refresh  # monthly: new papers and the private folder, then their full text
 uv run asclepius-library index    # after each of those: the search index (downloads the model once)
 uv run asclepius-library search "allopregnanolone in cerebrospinal fluid" -k 5
+uv run asclepius-library evidence findings.csv --out evidence.json  # passages for each finding
 uv run asclepius-library llm-check # checks your LLM key or local model with one short question
 uv run pytest                     # tests; they replay recorded PubMed answers, no network
 uv run ruff check . && uv run ruff format --check . && uv run mypy
@@ -130,6 +131,47 @@ To search many times, open an `Index` once (`Index.open(index, library, LocalEmb
   papers, of twelve real papers (the recorded fixtures) with the network cut off, and checks
   that each finds its known paper in the top three. It is skipped until the model is
   downloaded.
+
+## Evidence for each finding
+
+`evidence` takes the analysis web app's findings export (`findings.csv`, from a lab-report or
+a self-report run) and writes one evidence bundle per finding worth testing, before any LLM is
+asked anything:
+
+```python
+from hypothesis_engine.evidence import gather_evidence, read_findings
+
+bundles = gather_evidence(read_findings("findings.csv"), index, k=5)  # index: an open Index
+bundles[0].as_dict()  # finding, labels, queries, supporting, contradicting, versions
+```
+
+- **Which findings.** Strong and suggestive ones only. Noise-level findings get no bundle
+  (spec H2), and neither do reference-range descriptions, which test nothing. Intervention
+  outcomes are counts, not tests, and are not in the findings export, so they get none either;
+  M4-07 gathers evidence for them.
+- **Group statistics only.** A bundle holds the finding's names (marker, groups, sex), its
+  group sizes, medians or shares, effect size and interval, p and q values and Tier A
+  re-run, exactly as the export shows them (counts below 5 already hidden there). No other
+  column of the file is read, so a record id or an individual value cannot reach a bundle.
+- **Labels.** The export's labels are kept. A self-report finding's bundle has
+  `self_report` set and "self-report, no controls" first among its labels (spec H7).
+- **Queries.** Built from names and directions, never numbers: the marker on its own and in
+  the syndrome (`lower Androsterone in post-SSRI sexual dysfunction than in healthy controls`),
+  after the syndrome's drug, the enzyme a ratio stands for (`lower 5-alpha reductase
+  activity in ...`; free cortisol / free cortisone is read as 11-beta-HSD2 the other way),
+  and for self-report findings the drug and the symptom, onset or course (`depression more
+  often after paroxetine than after other drugs`, `persistent depression after stopping
+  paroxetine`; an onset or course reads `symptoms recovered more often after ...`, with no
+  "persistent" search). Group names that name no one ("cluster 2", "other causal drugs") are left out.
+- **Supporting and contradicting.** Every query has a stance: the finding's direction is
+  supporting, the opposite direction or "no difference" contradicting. A passage is filed
+  under the stance of the search that ranked it best (on a tie, contradicting), and offered
+  once. These are candidates: the stance is a guess from the wording of a search, and the
+  next step (M4-05b) has the LLM judge each passage. Each passage carries its id, paper id,
+  title, text, whether it is private, and the search that found it. A paper known only by
+  its title is not offered, since it has nothing to quote.
+- **Versions.** Each bundle records the analysis tool, the dataset fingerprint and run
+  date, the library version and the search model.
 
 ## The LLM
 
