@@ -1,7 +1,7 @@
-"""Citation verification (M4-06, spec H1): every quote is checked against the paper it cites.
+"""Citation checks (M4-06, spec H1): every quote is checked against the paper it cites.
 
-The library is a real one built from the papers of `test_evidence`; the hypotheses are made
-by hand, as an LLM might have written them.
+How a quote is matched is tested on `quoted` alone. What happens to citations that fail is
+tested through `generate_hypotheses`, against the library built from `test_evidence.PAPERS`.
 """
 
 from __future__ import annotations
@@ -10,135 +10,176 @@ import json
 from typing import Any
 
 import pytest
-from test_evidence import built, where  # noqa: F401  (built is a fixture)
-from test_hypotheses import FIXTURES, LOCAL, bundle
+from test_evidence import where
+from test_hypotheses import (
+    FIXTURES,
+    HIGHER,
+    LOCAL,
+    LOWER,
+    REPLY,
+    FakeServer,
+    bundle,
+)
 from test_search import WordEmbedder
 
 from hypothesis_engine import build
-from hypothesis_engine.citations import verify_hypotheses
-from hypothesis_engine.hypotheses import Citation, Claim, Failure, Hypothesis, ProposedTest, finding_section
-from hypothesis_engine.library import Library
-from hypothesis_engine.llm import connect
+from hypothesis_engine.citations import quoted
+from hypothesis_engine.evidence import Passage
+from hypothesis_engine.hypotheses import Failure, Hypothesis, generate_hypotheses
+from hypothesis_engine.llm import LLMError, connect
 
-REAL = "Androsterone was lower in men with PFS."  # paper 10's abstract opens with it
-
-
-def claim(paper_id: str = "10", quote: str = REAL) -> Claim:
-    return Claim("Lower 5-alpha reductase activity lowers androsterone.", f"{paper_id}:1", paper_id, quote)
-
-
-def citation(paper_id: str = "10", quote: str = REAL) -> Citation:
-    return Citation(f"{paper_id}:1", paper_id, "A title", quote, "Same direction.")
-
-
-def hypothesis(
-    mechanism: tuple[Claim, ...] | None = None,
-    supporting: tuple[Citation, ...] | None = None,
-    contradicting: tuple[Citation, ...] = (),
-) -> Hypothesis:
-    return Hypothesis(
-        finding_section(bundle()),
-        (claim(),) if mechanism is None else mechanism,
-        (citation(),) if supporting is None else supporting,
-        contradicting,
-        (ProposedTest("Measure urinary androsterone by GC-MS.", "lab test"),),
-        {"library_version": 1, "model": "m"},
-    )
-
-
-@pytest.fixture
-def library(built):  # noqa: F811
-    with Library.open(built[0]) as opened:
-        yield opened
-
-
-def test_a_hypothesis_whose_quotes_are_all_in_their_papers_is_kept_as_it_is(library):
-    [kept] = verify_hypotheses([hypothesis()], library)
-    assert isinstance(kept, Hypothesis)
-    assert kept.mechanism == (claim(),)
-    assert kept.supporting == (citation(),)
-
-
-def test_a_claim_citing_a_paper_not_in_the_library_is_removed(library):
-    [kept] = verify_hypotheses([hypothesis(mechanism=(claim(), claim("99999")))], library)
-    assert kept.mechanism == (claim(),)
-
-
-def test_a_claim_quoting_words_its_paper_does_not_hold_is_removed(library):
-    invented = claim(quote="Androsterone was lower in every woman with PFS.")
-    [kept] = verify_hypotheses([hypothesis(mechanism=(claim(), invented))], library)
-    assert kept.mechanism == (claim(),)
+TEXT = "Neurosteroids in post-finasteride syndrome. Androsterone was lower in men with PFS. 5α-reduc-\ntase"
 
 
 @pytest.mark.parametrize(
     "quote",
     [
-        "Androsterone  was\nlower in men",  # white space differs
-        "Andro-\nsterone was lower in men",  # broken across a line
-        "Neurosteroids in post finasteride syndrome",  # paper 10's title has "post-finasteride"
-        "neurosteroids in postfinasteride syndrome",
+        "Androsterone was lower in men with PFS.",
+        "androsterone was lower",  # case
+        "Androsterone  was\nlower in men",  # white space
+        "Andro-\nsterone was lower in men",  # broken across a line in the quote
+        "5α-reductase",  # broken across a line in the paper
+        "post finasteride syndrome",
+        "postfinasteride syndrome",
+        "post-finasteride syndrome",
+        "Neuroﬁ",  # not a word of the text; see the next test for ligatures
+    ][:-1],
+)
+def test_case_white_space_and_hyphenation_do_not_count(quote):
+    assert quoted(quote, TEXT)
+
+
+def test_a_ligature_from_pdf_text_reads_as_its_letters():
+    assert quoted("finasteride", "post-ﬁnasteride")
+
+
+@pytest.mark.parametrize(
+    "quote",
+    [
+        "Androsterone was lower in every man with PFS.",  # invented words
+        "drosterone was lower in men",  # starts inside a word
+        "Androsterone was lower in me",  # ends inside a word
+        "Andro sterone was lower",  # a word split that the text does not split
+        "Androsterone waslower",  # two words joined
+        "",
+        " - ",
     ],
 )
-def test_white_space_and_hyphenation_differences_do_not_count(library, quote):
-    [kept] = verify_hypotheses([hypothesis(mechanism=(claim(quote=quote),))], library)
-    assert isinstance(kept, Hypothesis)
-    assert len(kept.mechanism) == 1
+def test_a_quote_must_be_the_text_word_for_word(quote):
+    assert not quoted(quote, TEXT)
 
 
-@pytest.mark.parametrize("quote", ["drosterone was lower in men", "Androsterone was lower in me"])
-def test_a_quote_must_start_and_end_on_whole_words(library, quote):
-    [result] = verify_hypotheses([hypothesis(mechanism=(claim(), claim(quote=quote)))], library)
-    assert result.mechanism == (claim(),)
+# --- what happens to citations that fail ---------------------------------------------------
+
+INVENTED = "Androsterone was lower in every woman with PFS."
 
 
-def test_supporting_and_contradicting_entries_are_checked_the_same_way(library):
-    contradicting = citation("11", "Androsterone was higher in patients than in controls.")
-    [kept] = verify_hypotheses(
-        [
-            hypothesis(
-                supporting=(citation(), citation("99999"), citation(quote="Androsterone doubled.")),
-                contradicting=(contradicting, citation("11", "Androsterone was higher in every patient.")),
-            )
-        ],
-        library,
-    )
-    assert kept.supporting == (citation(),)
-    assert kept.contradicting == (contradicting,)
+def mechanism_quoting(quote: str) -> dict[str, Any]:
+    return {**REPLY, "mechanism": [{**REPLY["mechanism"][0], "quote": quote}]}
 
 
-def test_a_hypothesis_left_with_no_mechanism_claim_is_discarded_as_failed(library):
-    [failure] = verify_hypotheses([hypothesis(mechanism=(claim("99999"), claim(quote="Made up.")))], library)
-    assert isinstance(failure, Failure)
-    assert failure.finding.marker_id == "androsterone"
-    assert failure.record["model"] == "m"
-    assert failure.reasons == (
-        "a mechanism claim cites paper 99999, which the library does not hold",
-        "a mechanism claim's quote is not found word for word in paper 10",
-        "no mechanism claim is left once unverified citations are removed (spec H1)",
-    )
+def supporting_quoting(quote: str) -> dict[str, Any]:
+    return {**REPLY, "supporting": [{**REPLY["supporting"][0], "quote": quote}]}
 
 
-def test_what_was_removed_is_recorded_without_the_unverified_quote(library):
-    [kept] = verify_hypotheses([hypothesis(supporting=(citation(), citation(quote="Made up.")))], library)
-    assert kept.record["model"] == "m"
-    assert kept.record["citations_removed"] == [
-        "a supporting entry's quote is not found word for word in paper 10"
+def test_a_reply_whose_quotes_are_all_found_is_not_sent_back(generate):
+    server = FakeServer(REPLY)
+    [hypothesis] = generate(server)
+    assert isinstance(hypothesis, Hypothesis)
+    assert hypothesis.record["citations_removed"] == []
+    assert len(server.received) == 1
+
+
+def test_an_invented_quote_is_sent_back_and_a_corrected_reply_kept(generate):
+    server = FakeServer(mechanism_quoting(INVENTED), REPLY)
+    [hypothesis] = generate(server)
+    assert isinstance(hypothesis, Hypothesis)
+    assert hypothesis.record["attempts"] == 2
+    assert hypothesis.record["citations_removed"] == []
+    sent_back = server.received[1]["messages"][-1]["content"]
+    assert "a mechanism claim citing passage 10:1" in sent_back
+    assert INVENTED in sent_back  # the LLM wrote it; it may see it again
+    assert "not found word for word in paper 10" in sent_back
+    assert "Copy each quote exactly" in sent_back
+
+
+def test_a_real_paper_with_an_invented_quote_never_reaches_the_output(generate):
+    server = FakeServer(*[supporting_quoting(INVENTED)] * 3)
+    [hypothesis] = generate(server)
+    assert isinstance(hypothesis, Hypothesis)
+    assert hypothesis.record["attempts"] == 3
+    assert hypothesis.supporting == ()  # kept: its mechanism claim is verified
+    assert [c.paper_id for c in hypothesis.contradicting] == ["11"]
+    assert hypothesis.record["citations_removed"] == [
+        "a supporting entry citing passage 10:1 quotes words not found word for word in paper 10"
     ]
-    assert "Made up" not in str(kept.as_dict())
+    assert "every woman" not in json.dumps(hypothesis.as_dict())
 
 
-def test_a_hypothesis_with_nothing_removed_records_so(library):
-    [kept] = verify_hypotheses([hypothesis()], library)
-    assert kept.record["citations_removed"] == []
+def test_a_fabricated_paper_identifier_never_reaches_the_output(generate):
+    # an index out of step with the library could offer a passage of a paper it does not hold
+    unknown = Passage("99999:1", "99999", False, "No such paper", "Androsterone was lower.", "q", 0.01)
+    cites_it = {
+        **REPLY,
+        "mechanism": [*REPLY["mechanism"], {"claim": "C.", "passage_id": "99999:1", "quote": "Androsterone"}],
+    }
+    [hypothesis] = generate(
+        FakeServer(*[cites_it] * 3), bundle(FIXTURES / "findings_lab.csv", LOWER, HIGHER, unknown)
+    )
+    assert isinstance(hypothesis, Hypothesis)
+    assert [c.paper_id for c in hypothesis.mechanism] == ["10"]
+    assert hypothesis.record["citations_removed"] == [
+        "a mechanism claim citing passage 99999:1 cites paper 99999, which the library does not hold"
+    ]
 
 
-def test_a_failure_passes_through(library):
-    failed = Failure(finding_section(bundle()), ("no local model server answered",), {})
-    assert verify_hypotheses([failed], library) == [failed]
+def test_a_hypothesis_left_with_no_mechanism_claim_is_reported_as_failed(generate):
+    [failure] = generate(FakeServer(*[mechanism_quoting(INVENTED)] * 3))
+    assert isinstance(failure, Failure)
+    assert failure.record["attempts"] == 3
+    assert failure.reasons[-1] == "no mechanism claim is left once unverified citations are removed (spec H1)"
+    assert failure.reasons[0] == (
+        "a mechanism claim citing passage 10:1 quotes words not found word for word in paper 10"
+    )
+    assert "every woman" not in json.dumps(failure.as_dict())
+
+
+def test_a_retry_that_comes_back_worse_does_not_replace_the_better_reply(generate):
+    both_invented = {**supporting_quoting(INVENTED), "mechanism": mechanism_quoting(INVENTED)["mechanism"]}
+    [hypothesis] = generate(FakeServer(supporting_quoting(INVENTED), "{not json}", both_invented))
+    assert isinstance(hypothesis, Hypothesis)  # reply 1: only its supporting entry failed
+    assert [c.paper_id for c in hypothesis.mechanism] == ["10"]
+    assert hypothesis.record["attempts"] == 3
+    assert len(hypothesis.record["citations_removed"]) == 1
+
+
+def test_of_two_replies_as_good_the_later_one_is_kept(generate):
+    contradicting_invented = {
+        **REPLY,
+        "contradicting": [{**REPLY["contradicting"][0], "quote": "Androsterone was higher in all."}],
+    }
+    replies = (supporting_quoting(INVENTED), contradicting_invented, contradicting_invented)
+    [hypothesis] = generate(FakeServer(*replies))
+    assert [c.paper_id for c in hypothesis.supporting] == ["10"]
+    assert hypothesis.contradicting == ()
+
+
+def test_an_llm_error_on_a_retry_keeps_the_reply_already_given(generate, library):
+    replies = iter([mechanism_quoting(INVENTED), REPLY])
+
+    def then_down(url: str, body: dict[str, Any]) -> dict[str, Any]:
+        reply = next(replies)
+        if reply is REPLY:
+            raise LLMError("no local model server answered")
+        return {"model": "m", "choices": [{"message": {"content": json.dumps(reply)}}]}
+
+    [failure] = generate_hypotheses([bundle()], connect(LOCAL, local_transport=then_down), library)
+    assert isinstance(failure, Failure)  # the reply kept had no verified mechanism claim
+    assert failure.reasons[1] == "no local model server answered"
 
 
 def inventing_quotes(url: str, body: dict[str, Any]) -> dict[str, Any]:
-    """A model citing real passages of the bundle with quotes it made up, and one invented paper."""
+    """A model citing real passages of the bundle with quotes it made up, every time."""
     passage = json.loads(body["messages"][1]["content"])["passages"][0]["passage_id"]
     reply = {
         "mechanism": [{"claim": "A claim.", "passage_id": passage, "quote": "Invented words entirely."}],
@@ -149,7 +190,7 @@ def inventing_quotes(url: str, body: dict[str, Any]) -> dict[str, Any]:
     return {"model": "m", "choices": [{"message": {"content": json.dumps(reply)}}]}
 
 
-def test_the_hypotheses_command_writes_no_unverified_citation(built, tmp_path, monkeypatch, capsys):  # noqa: F811
+def test_the_hypotheses_command_writes_no_unverified_citation(built, tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(build, "LocalEmbedder", lambda *_args, **_kwargs: WordEmbedder())
     monkeypatch.setattr(build, "load_settings", lambda *_args: LOCAL)
     monkeypatch.setattr(
@@ -161,27 +202,5 @@ def test_the_hypotheses_command_writes_no_unverified_citation(built, tmp_path, m
     written = out.read_text(encoding="utf-8")
     assert json.loads(written)["hypotheses"] == []
     assert len(json.loads(written)["failed"]) == 2
-    assert "Invented" not in written
+    assert "nvented" not in written
     assert "0 hypotheses, 2 failed" in capsys.readouterr().err
-
-
-def test_a_claim_without_a_paper_identifier_or_a_quote_is_removed(library):
-    [kept] = verify_hypotheses([hypothesis(mechanism=(claim(), claim(""), claim(quote=" ")))], library)
-    assert kept.mechanism == (claim(),)
-    assert kept.record["citations_removed"] == [
-        "a mechanism claim carries no paper identifier",
-        "a mechanism claim carries no quoted passage",
-    ]
-
-
-@pytest.mark.parametrize(
-    "quote",
-    [
-        "Andro sterone was lower in men",  # a word split that the paper does not split
-        "Androsterone waslower in men",  # two words joined
-        "post-finasteride syndrome Androsterone was lower",  # runs from the title into the text
-    ],
-)
-def test_words_must_be_split_where_the_paper_splits_them(library, quote):
-    [result] = verify_hypotheses([hypothesis(mechanism=(claim(), claim(quote=quote)))], library)
-    assert result.mechanism == (claim(),)

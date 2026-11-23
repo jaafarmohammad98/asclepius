@@ -22,9 +22,8 @@ Both run without the network once the model is downloaded.
 finding, the library passages that may support or contradict it (`evidence.py`).
 
 `hypotheses` does what `evidence` does, then has the configured LLM turn each bundle into a
-hypothesis in the fixed five sections (`hypotheses.py`), checks every quote against the paper
-it cites (`citations.py`) and drops those not found, and writes the hypotheses with the findings
-it gave no usable hypothesis for.
+hypothesis in the fixed five sections (`hypotheses.py`), every quote checked against the paper
+it cites (`citations.py`), and writes them with the findings it gave no usable hypothesis for.
 
 `llm-check` sends one short question to the configured LLM (`llm.py`) and prints which model
 answered, so a researcher can check their key or local model before a long run.
@@ -46,7 +45,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from hypothesis_engine import europepmc
-from hypothesis_engine.citations import verify_hypotheses
 from hypothesis_engine.embedding import DEFAULT_MODELS, LocalEmbedder, ModelMissing
 from hypothesis_engine.evidence import FindingsError, gather_evidence, read_findings
 from hypothesis_engine.fulltext import describe, fetch_full_texts
@@ -352,7 +350,7 @@ def _hypotheses(args: argparse.Namespace, say: Callable[[str], None]) -> int:
         with Index.open(args.index, args.library, LocalEmbedder(args.models)) as index:
             bundles = gather_evidence(findings, index, args.k)
         with Library.open(args.library) as library:
-            results = verify_hypotheses(generate_hypotheses(bundles, llm), library)
+            results = generate_hypotheses(bundles, llm, library)
     except KeyboardInterrupt:
         say("asclepius-library: stopped; nothing was written")
         return 130

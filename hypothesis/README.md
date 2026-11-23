@@ -183,8 +183,10 @@ to turn each bundle into a hypothesis, and writes `{"hypotheses": [...], "failed
 
 ```python
 from hypothesis_engine.hypotheses import generate_hypotheses
+from hypothesis_engine.library import Library
 
-results = generate_hypotheses(bundles, llm)  # a Hypothesis or a Failure per bundle, in order
+with Library.open(path) as library:  # every quote is checked against it (below)
+    results = generate_hypotheses(bundles, llm, library)  # a Hypothesis or a Failure per bundle
 results[0].as_dict()  # finding, mechanism, supporting, contradicting, test, record
 ```
 
@@ -206,28 +208,25 @@ Every hypothesis has the five sections of the spec:
 - **The reply.** The LLM answers in JSON. A reply that is not that JSON, leaves a section
   out or empty, cites a passage not in the bundle, files a passage both ways, names an
   unknown measure, or tests a self-report finding by self-reports only is sent back with
-  what was wrong. After 3 replies, or on an LLM error, the finding is reported as failed,
-  with the reason of each attempt.
-- **Citation check** (spec H1, `citations.py`). Before anything is written, every mechanism
-  claim and every supporting or contradicting entry must carry a paper id and a quote; the
-  paper must be in the library version the hypothesis was built from, and the quote must be
-  found word for word in its title or in its text (full text when that version has it, else
-  the abstract). Case, white space and hyphenation do not count (`reduc-\ntase`, `post
-  finasteride` or `postfinasteride` for `post-finasteride`), but words must be split where the
-  paper splits them (`in creased` is not `increased`) and the quote must start and end on
-  whole words. Citations that
-  fail are removed and `record.citations_removed` says why (never with the quote); a
-  hypothesis left with no mechanism claim is reported as failed instead:
-
-  ```python
-  from hypothesis_engine.citations import verify_hypotheses
-
-  with Library.open(path) as library:
-      results = verify_hypotheses(generate_hypotheses(bundles, llm), library)
-  ```
+  what was wrong. So is one whose citations fail the check below: it is told which
+  citations, their quotes and why, and asked to copy quotes exactly. A reply that passes is
+  not sent back. After 3 replies, or on an LLM error, the best usable reply is kept (fewest
+  failing citations; the later on a tie). With none, the finding is reported as failed, with
+  the reason of each attempt.
+- **Citation check** (spec H1, `citations.py`). Every mechanism claim and every supporting or
+  contradicting entry must carry a paper id and a quote; the paper must be in the library
+  version the hypothesis was built from, and the quote must be found word for word in its
+  title or in its text (full text when that version has it, else the abstract). Case, white
+  space and hyphenation do not count (`reduc-\ntase`, `post finasteride` or
+  `postfinasteride` for `post-finasteride`), but words must be split where the paper splits
+  them (`in creased` is not `increased`) and the quote must start and end on whole words.
+  Citations of the kept reply that still fail are removed, and `record.citations_removed`
+  says why (never with the quote), so no unverified citation is ever written. A hypothesis
+  left with no mechanism claim is reported as failed; one left with empty supporting or
+  contradicting sections is kept, since every claim it still makes is verified.
 - **The record** (spec H6): the model that answered, the back end and its settings (no
   key), the library version, the search model, the analysis tool, `prompt_version`
-  (`hypothesis-1`; it changes whenever the prompt does) and how many attempts it took.
+  (`hypothesis-2`; it changes whenever the prompt does) and how many attempts it took.
 - **What is sent.** The finding's group statistics and labels, and the bundle's public
   passages. Private papers' passages are left out of the prompt for now, so a finding whose
   only evidence is private fails without the LLM being asked. A finding with no passage

@@ -1,21 +1,22 @@
-"""Citation verification (spec H1): no citation reaches the output unless its quote is in its paper.
+"""Citation checks (spec H1): a citation is shown only if its quote is found in its paper.
 
 Every mechanism claim and every supporting or contradicting entry carries a paper identifier
-and a quoted passage. Each is checked against the library version the hypothesis was built
-from: the paper must be in it, and the quote must appear word for word in the paper's title
-or text (its full text when the version has it, else its abstract).
+and a quoted passage. `problem` checks one against the library version the hypothesis is
+built from: the paper must be in it, and the quote must appear word for word (`quoted`) in
+the paper's title or in its text (its full text when the version has it, else its abstract).
+`hypotheses.py` sends citations that fail back to the LLM, then removes those still failing.
 """
 
 from __future__ import annotations
 
 import re
 import unicodedata
-from collections.abc import Iterable
+from dataclasses import dataclass
+from typing import Protocol
 
-from hypothesis_engine.hypotheses import Citation, Claim, Failure, Hypothesis
 from hypothesis_engine.library import Library
 
-HYPHENS = "-­‐‑"  # hyphen-minus, soft hyphen, hyphen, non-breaking hyphen
+HYPHENS = "-\u00ad\u2010\u2011"  # hyphen-minus, soft hyphen, hyphen, non-breaking hyphen
 _HYPHENS = re.escape(HYPHENS)
 _IN_WORD = rf"(?:[{_HYPHENS}]\s*)?"  # within a quoted word: nothing, a hyphen, or a line-break hyphen
 _BETWEEN_WORDS = rf"[\s{_HYPHENS}]+"  # where the quote has a space: a space or a hyphen
@@ -23,54 +24,46 @@ _ANY_GAP = rf"[\s{_HYPHENS}]*"  # where the quote has a hyphen
 _PIECE = re.compile(rf"[^\s{_HYPHENS}]+|[\s{_HYPHENS}]+")
 
 
-def verify_hypotheses(
-    results: Iterable[Hypothesis | Failure], library: Library
-) -> list[Hypothesis | Failure]:
-    """Each result with its unverified citations removed; failures pass through unchanged."""
-    return [verify(r, library) if isinstance(r, Hypothesis) else r for r in results]
+class Cited(Protocol):
+    """A mechanism claim or a supporting or contradicting entry."""
+
+    @property
+    def passage_id(self) -> str: ...
+    @property
+    def paper_id(self) -> str: ...
+    @property
+    def quote(self) -> str: ...
 
 
-def verify(hypothesis: Hypothesis, library: Library) -> Hypothesis | Failure:
-    """The hypothesis keeping only the citations whose quote is found in their paper, and
-    recording why each other one was removed (never its quote). Left with no mechanism claim,
-    it is a `Failure`."""
-    built_from = hypothesis.record.get("library_version")
-    if not isinstance(built_from, int):
-        raise ValueError("the hypothesis does not record the library version it was built from")
-    version: int = built_from
-    removed: list[str] = []
+@dataclass(frozen=True)
+class Problem:
+    """A citation that cannot be shown, and why."""
 
-    def kept[C: (Claim, Citation)](cited: tuple[C, ...], what: str) -> tuple[C, ...]:
-        verified = []
-        for c in cited:
-            problem = _problem(c, what, library, version)
-            if problem:
-                removed.append(problem)
-            else:
-                verified.append(c)
-        return tuple(verified)
+    what: str  # "a mechanism claim", "a supporting entry", "a contradicting entry"
+    passage_id: str
+    quote: str  # sent back to the LLM that wrote it; never written to the output
+    why: str  # follows `what`: "cites paper 99999, which the library does not hold"
 
-    mechanism = kept(hypothesis.mechanism, "a mechanism claim")
-    supporting = kept(hypothesis.supporting, "a supporting entry")
-    contradicting = kept(hypothesis.contradicting, "a contradicting entry")
-    record = hypothesis.record | {"citations_removed": removed}
-    if not mechanism:
-        reason = "no mechanism claim is left once unverified citations are removed (spec H1)"
-        return Failure(hypothesis.finding, (*removed, reason), record)
-    return Hypothesis(hypothesis.finding, mechanism, supporting, contradicting, hypothesis.tests, record)
+    def __str__(self) -> str:
+        """For the output: what failed and why, without the quote."""
+        return f"{self.what} citing passage {self.passage_id} {self.why}"
 
 
-def _problem(cited: Claim | Citation, what: str, library: Library, version: int) -> str | None:
-    """Why the citation (`what`: "a mechanism claim", ...) cannot be shown; None when it can."""
+def problem(cited: Cited, what: str, library: Library, version: int) -> Problem | None:
+    """Why the citation cannot be shown; None when it can."""
+
+    def failed(why: str) -> Problem:
+        return Problem(what, cited.passage_id, cited.quote, why)
+
     if not cited.paper_id.strip():
-        return f"{what} carries no paper identifier"
+        return failed("carries no paper identifier")
     if not cited.quote.strip():
-        return f"{what} carries no quoted passage"
+        return failed("carries no quoted passage")
     paper = library.document(cited.paper_id, version)
     if paper is None:
-        return f"{what} cites paper {cited.paper_id}, which the library does not hold"
+        return failed(f"cites paper {cited.paper_id}, which the library does not hold")
     if not (quoted(cited.quote, paper.title) or quoted(cited.quote, paper.text)):
-        return f"{what}'s quote is not found word for word in paper {cited.paper_id}"
+        return failed(f"quotes words not found word for word in paper {cited.paper_id}")
     return None
 
 
