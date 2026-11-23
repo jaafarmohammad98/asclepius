@@ -312,6 +312,30 @@ found.nodes["BDNF"]  # Node(name, kind, papers, passage_ids)
   paper has left the library, or no longer names it, is left out (`left_out` says why), so
   nothing uncited enters the graph. The full library takes a few seconds.
 
+## The knowledge graph
+
+`library_graph` turns the co-mentions into a directed networkx graph and links the three
+syndromes to the terms of their papers. The web app builds it as it opens; it is never stored.
+
+```python
+from hypothesis_engine.evidence import read_findings
+from hypothesis_engine.graph import library_graph
+
+with Library.open(DEFAULT_LIBRARY) as library:
+    graph = library_graph(library, load_vocabulary(), read_findings("findings.csv"))
+graph.edges["post-SSRI sexual dysfunction", "BDNF"]  # kind, papers, passage_ids, findings, label
+```
+
+- **Co-mentions** are arcs both ways between two terms, `kind` "co-mention".
+- **Literature links** go from a syndrome to each term found in a paper its topic search found
+  (`PSSD`, `PFS`, `PAS` in `topics.toml`) or in a passage that names the syndrome.
+- **Finding links** come from a strong or suggestive finding of an analysis export, for a
+  syndrome's group against a comparator that is not another syndrome. They are `kind`
+  "finding", stronger than literature, and keep the literature behind them. The terms of a
+  finding are those its marker names; an enzyme-activity ratio also names its enzyme's genes
+  (`ENZYME_GENES`: 5-alpha reductase is SRD5A1 and SRD5A2).
+- Every node and link has passages or findings behind it.
+
 ## The LLM
 
 The engine reaches an LLM only through `hypothesis_engine.llm`, and the researcher pays for

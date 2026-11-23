@@ -26,7 +26,8 @@ site's page, so no other web page open in the browser can read the data or start
 extractor page is the one `npm run build` writes: the installed app carries a copy
 (`asclepius/web/extractor/`, put there by `package/build.py`), and a source checkout serves
 `extractor/dist/`. It reads PDFs in the browser; nothing it reads reaches this server. Picked
-files are kept in a temporary folder that is deleted when the app stops.
+files are kept in a temporary folder that is deleted when the app stops. As it opens, the app builds
+the knowledge graph from the paper library in the background (`asclepius.web.graph`).
 """
 
 from __future__ import annotations
@@ -45,6 +46,7 @@ from urllib.parse import parse_qs, unquote, urlsplit
 from asclepius.examples import EXAMPLES
 from asclepius.run import Settings
 from asclepius.web import llm_settings
+from asclepius.web.graph import KnowledgeGraph
 from asclepius.web.hypotheses import Engine
 from asclepius.web.llm_settings import SettingsError
 from asclepius.web.workspace import ROLES, LoadError, RunError, Workspace
@@ -89,6 +91,7 @@ class App(ThreadingHTTPServer):
         self.workspace = workspace
         self.settings = settings
         self.engine = engine
+        self.graph = KnowledgeGraph(engine)  # built by `main` as the app opens
         self.lock = threading.Lock()  # one load or upload at a time
 
 
@@ -295,6 +298,7 @@ def main(argv: list[str] | None = None) -> None:
             server = make_server(folder, args.port)
         except OSError as error:
             parser.exit(1, f"Cannot listen on port {args.port} ({error}); try --port with another number.\n")
+        server.graph.start()
         url = f"http://127.0.0.1:{server.server_address[1]}/"
         print(
             f"Asclepius is running at {url}\nStop it with Ctrl+C; the files picked are then deleted.",
