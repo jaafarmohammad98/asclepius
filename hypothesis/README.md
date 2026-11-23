@@ -144,36 +144,43 @@ answer = llm.complete([{"role": "system", "content": "..."}, {"role": "user", "c
 answer.text, answer.record()  # record: backend, model that answered, settings, stop reason, tokens
 ```
 
-- **Anthropic (Claude), with your own key.** Set `ANTHROPIC_API_KEY`, or put
-  `api_key = "..."` in `hypothesis/data/llm.toml` (git ignores `data/`). The model is
-  `claude-opus-5-5` unless you name another. On models that support it the request asks for
-  Anthropic's server-side fallback, so a declined request is answered by another model in
-  the same call; the record names the model that actually answered. A request still declined
-  raises `LLMError`.
+- **Anthropic (Claude), with your own key.** Set `ANTHROPIC_API_KEY`, or put `api_key`
+  under `[anthropic]` in `hypothesis/data/llm.toml` (git ignores `data/`). The model is
+  `claude-opus-5-5` unless you name another. Each request asks for Anthropic's default
+  server-side fallback: a request the model declines for policy reasons is answered by
+  another model in the same call (models without fallbacks just answer alone). The record
+  names the model that actually answered. A request still declined raises `LLMError`.
 - **A local model.** Run a server that speaks the OpenAI-style chat protocol
   (`/v1/chat/completions`): [Ollama](https://ollama.com), llama.cpp's `llama-server`,
   LM Studio. Nothing then leaves the machine.
 
-Switching is a settings change only. `hypothesis/data/llm.toml`:
+Each back end keeps its own table, so switching is a change of `backend` alone.
+`hypothesis/data/llm.toml`:
 
 ```toml
-backend = "local"               # or "anthropic" (the default when a key is set)
-model = "llama3.1:8b"           # the name your server knows the model by
+backend = "local"      # or "anthropic" (the default when a key is set)
+max_tokens = 16000     # the default
+
+[anthropic]
+api_key = "sk-ant-..." # or ANTHROPIC_API_KEY
+model = "claude-opus-5-5"
+effort = "high"        # optional: low, medium, high, xhigh, max
+
+[local]
+model = "llama3.1:8b"  # the name your server knows the model by
 url = "http://localhost:11434/v1"  # Ollama's address, the default
-max_tokens = 16000              # the default
-# effort = "high"               # anthropic only: low, medium, high, xhigh, max
-# api_key = "sk-ant-..."        # anthropic only; or ANTHROPIC_API_KEY
 ```
 
-The environment variables `ASCLEPIUS_LLM_BACKEND`, `ASCLEPIUS_LLM_MODEL`, `ASCLEPIUS_LLM_URL`
-and `ANTHROPIC_API_KEY` override the file. With neither a key nor a local backend set,
-`connect()` raises `LLMNotConfigured`, which says how to set one up.
+Environment variables override the file: `ASCLEPIUS_LLM_BACKEND`, `ASCLEPIUS_LLM_MODEL` (the
+chosen back end's model), `ASCLEPIUS_LLM_URL` and `ANTHROPIC_API_KEY`. With neither a key
+nor a local back end set, `connect()` raises `LLMNotConfigured`, which says how to set one
+up; a misspelt setting or an unknown `effort` is refused the same way.
 
 - **The key** is never printed or stored by the engine: it is left out of the settings'
   repr, of `answer.record()`, of recorded requests and of error messages (which also drop
   the SDK's exception, since it holds the request headers).
 - **The request hook.** `connect(on_request=f)` calls `f(OutgoingRequest(backend, url, body))`
-  with every request just before it is sent; raising stops the request. Tests use it to see
+  with a copy of every request just before it is sent; raising stops the request. Tests use it to see
   exactly what would leave the machine, and the privacy checks (`PrivateTextGuard`, M4-08)
   hook in there. The body is the JSON sent; headers, and so the key, are not part of it.
 

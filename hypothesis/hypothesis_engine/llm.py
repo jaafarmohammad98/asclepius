@@ -13,6 +13,7 @@ every recorded request, every completion record and every error message.
 
 from __future__ import annotations
 
+import copy
 import json
 import os
 import tomllib
@@ -29,32 +30,25 @@ from hypothesis_engine.library import DEFAULT_LIBRARY
 
 DEFAULT_SETTINGS = DEFAULT_LIBRARY.parent / "llm.toml"
 
-BACKENDS = ("anthropic", "local")
+Backend = Literal["anthropic", "local"]
+BACKENDS: tuple[Backend, ...] = ("anthropic", "local")
+EFFORTS = ("low", "medium", "high", "xhigh", "max")
 ANTHROPIC_MODEL = "claude-opus-5-5"
 LOCAL_URL = "http://localhost:11434/v1"  # Ollama's default
 MAX_TOKENS = 16000
-# models that take Anthropic's server-side fallback: when one declines a request it is run on
-# another model in the same call, and the record names the model that answered
-FALLBACK_MODELS = {
-    "claude-fable-5-2",
-    "claude-fable-5-1",
-    "claude-opus-5-5",
-    "claude-opus-5",
-    "claude-sonnet-5-5",
-}
+# Anthropic's server-side fallback: a request the model declines is run on another model in
+# the same call (the record names the model that answered); models without it run alone
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
 
-# environment variable -> setting; they override the settings file
-ENV = {
-    "ASCLEPIUS_LLM_BACKEND": "backend",
-    "ASCLEPIUS_LLM_MODEL": "model",
-    "ASCLEPIUS_LLM_URL": "url",
-    "ANTHROPIC_API_KEY": "api_key",
-}
+# the settings file: top-level keys, and the keys of each back end's table
+TOP_KEYS = {"backend", "max_tokens", *BACKENDS}
+BACKEND_KEYS = {"anthropic": {"model", "effort", "api_key"}, "local": {"model", "url"}}
+# environment variables, which override the file
+ENV = ("ASCLEPIUS_LLM_BACKEND", "ASCLEPIUS_LLM_MODEL", "ASCLEPIUS_LLM_URL", "ANTHROPIC_API_KEY")
 
 _HOW_TO = (
     "No LLM is configured. Either set ANTHROPIC_API_KEY to your own Anthropic API key, or run a "
-    'local model server and set backend = "local" and its model in {path} (or '
+    'local model server and set backend = "local" and model under [local] in {path} (or '
     "ASCLEPIUS_LLM_BACKEND=local and ASCLEPIUS_LLM_MODEL)."
 )
 
@@ -67,10 +61,10 @@ class LLMNotConfigured(Exception):
 class Settings:
     """Which LLM to reach and how. `api_key` is never shown: see `public()`."""
 
-    backend: str
+    backend: Backend
     model: str
     max_tokens: int = MAX_TOKENS
-    effort: str | None = None  # anthropic only: low, medium, high, xhigh, max
+    effort: str | None = None  # anthropic only
     url: str = LOCAL_URL  # local only
     api_key: str | None = field(default=None, repr=False)
 
@@ -89,43 +83,71 @@ class Settings:
 
 
 def load_settings(env: Mapping[str, str], path: Path = DEFAULT_SETTINGS) -> Settings:
-    """The settings from `env` (usually `os.environ`) over the file at `path`, if any."""
-    values: dict[str, object] = {}
+    """The settings from `env` (usually `os.environ`) over the file at `path`, if any.
+
+    Each back end keeps its own table (`[anthropic]`, `[local]`), so switching between them
+    is a change of `backend` alone.
+    """
+    file: dict[str, Any] = {}
     if path.exists():
         try:
-            values.update(tomllib.loads(path.read_text()))
+            file = tomllib.loads(path.read_text())
         except tomllib.TOMLDecodeError as error:
             raise LLMNotConfigured(f"{path} is not valid TOML: {error}") from None
-    values.update({name: env[var] for var, name in ENV.items() if env.get(var)})
-
-    unknown = set(values) - {"backend", "model", "max_tokens", "effort", "url", "api_key"}
+    unknown = sorted(set(file) - TOP_KEYS) + [
+        f"{name}.{key}"
+        for name in BACKENDS
+        for key in sorted(set(_table(file, name, path)) - BACKEND_KEYS[name])
+    ]
     if unknown:
-        raise LLMNotConfigured(f"unknown settings in {path}: {', '.join(sorted(unknown))}")
-    backend = values.get("backend") or ("anthropic" if values.get("api_key") else None)
+        raise LLMNotConfigured(f"unknown settings in {path}: {', '.join(unknown)}")
+
+    cloud = _table(file, "anthropic", path) | _set(api_key=env.get("ANTHROPIC_API_KEY"))
+    local = _table(file, "local", path) | _set(url=env.get("ASCLEPIUS_LLM_URL"))
+    backend = env.get("ASCLEPIUS_LLM_BACKEND") or file.get("backend")
+    backend = backend or ("anthropic" if cloud.get("api_key") else None)
     if backend is None:
         raise LLMNotConfigured(_HOW_TO.format(path=path))
     if backend not in BACKENDS:
         raise LLMNotConfigured(f"backend must be one of {', '.join(BACKENDS)}, not {backend!r}")
-    if backend == "anthropic" and not values.get("api_key"):
+    chosen = cloud if backend == "anthropic" else local
+    chosen |= _set(model=env.get("ASCLEPIUS_LLM_MODEL"))
+
+    if backend == "anthropic" and not cloud.get("api_key"):
         raise LLMNotConfigured(
-            f"backend is anthropic but no key is set: set ANTHROPIC_API_KEY or api_key in {path}"
+            f"backend is anthropic but no key is set: set ANTHROPIC_API_KEY, or api_key under [anthropic] in {path}"
         )
-    if backend == "local" and not values.get("model"):
+    if backend == "local" and not local.get("model"):
         raise LLMNotConfigured(
-            f"backend is local but no model is named: set model in {path} or ASCLEPIUS_LLM_MODEL "
-            "(the name your model server knows it by, e.g. llama3.1:8b)"
+            f"backend is local but no model is named: set model under [local] in {path}, or "
+            "ASCLEPIUS_LLM_MODEL (the name your model server knows it by, e.g. llama3.1:8b)"
         )
-    max_tokens = values.get("max_tokens", MAX_TOKENS)
+    effort = cloud.get("effort") if backend == "anthropic" else None
+    if effort is not None and effort not in EFFORTS:
+        raise LLMNotConfigured(f"effort must be one of {', '.join(EFFORTS)}, not {effort!r}")
+    max_tokens = file.get("max_tokens", MAX_TOKENS)
     if not isinstance(max_tokens, int) or isinstance(max_tokens, bool) or max_tokens < 1:
         raise LLMNotConfigured(f"max_tokens must be a whole number above 0, not {max_tokens!r}")
     return Settings(
-        backend=str(backend),
-        model=str(values.get("model") or ANTHROPIC_MODEL),
+        backend=backend,
+        model=str(chosen.get("model") or ANTHROPIC_MODEL),
         max_tokens=max_tokens,
-        effort=str(values["effort"]) if values.get("effort") else None,
-        url=str(values.get("url") or LOCAL_URL).rstrip("/"),
-        api_key=str(values["api_key"]) if values.get("api_key") else None,
+        effort=effort,
+        url=str(local.get("url") or LOCAL_URL).rstrip("/"),
+        api_key=str(cloud["api_key"]) if backend == "anthropic" else None,
     )
+
+
+def _table(file: dict[str, Any], name: str, path: Path) -> dict[str, Any]:
+    table = file.get(name, {})
+    if not isinstance(table, dict):
+        raise LLMNotConfigured(f"{name} in {path} must be a table: [{name}]")
+    return dict(table)
+
+
+def _set(**values: str | None) -> dict[str, str]:
+    """The values that are set (an empty environment variable counts as unset)."""
+    return {name: value for name, value in values.items() if value}
 
 
 # --- calling it ----------------------------------------------------------------------------
@@ -194,6 +216,8 @@ def http_local_transport(url: str, body: dict[str, Any]) -> dict[str, Any]:
     except urllib.error.HTTPError as error:
         detail = error.read().decode(errors="replace")[:500]
         raise LLMError(f"the local model server at {url} answered HTTP {error.code}: {detail}") from None
+    except ValueError:
+        raise LLMError(f"the local model server at {url} did not answer in JSON") from None
     except (urllib.error.URLError, OSError) as error:
         raise LLMError(
             f"no local model server answered at {url} ({error}); is it running? Ollama: `ollama serve`"
@@ -228,7 +252,7 @@ class LLM:
 
     def _send(self, request: OutgoingRequest) -> None:
         if self._on_request is not None:
-            self._on_request(request)
+            self._on_request(OutgoingRequest(request.backend, request.url, copy.deepcopy(request.body)))
 
     def _complete_anthropic(self, messages: Sequence[Message]) -> Completion:
         settings = self.settings
@@ -247,16 +271,13 @@ class LLM:
             body["system"] = system
         if settings.effort:
             body["output_config"] = {"effort": settings.effort}
-        betas = []
-        if settings.model in FALLBACK_MODELS:
-            body["fallbacks"] = "default"
-            betas.append(FALLBACK_BETA)
+        body["fallbacks"] = "default"
         self._send(OutgoingRequest("anthropic", f"{str(client.base_url).rstrip('/')}/v1/messages", body))
 
         # the SDK's exceptions hold the request, headers and key included: keep them out of ours
         failure = None
         try:
-            response = client.beta.messages.create(**body, betas=betas)
+            response = client.beta.messages.create(**body, betas=[FALLBACK_BETA])
         except anthropic.APIStatusError as error:
             failure = f"the Anthropic API answered HTTP {error.status_code}: {_scrub(error.message, settings.api_key)}"
         except anthropic.APIConnectionError as error:

@@ -292,10 +292,6 @@ def _index_or_search(args: argparse.Namespace, say: Callable[[str], None]) -> in
     return 0
 
 
-if __name__ == "__main__":
-    sys.exit(main())
-
-
 def _llm_check(settings_path: Path, say: Callable[[str], None]) -> int:
     try:
         llm = connect(load_settings(os.environ, settings_path))
@@ -305,3 +301,7 @@ def _llm_check(settings_path: Path, say: Callable[[str], None]) -> int:
         return 1
     say(f"{completion.backend} model {completion.model} answered: {completion.text.strip()[:200]}")
     return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

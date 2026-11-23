@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import http.server
 import json
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -38,7 +40,7 @@ def test_a_key_in_the_environment_is_enough_for_the_default_cloud_model(tmp_path
 
 def test_the_environment_overrides_the_settings_file(tmp_path: Path):
     path = tmp_path / "llm.toml"
-    path.write_text(f'backend = "anthropic"\napi_key = "{KEY}"\nmodel = "claude-sonnet-5-5"\n')
+    path.write_text(f'backend = "anthropic"\n[anthropic]\napi_key = "{KEY}"\nmodel = "claude-sonnet-5-5"\n')
     settings = load_settings(env={"ASCLEPIUS_LLM_MODEL": "claude-haiku-5-5"}, path=path)
     assert (settings.model, settings.api_key) == ("claude-haiku-5-5", KEY)
 
@@ -90,6 +92,23 @@ def test_a_local_model_answers_and_the_call_records_model_and_settings():
     ((url, body),) = server.received
     assert url == "http://localhost:11434/v1/chat/completions"
     assert body["messages"] == MESSAGES
+
+
+def test_a_local_server_that_does_not_answer_in_json_is_a_clear_error():
+    class Html(http.server.BaseHTTPRequestHandler):
+        def do_POST(self) -> None:
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"<html>a web page, not a model server</html>")
+
+        def log_message(self, *args: object) -> None:
+            pass
+
+    with http.server.HTTPServer(("127.0.0.1", 0), Html) as server:
+        threading.Thread(target=server.handle_request, daemon=True).start()
+        settings = Settings(backend="local", model="x", url=f"http://127.0.0.1:{server.server_port}/v1")
+        with pytest.raises(LLMError, match="did not answer in JSON"):
+            connect(settings).complete(MESSAGES)
 
 
 def test_the_hook_sees_every_request_before_it_is_sent():
@@ -177,17 +196,31 @@ def test_claude_answers_with_the_researchers_key_and_system_messages_become_inst
 
 def test_switching_back_ends_is_a_settings_change_only(tmp_path: Path):
     path = tmp_path / "llm.toml"
+    tables = f'[anthropic]\napi_key = "{KEY}"\n[local]\nmodel = "llama3.1:8b"\n'
     api, server = FakeAnthropic(), FakeLocalServer()
 
-    def answer() -> str:
+    def answer() -> tuple[str, str]:
         llm = connect(load_settings({}, path), anthropic_client=api.client(), local_transport=server)
-        return llm.complete(MESSAGES).backend
+        completion = llm.complete(MESSAGES)
+        return completion.backend, completion.model
 
-    path.write_text(f'api_key = "{KEY}"\n')
-    assert answer() == "anthropic"
-    path.write_text(f'backend = "local"\nmodel = "llama3.1:8b"\napi_key = "{KEY}"\n')
-    assert answer() == "local"
-    assert (len(api.received), len(server.received)) == (1, 1)
+    path.write_text('backend = "anthropic"\n' + tables)
+    assert answer() == ("anthropic", "claude-opus-5-5")
+    path.write_text('backend = "local"\n' + tables)
+    assert answer() == ("local", "llama3.1:8b")
+    path.write_text('backend = "anthropic"\n' + tables)
+    assert answer() == ("anthropic", "claude-opus-5-5")
+    assert (len(api.received), len(server.received)) == (2, 1)
+
+
+def test_settings_that_are_misspelt_or_out_of_range_are_refused(tmp_path: Path):
+    path = tmp_path / "llm.toml"
+    path.write_text(f'[anthropic]\napi_key = "{KEY}"\nmodle = "claude-haiku-5-5"\n')
+    with pytest.raises(LLMNotConfigured, match=r"anthropic\.modle"):
+        load_settings({}, path)
+    path.write_text(f'[anthropic]\napi_key = "{KEY}"\neffort = "extreme"\n')
+    with pytest.raises(LLMNotConfigured, match="effort must be one of"):
+        load_settings({}, path)
 
 
 def test_the_hook_sees_the_cloud_request_too_and_never_the_key():
