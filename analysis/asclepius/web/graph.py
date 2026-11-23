@@ -42,6 +42,7 @@ from asclepius.web.hypotheses import BUILD_LIBRARY, Engine, links
 BUILDING, READY, FAILED = "building", "ready", "failed"
 MOST_PASSAGES = 50  # shown for one link; a link of hundreds of papers says how many more there are
 UPDATING = "Updating with this run's findings…"
+AWAITING = "This run's findings join the map when it finishes."
 SHOWN_FINGERPRINT = 12  # characters of a dataset's fingerprint, as the exports' file names have it
 
 
@@ -50,7 +51,8 @@ class Run:
 
     def __init__(self, fingerprint: str) -> None:
         self.fingerprint = fingerprint
-        self.updating = True
+        self.running = True  # the run is still going; then its findings are being added
+        self.updating = True  # until they are in
         self.finding_links = 0
 
 
@@ -84,9 +86,10 @@ class KnowledgeGraph:
             with Library.open(self.engine.library) as library:
                 graph = library_graph(library, vocabulary)
                 self.version = library.version
-            self.vocabulary, self._library = vocabulary, (graph, bottlenecks(graph))
-            with self._lock:  # findings added while it was built are linked in when they arrive
-                self.graph, self.scores = self._library
+            scores = bottlenecks(graph)
+            with self._lock:  # findings handed over while it was built are linked in once it is
+                self.vocabulary, self._library = vocabulary, (graph, scores)
+                self.graph, self.scores = graph, scores
             self.state, self.message = READY, f"{self.graph.number_of_nodes()} terms in the knowledge graph."
         except LibraryError as error:
             self.state, self.message = FAILED, f"{error}. {BUILD_LIBRARY}"
@@ -107,19 +110,23 @@ class KnowledgeGraph:
     def add(self, run: Run, findings: list[Finding]) -> None:
         """Link in `run`'s findings and re-score the terms, in the background (once the graph is
         built); nothing if another run, a load or a clear has come since `expect`."""
+        with self._lock:
+            run.running = False
         threading.Thread(target=self._add, args=(run, findings), daemon=True).start()
 
     def _add(self, run: Run, findings: list[Finding]) -> None:
         self._done.wait()
-        graph = scores = None
-        if self._library is not None and self.vocabulary is not None:
-            graph = with_findings(self._library[0], findings, self.vocabulary)
-            scores = bottlenecks(graph)
+        with self._lock:
+            library, vocabulary = self._library, self.vocabulary
+        linked = None  # the graph with the findings, and its scores; none if it could not be built
+        if library is not None and vocabulary is not None:
+            graph = with_findings(library[0], findings, vocabulary)
+            linked = graph, bottlenecks(graph)
         with self._lock:
             if self.run is not run:
                 return
-            if graph is not None and scores is not None:
-                self.graph, self.scores = graph, scores
+            if linked is not None:
+                self.graph, self.scores = graph, scores = linked
                 run.finding_links = sum(kind == FINDING for _, _, kind in graph.edges(data="kind"))
             run.updating = False
 
@@ -138,22 +145,26 @@ class KnowledgeGraph:
         the run whose findings are in (or being added), with its fingerprint's first characters."""
         with self._lock:
             graph, scores, run = self.graph, self.scores, self.run
-            shown = run and {
+            said = run and (run.running, run.updating, run.finding_links)  # as of one moment
+        shown = None
+        if run and said:
+            running, updating, count = said
+            shown = {
                 "fingerprint": run.fingerprint[:SHOWN_FINGERPRINT],
-                "updating": run.updating,
-                "finding_links": run.finding_links,
+                "updating": updating,
+                "finding_links": count,
             }
         if self.state != READY or graph is None:
             return {"state": self.state, "message": self.message, "run": shown}
         message = self.message
-        if shown and shown["updating"]:
-            message = f"{message} {UPDATING}"
-        elif shown:
-            count = shown["finding_links"]
-            message = (
-                f"{message} With the findings of the run on dataset {shown['fingerprint']}: "
-                f"{count} finding link{'' if count == 1 else 's'}."
-            )
+        if shown:
+            if running:
+                message += f" {AWAITING}"
+            elif updating:
+                message += f" {UPDATING}"
+            else:
+                links = f"{count} finding link{'' if count == 1 else 's'}"
+                message += f" With the findings of the run on dataset {shown['fingerprint']}: {links}."
         terms = {n for n, kind in graph.nodes(data="kind") if kind != SYNDROME}
         return {
             "state": READY,

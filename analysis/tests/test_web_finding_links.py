@@ -115,3 +115,13 @@ def test_a_finished_run_can_be_exported_while_the_graph_is_still_updating(app, m
         time.sleep(0.01)
     assert call(url + "/api/export/findings.csv")[0] == 200  # not "let it finish"
     assert settled(url)["run"]["finding_links"] == 1
+
+
+def test_while_a_run_is_going_the_map_says_its_findings_come_when_it_finishes(tmp_path):
+    knowledge = KnowledgeGraph(knowledge_engine(tmp_path, with_androsterone=True))
+    knowledge.start()
+    knowledge.wait(timeout=30)
+    run = knowledge.expect("abcdef1234567890")
+    assert knowledge.map_view()["message"].endswith("This run's findings join the map when it finishes.")
+    knowledge.add(run, [])
+    assert "finishes" not in knowledge.map_view()["message"]

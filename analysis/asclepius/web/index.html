@@ -1120,6 +1120,7 @@ async function loadMap() {
   try {
     view = await api("/api/graph");
   } catch (error) {
+    if (asked !== MAP.asked) return;
     $("map-status").hidden = true;
     showError("map-error", error.message);
     return;
@@ -1138,11 +1139,12 @@ async function loadMap() {
   const before = MAP.view;
   if (view.run && view.run.updating) MAP.timer = setTimeout(loadMap, 1000);
   $("map-status").textContent = view.message;
-  if (before && before.message === view.message && JSON.stringify(before.run) === JSON.stringify(view.run)) return;
+  const sameRun = before && JSON.stringify(before.run) === JSON.stringify(view.run);
+  if (sameRun && before.message === view.message) return;
   MAP.view = view;
   $("map-body").hidden = false;
   if (!before) setWeights(view.weights); // a researcher's weights stay as the run's findings come and go
-  if (before && JSON.stringify(before.run) !== JSON.stringify(view.run)) $("edge-panel").hidden = true; // its link may be gone
+  if (before && !sameRun) $("edge-panel").hidden = true; // its link may be gone
   redraw();
 }
 

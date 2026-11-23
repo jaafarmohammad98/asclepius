@@ -254,8 +254,8 @@ class Workspace:
         except (RunError, FindingsError, OSError):  # dropped by a load meanwhile, or not exportable
             pass
         finally:
+            self.knowledge.add(graph_run, findings)  # first, so the map never stays "updating"
             path.unlink(missing_ok=True)
-            self.knowledge.add(graph_run, findings)
 
     def _steps(self) -> None:
         for step in self.steps:
