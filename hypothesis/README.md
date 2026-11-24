@@ -411,6 +411,34 @@ drug.safety  # Safety(label, risks, generic_applications, unchecked); .generic, 
 - **A failure** leaves the previous `drugs.json` as it was; `asclepius-library drugs` fetches
   again.
 
+## Drug ranking
+
+`rank` scores the cached drugs by TOPSIS. Each is a candidate for study, not a treatment.
+
+```python
+from hypothesis_engine.topsis import Weights, rank
+
+ranking = rank(read_drug_cache())  # Ranking(ranked, known_causes)
+row = ranking.ranked[0]  # Row(drug, score, criteria, risks, assumed, mpo_terms, label)
+row.criteria  # Criteria(impact, coverage, safety, bbb, readiness)
+rank(cache, Weights(impact=0.30, coverage=0.25, safety=0.20, bbb=0.15, readiness=0.10))  # the defaults
+```
+
+- **Impact** is the best bottleneck score of the drug's targets; **coverage** how many of PSSD,
+  PFS and PAS link to any of them.
+- **Safety** is a cost criterion: `Safety.penalty`, plus one for a drug withdrawn from a market
+  after approval (alpidem), with "withdrawn from a market after approval" among its risks.
+- **BBB** is the CNS MPO estimate (Wager et al. 2010), 0 to 6. ChEMBL 36 gives no ClogD or pKa,
+  so most drugs are scored from four terms (ClogP, MW, TPSA, HBD) rescaled to six; `mpo_terms`
+  says how many. `cx_logp` is the ClogP when given, else `alogp`.
+- **Readiness** is half for `max_phase` 4, half for a marketed generic.
+- **Unknowns** are never better than what is known: an unknown penalty or CNS MPO is the worst
+  seen among the drugs ranked, an unknown generic none; `assumed` names them.
+- **TOPSIS**: each criterion vector-normalised and weighted (shares of the weights' sum), the
+  score the distance to the ideal worst over the distances to the ideal best and worst. A drug
+  that cannot be told from the rest (alone, say) scores 0.5. Ties go by name.
+- **Known causes** are never ranked: `known_causes` lists them apart.
+
 ## The LLM
 
 The engine reaches an LLM only through `hypothesis_engine.llm`, and the researcher pays for
