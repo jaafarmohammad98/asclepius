@@ -6,7 +6,22 @@ import itertools
 
 import pytest
 
-from hypothesis_engine.portfolio import COVERAGE, TOPSIS, Compound, Constraints, Target, portfolio
+from hypothesis_engine.portfolio import (
+    BUDGET,
+    CANDIDATE,
+    COVERAGE,
+    GENERICS_ONLY,
+    KNOWN_CAUSE,
+    MAX_COMPOUNDS,
+    NO_COST,
+    NOTHING_SELECTABLE,
+    SAFETY_CEILING,
+    TOPSIS,
+    Compound,
+    Constraints,
+    Target,
+    portfolio,
+)
 
 # Five targets, weight = bottleneck score × syndromes touched:
 # T1 0.9×3 = 2.7, T2 0.8×2 = 1.6, T3 0.6×2 = 1.2, T4 0.5×1 = 0.5, T5 0.4×3 = 1.2 (total 7.2).
@@ -67,18 +82,16 @@ def test_an_infeasible_budget_reports_that_the_budget_binds() -> None:
     result = portfolio(COMPOUNDS, TARGETS, Constraints(budget=5, max_compounds=3))
     assert not result.feasible
     assert result.chosen == ()
-    assert result.binding == ("budget",)
+    assert result.binding == (BUDGET,)
 
 
 def test_each_binding_constraint_is_named() -> None:
-    assert portfolio(COMPOUNDS, TARGETS, Constraints(budget=80, max_compounds=0)).binding == (
-        "maximum compounds",
-    )
+    assert portfolio(COMPOUNDS, TARGETS, Constraints(budget=80, max_compounds=0)).binding == (MAX_COMPOUNDS,)
     risky = tuple(
         _compound(c.name, c.cost, " ".join(c.targets), c.topsis, safety_penalty=0.9) for c in COMPOUNDS
     )
-    assert portfolio(risky, TARGETS, Constraints(80, 3, safety_ceiling=0.5)).binding == ("safety ceiling",)
-    assert portfolio(COMPOUNDS, TARGETS, Constraints(80, 3, generics_only=True)).binding == ("generics only",)
+    assert portfolio(risky, TARGETS, Constraints(80, 3, safety_ceiling=0.5)).binding == (SAFETY_CEILING,)
+    assert portfolio(COMPOUNDS, TARGETS, Constraints(80, 3, generics_only=True)).binding == (GENERICS_ONLY,)
 
 
 def test_known_causes_and_uncosted_compounds_never_appear() -> None:
@@ -92,9 +105,10 @@ def test_known_causes_and_uncosted_compounds_never_appear() -> None:
     for objective in (COVERAGE, TOPSIS):
         result = portfolio(compounds, TARGETS, LIMITS, objective=objective)
         assert not {"G", "H"} & set(result.chosen)
-        assert result.removed == (("G", "known cause, never selectable"), ("H", "no cost entered"))
+        assert result.removed == (("G", KNOWN_CAUSE), ("H", NO_COST))
     only_removed = portfolio(compounds[-2:], TARGETS, LIMITS)
     assert not only_removed.feasible
+    assert only_removed.binding == (NOTHING_SELECTABLE,)
 
 
 def test_safety_ceiling_and_generics_only_limit_the_choice() -> None:
@@ -133,6 +147,12 @@ def _enumerated_best(compounds: tuple[Compound, ...], limits: Constraints, objec
                 continue
             if any(pair <= names for pair in limits.excluded_pairs):
                 continue
+            if limits.safety_ceiling is not None and any(
+                c.safety_penalty > limits.safety_ceiling for c in subset
+            ):
+                continue
+            if limits.generics_only and not all(c.generic for c in subset):
+                continue
             if objective == COVERAGE:
                 covered = set().union(*(c.targets for c in subset))
                 value = sum(t.weight for t in TARGETS if t.name in covered)
@@ -156,3 +176,50 @@ def _enumerated_best(compounds: tuple[Compound, ...], limits: Constraints, objec
 def test_the_optimum_matches_enumeration(limits: Constraints, objective: str) -> None:
     result = portfolio(COMPOUNDS, TARGETS, limits, objective=objective)
     assert result.objective == pytest.approx(_enumerated_best(COMPOUNDS, limits, objective))
+
+
+# B and D carry a safety penalty of 0.7; A and E are not generics.
+VARIED = tuple(
+    _compound(
+        c.name,
+        c.cost,
+        " ".join(c.targets),
+        c.topsis,
+        safety_penalty=0.7 if c.name in "BD" else 0.2,
+        generic=c.name not in "AE",
+    )
+    for c in COMPOUNDS
+)
+
+
+@pytest.mark.parametrize("objective", [COVERAGE, TOPSIS])
+@pytest.mark.parametrize(
+    "limits",
+    [
+        Constraints(80, 3, safety_ceiling=0.5),
+        Constraints(80, 3, generics_only=True),
+        Constraints(100, 4, safety_ceiling=0.5, generics_only=True),
+    ],
+)
+def test_the_optimum_matches_enumeration_with_safety_and_generics(
+    limits: Constraints, objective: str
+) -> None:
+    result = portfolio(VARIED, TARGETS, limits, objective=objective)
+    assert result.objective == pytest.approx(_enumerated_best(VARIED, limits, objective))
+
+
+def test_two_limits_that_bind_only_together_are_both_named() -> None:
+    # Budget 5 shuts out every compound, and so does a safety ceiling of 0.1; relaxing either alone fits nothing.
+    result = portfolio(VARIED, TARGETS, Constraints(5, 3, safety_ceiling=0.1))
+    assert not result.feasible
+    assert result.binding == (BUDGET, SAFETY_CEILING)
+
+
+def test_every_chosen_compound_is_a_candidate_for_study() -> None:
+    assert portfolio(COMPOUNDS, TARGETS, LIMITS).label == CANDIDATE == "candidate for study"
+
+
+@pytest.mark.parametrize("cost", [-1.0, float("nan"), float("inf")])
+def test_a_cost_that_is_not_a_non_negative_number_is_refused(cost: float) -> None:
+    with pytest.raises(ValueError, match="cost"):
+        _compound("X", cost, "T1", 0.5)

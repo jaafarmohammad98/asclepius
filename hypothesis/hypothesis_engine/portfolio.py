@@ -10,7 +10,8 @@ Constraints: total entered cost within the budget, at most the maximum number of
 excluded pair both chosen, each compound's safety penalty within the ceiling, and optionally generics
 only. A portfolio holds at least one compound. Known causes and compounds without an entered cost are
 removed before solving, each with its reason, so neither can appear in any solution. When no
-portfolio fits, each constraint is relaxed in turn and re-solved to say which one binds.
+portfolio fits, each constraint is relaxed in turn and re-solved to say which one binds; if none does
+alone, the smallest set that binds together.
 
 Every chosen compound is a candidate for study, not a treatment, and covering a target says the
 compound acts on it, not that acting on it helps.
@@ -18,12 +19,16 @@ compound acts on it, not that acting on it helps.
 
 from __future__ import annotations
 
+import itertools
 import math
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, replace
+from typing import Any
 
 import numpy as np
 from scipy.optimize import Bounds, LinearConstraint, milp
+
+from hypothesis_engine.hypotheses import CANDIDATE
 
 COVERAGE = "coverage"
 TOPSIS = "topsis"
@@ -36,6 +41,7 @@ MAX_COMPOUNDS = "maximum compounds"
 EXCLUDED_PAIRS = "excluded pairs"
 SAFETY_CEILING = "safety ceiling"
 GENERICS_ONLY = "generics only"
+NOTHING_SELECTABLE = "no selectable compound"  # every compound was removed before solving
 
 
 @dataclass(frozen=True)
@@ -63,6 +69,12 @@ class Compound:
     generic: bool = False
     known_cause: bool = False
 
+    def __post_init__(self) -> None:
+        if self.cost is not None and (not math.isfinite(self.cost) or self.cost < 0):
+            raise ValueError(f"{self.name}: cost must be a non-negative number or not entered: {self.cost}")
+        if not math.isfinite(self.topsis) or not math.isfinite(self.safety_penalty):
+            raise ValueError(f"{self.name}: TOPSIS score and safety penalty must be numbers")
+
 
 @dataclass(frozen=True)
 class Constraints:
@@ -85,13 +97,19 @@ class Constraints:
 
 @dataclass(frozen=True)
 class Portfolio:
-    """The solution, or, when nothing fits, which constraints bind (each one whose relaxation alone fits)."""
+    """The solution, or, when nothing fits, which constraints bind.
+
+    `binding` names every constraint whose relaxation alone lets a portfolio fit; when none does, the
+    smallest set of constraints that must be relaxed together; NOTHING_SELECTABLE if every compound
+    was removed before solving (see `removed`).
+    """
 
     chosen: tuple[str, ...]
     objective: float
     covers: dict[str, tuple[str, ...]]  # per chosen compound, the top-K targets it acts on
     removed: tuple[tuple[str, str], ...]  # (compound, why) for those removed before solving
     binding: tuple[str, ...] = ()
+    label: str = CANDIDATE  # every chosen compound is a candidate for study, not a treatment (rule 6)
 
     @property
     def feasible(self) -> bool:
@@ -210,14 +228,29 @@ def _constraint(rows: list[np.ndarray], lower: list[float], upper: list[float]) 
 def _binding(
     compounds: Sequence[Compound], top: Sequence[Target], limits: Constraints, objective: str
 ) -> tuple[str, ...]:
-    """The constraints each of whose relaxation alone lets a portfolio fit."""
-    relaxed = {
-        BUDGET: replace(limits, budget=math.inf),
-        MAX_COMPOUNDS: replace(limits, max_compounds=max(len(compounds), 1)),
-        EXCLUDED_PAIRS: replace(limits, excluded_pairs=frozenset()),
-        SAFETY_CEILING: replace(limits, safety_ceiling=None),
-        GENERICS_ONLY: replace(limits, generics_only=False),
+    """The constraints in the smallest sets whose relaxation together lets a portfolio fit."""
+    if not compounds:
+        return (NOTHING_SELECTABLE,)
+    relax: dict[str, dict[str, Any]] = {
+        BUDGET: {"budget": math.inf},
+        MAX_COMPOUNDS: {"max_compounds": len(compounds)},
+        EXCLUDED_PAIRS: {"excluded_pairs": frozenset()},
+        SAFETY_CEILING: {"safety_ceiling": None},
+        GENERICS_ONLY: {"generics_only": False},
     }
-    return tuple(
-        name for name, loose in relaxed.items() if _solve(compounds, top, loose, objective) is not None
-    )
+    for size in range(1, len(relax) + 1):
+        fits = [
+            names
+            for names in itertools.combinations(relax, size)
+            if _solve(
+                compounds,
+                top,
+                replace(limits, **{k: v for n in names for k, v in relax[n].items()}),
+                objective,
+            )
+            is not None
+        ]
+        if fits:
+            binding = set().union(*fits)
+            return tuple(name for name in relax if name in binding)
+    return ()
