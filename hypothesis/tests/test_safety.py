@@ -22,6 +22,7 @@ from hypothesis_engine.safety import OpenFDA, Risk, SafetyError, load_risks
 
 
 def _openfda(risks=None, guard=None) -> tuple[OpenFDA, ReplayTransport]:
+    risks = risks or {}
     clock = FakeClock()
     replay = ReplayTransport(SAFETY_FOLDER)
     return OpenFDA(
@@ -60,6 +61,7 @@ def test_a_drug_never_sold_in_the_us_has_no_label_and_no_generic():
     openfda, _replay = _openfda()
     alpidem = openfda.safety("ALPIDEM")  # openFDA answers 404 "No matches found!"
     assert (alpidem.label, alpidem.generic, alpidem.generic_applications) == (None, False, ())
+    assert alpidem.penalty is None  # unknown, not safe: M6-06 decides what stands in for it
 
 
 def test_a_drug_with_a_marketed_anda_has_a_generic():
@@ -80,14 +82,79 @@ def test_a_salt_counts_as_its_parent_and_a_combination_does_not():
     assert not safety.same_ingredients("FLUOXETINE", ["OLANZAPINE AND FLUOXETINE HYDROCHLORIDE"])
     assert safety.same_ingredients("OLANZAPINE AND FLUOXETINE", ["FLUOXETINE HCL", "OLANZAPINE"])
     assert not safety.same_ingredients("TESTOSTERONE", ["METHYLTESTOSTERONE"])
+    assert safety.same_ingredients("TESTOSTERONE CYPIONATE", ["TESTOSTERONE CYPIONATE"])
+    assert safety.same_ingredients("TRAZODONE", ["TRAZODONE HYDROCHLORIDE ORAL"])  # a dosage form
+
+
+def test_another_drug_containing_the_name_is_not_the_drug():
+    assert not safety.same_ingredients("ESTRADIOL", ["ETHINYL ESTRADIOL"])
+    assert not safety.same_ingredients("TESTOSTERONE", ["TESTOSTERONE CYPIONATE"])  # an ester is its own drug
+
+
+def _concerns(text: str, section: str = "adverse_reactions") -> tuple[str, ...]:
+    return tuple(m.concern for m in safety.find_mentions({section: [text]}))
+
+
+def test_a_concern_the_label_says_was_not_seen_is_not_counted():
+    assert _concerns("Sexual dysfunction was not observed in clinical trials.") == ()
+    assert _concerns("There were no reports of decreased libido or anhedonia.") == ()
+    assert _concerns("Patients reported nausea. Decreased libido occurred in 3%.") == ("libido",)
+
+
+def test_more_sexual_desire_is_not_a_concern():
+    assert _concerns("Increased libido and hypersexuality were reported.") == ()
+    assert _concerns("ADDYI is indicated for hypoactive sexual desire disorder (HSDD).") == ()
+
+
+def test_the_wordings_labels_use_for_the_concerns_are_found():
+    for wording in (
+        "decreased sexual function",
+        "sexual adverse effects",
+        "orgasm abnormal",
+        "sexual function abnormal",
+    ):
+        assert _concerns(f"Reported: {wording}.") == ("sexual dysfunction",), wording
+    assert _concerns("Reported: loss of sexual interest.") == ("libido",)
+
+
+def test_a_label_of_the_drug_is_found_behind_a_page_of_combination_products():
+    combination = {
+        "set_id": "combo",
+        "openfda": {"generic_name": ["OLANZAPINE AND FLUOXETINE HYDROCHLORIDE"]},
+    }
+    own = {
+        "set_id": "own",
+        "openfda": {"generic_name": ["FLUOXETINE HYDROCHLORIDE"], "application_number": ["NDA018936"]},
+        "adverse_reactions": ["Decreased libido."],
+    }
+
+    class Pages:
+        def get(self, path, params):
+            skip = int(params["skip"])
+            labels = [combination] * safety.LABEL_PAGE if skip == 0 else [own]
+            return {"meta": {"results": {"total": safety.LABEL_PAGE + 1}}, "results": labels}
+
+    label = OpenFDA(Pages(), {}).label("FLUOXETINE")
+    assert label is not None and label.set_id == "own" and label.application == "NDA018936"
+
+
+def test_any_of_a_labels_generic_names_can_be_the_drug():
+    label = {"set_id": "x", "openfda": {"generic_name": ["IBUPROFEN AND FAMOTIDINE", "FINASTERIDE"]}}
+
+    class One:
+        def get(self, path, params):
+            return {"meta": {"results": {"total": 1}}, "results": [label]}
+
+    assert OpenFDA(One(), {}).label("FINASTERIDE").set_id == "x"
 
 
 def test_risks_listed_for_the_drug_add_to_its_penalty():
     listed = {"finasteride": (Risk("persistent sexual side effects after stopping", "PMID:1"),)}
-    openfda, _replay = _openfda(listed)
+    openfda, _replay = _openfda(listed | {"alpidem": (Risk("hepatotoxicity", "PMID:2"),)})
     finasteride = openfda.safety("FINASTERIDE")
     assert finasteride.risks == listed["finasteride"]
     assert finasteride.penalty == 3  # two label concerns and the listed risk
+    assert openfda.safety("ALPIDEM").risks  # kept and shown, though its penalty is unknown
     assert openfda.safety("PAROXETINE").risks == ()
 
 
@@ -118,7 +185,7 @@ def test_a_request_holding_private_text_is_refused_before_it_is_sent():
 def test_an_openfda_error_other_than_no_match_fails():
     clock = FakeClock()
     answer = json.dumps({"error": {"code": "BAD_REQUEST", "message": "Syntax error"}}).encode()
-    openfda = OpenFDA(Service(lambda _p, _q: answer, RateLimiter(3, clock.time, clock.sleep)))
+    openfda = OpenFDA(Service(lambda _p, _q: answer, RateLimiter(3, clock.time, clock.sleep)), {})
     with pytest.raises(SafetyError, match="Syntax error"):
         openfda.safety("FINASTERIDE")
 

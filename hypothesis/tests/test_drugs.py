@@ -244,7 +244,7 @@ def library(tmp_path):
     return path
 
 
-def _update(library, out, recorded: Recorded | None = None, top: int = 3, risks=None):
+def _update(library, out, recorded: Recorded | None = None, top: int = 3, risks=None, openfda=None):
     recorded = recorded or Recorded()
     return update_drugs(
         library,
@@ -252,8 +252,8 @@ def _update(library, out, recorded: Recorded | None = None, top: int = 3, risks=
         out,
         recorded.chembl_transport,
         recorded._send,
-        recorded.openfda,
-        risks,
+        openfda or recorded.openfda,
+        risks or {},
         limiter=recorded.limiter,
         sleep=recorded.clock.sleep,
         now=lambda: WHEN,
@@ -294,15 +294,46 @@ def test_every_cached_drug_has_its_safety_and_generic_flag(library, tmp_path):
     assert vortioxetine.concerns == ("sexual dysfunction", "libido") and not vortioxetine.generic
     assert vortioxetine.risks == risks["vortioxetine"] and vortioxetine.penalty == 3
     assert vortioxetine.label.mentions[0].excerpt  # the label text the penalty came from
-    assert alpidem.label is None and alpidem.penalty == 0
+    assert alpidem.label is None and alpidem.penalty is None  # unknown, not safe
     assert by_name["FINASTERIDE"].safety.generic
 
 
-def test_a_cache_of_the_version_before_safety_is_fetched_again(tmp_path):
+def test_a_cache_of_a_version_before_this_one_is_fetched_again(tmp_path):
     out = tmp_path / "drugs.json"
-    out.write_text(json.dumps({"cache_version": 1}), encoding="utf-8")
-    with pytest.raises(DrugsError, match="asclepius-library drugs"):
-        read_drug_cache(out)
+    for old in (1, 2):
+        out.write_text(json.dumps({"cache_version": old}), encoding="utf-8")
+        with pytest.raises(DrugsError, match="asclepius-library drugs"):
+            read_drug_cache(out)
+
+
+def test_a_drug_openfda_cannot_answer_for_is_kept_unchecked_and_the_rest_are_checked(library, tmp_path):
+    recorded = Recorded()
+
+    def openfda(path, params):
+        if "VORTIOXETINE" in params["search"]:
+            raise DrugsError(f"{path}: HTTP 400 Bad Request")
+        return recorded.openfda(path, params)
+
+    out = tmp_path / "drugs.json"
+    _update(library, out, recorded, openfda=openfda)
+    by_name = {d.name: d.safety for d in read_drug_cache(out).drugs}
+    vortioxetine = by_name["VORTIOXETINE"]
+    assert "HTTP 400" in vortioxetine.unchecked
+    assert (vortioxetine.penalty, vortioxetine.generic, vortioxetine.label) == (None, None, None)
+    assert by_name["FINASTERIDE"].unchecked is None and by_name["FINASTERIDE"].penalty == 2
+
+
+def test_when_openfda_is_down_the_previous_cache_is_kept(library, tmp_path):
+    out = tmp_path / "drugs.json"
+    _update(library, out)
+    before = out.read_bytes()
+
+    def down(path, params):
+        raise TransientError(f"{path}: HTTP 503")
+
+    with pytest.raises(TransientError):
+        _update(library, out, openfda=down)
+    assert out.read_bytes() == before
 
 
 def test_a_failed_fetch_leaves_the_previous_cache_as_it_was(library, tmp_path):

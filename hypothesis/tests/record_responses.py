@@ -96,32 +96,32 @@ def record_drugs() -> None:
 
 
 def _slim(path: str, body: bytes) -> bytes:
-    """Only the parts of an openFDA answer `safety.py` reads: a label is some 150 kB otherwise."""
+    """Only the parts of an openFDA answer `safety.py` reads (its `*_FIELDS`): a label is some
+    150 kB otherwise."""
     answer = json.loads(body)
     if "results" not in answer:
         return body
+
+    def only(record: dict, fields: tuple[str, ...]) -> dict:
+        return {k: v for k, v in record.items() if k in fields}
+
     if path == "drug/label.json":
-        keep = {"set_id", "effective_time", *safety.SECTIONS}
         results = [
             {
-                **{k: v for k, v in r.items() if k in keep},
-                "openfda": {
-                    k: v
-                    for k, v in r.get("openfda", {}).items()
-                    if k in ("generic_name", "application_number")
-                },
+                **only(r, safety.LABEL_FIELDS),
+                "openfda": only(r.get("openfda", {}), safety.LABEL_OPENFDA_FIELDS),
             }
             for r in answer["results"]
         ]
     else:
         results = [
             {
-                "application_number": r.get("application_number"),
+                **only(r, safety.APPLICATION_FIELDS),
                 "products": [
                     {
-                        "marketing_status": p.get("marketing_status"),
+                        **only(p, safety.PRODUCT_FIELDS),
                         "active_ingredients": [
-                            {"name": a.get("name")} for a in p.get("active_ingredients", [])
+                            only(a, safety.INGREDIENT_FIELDS) for a in p.get("active_ingredients", [])
                         ],
                     }
                     for p in r.get("products", [])
@@ -143,7 +143,7 @@ def record_safety() -> None:
     def slimmed(path: str, params: dict[str, str]) -> bytes:
         return _slim(path, network(path, params))
 
-    openfda = safety.OpenFDA(drugs.Service(recording(slimmed, folder), RateLimiter(drugs.RATE)))
+    openfda = safety.OpenFDA(drugs.Service(recording(slimmed, folder), RateLimiter(drugs.RATE)), {})
     replayed = drugs.ChEMBL(drugs.Service(ReplayTransport(drugs_fixture.FOLDER), RateLimiter(100)))
     names = sorted(
         {d.name for s in drugs_fixture.SAFETY_SYMBOLS for d in replayed.drugs(s, replayed.targets(s))}

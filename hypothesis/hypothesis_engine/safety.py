@@ -10,13 +10,20 @@
 2. its Drugs@FDA applications (`drug/drugsfda.json`): it has a generic when an abbreviated
    application (an ANDA) of it has a product still marketed.
 
-A label or application is of the drug when its active ingredients are the drug's: a salt counts
-as its parent ("PAROXETINE HYDROCHLORIDE" is paroxetine), and a combination product
-("OLANZAPINE AND FLUOXETINE") is not a label of one of its parts.
+A concern the label's clause denies ("sexual dysfunction was not observed") is not counted, nor is
+more sexual desire ("increased libido", "hypoactive sexual desire disorder").
+
+A label or application is of the drug when its active ingredients are the drug's: a salt or
+hydrate counts as its parent ("PAROXETINE HYDROCHLORIDE" is paroxetine, `SALT_WORDS`), another
+word makes it another drug ("ETHINYL ESTRADIOL" is not estradiol, "TESTOSTERONE CYPIONATE", an
+ester ChEMBL keeps apart, not testosterone), and a combination product ("OLANZAPINE AND
+FLUOXETINE") is not a label of one of its parts.
 
 The risks listed for the drug in the `[risks]` table of `interventions.toml` are merged in
 (`load_risks`), each with its cited source. The safety penalty (`Safety.penalty`, a cost criterion
-of the ranking, M6-06) counts the label's concerns and those risks.
+of the ranking, M6-06) counts the label's concerns and those risks. It is unknown (None), not
+zero, for a drug with no US label, and for one openFDA could not answer for (`Safety.unchecked`
+says why): M6-06 decides what stands in for it.
 
 The only free text sent is the drug's name. openFDA is free and needs no key at this rate
 (at most 3 requests a second, well under its 240 a minute); it answers HTTP 404 when nothing
@@ -30,25 +37,37 @@ import tomllib
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol, get_args
 
 OPENFDA = "https://api.fda.gov/"
-LABELS = 5  # labels asked for at a time, latest first
-APPLICATIONS = 100  # Drugs@FDA applications a page
+LABEL_PAGE = 5  # labels asked for at a time, latest first
+LABEL_PAGES = 4  # pages of labels looked through for one of the drug, at most, in each search
+APPLICATION_PAGE = 100  # Drugs@FDA applications asked for at a time
 INTERVENTIONS = Path(__file__).with_name("interventions.toml")
 
+Section = Literal["boxed_warning", "warnings_and_cautions", "warnings", "precautions", "adverse_reactions"]
+Concern = Literal["sexual dysfunction", "libido", "anhedonia", "emotional blunting"]
 # The label sections read, in this order; each concern is kept from the first it is found in.
-SECTIONS = ("boxed_warning", "warnings_and_cautions", "warnings", "precautions", "adverse_reactions")
+SECTIONS: tuple[Section, ...] = get_args(Section)
+
+# The fields read of a label, of its `openfda` part, of an application and of its products: all
+# `record_responses.py` keeps of a recorded answer.
+LABEL_FIELDS = ("set_id", "effective_time", *SECTIONS)
+LABEL_OPENFDA_FIELDS = ("generic_name", "application_number")
+APPLICATION_FIELDS = ("application_number",)
+PRODUCT_FIELDS = ("marketing_status", "active_ingredients")
+INGREDIENT_FIELDS = ("name",)
 
 # The concerns a label is penalised for (spec R3), each a pattern matched with case aside.
-CONCERNS: dict[str, str] = {
+CONCERNS: dict[Concern, str] = {
     "sexual dysfunction": (
-        r"sexual (?:dysfunction|side effects?|adverse (?:events?|reactions?))|erectile dysfunction"
-        r"|impotence|anorgasmia|orgasm\w* (?:dysfunction|disorders?|abnormalit\w+)|abnormal orgasm"
-        r"|(?:abnormal|delayed|decreased|retrograde) ejaculation"
+        r"sexual (?:dysfunction|side effects?|adverse (?:events?|reactions?|effects?))"
+        r"|erectile dysfunction|impotence|anorgasmia|orgasm\w* (?:dysfunction|disorders?|abnormal\w*)"
+        r"|abnormal orgasm|(?:abnormal|delayed|decreased|retrograde) ejaculation"
         r"|ejaculat\w* (?:disorders?|dysfunction|failure|delay\w*)|genital (?:anesthesia|numbness)"
+        r"|(?:decreased|impaired|reduced) sexual function|sexual function abnormal"
     ),
-    "libido": r"libido|sex drive|sexual desire",
+    "libido": r"libido|sex drive|sexual desire|(?:loss of|decreased|reduced) sexual interest",
     "anhedonia": r"anhedonia",
     "emotional blunting": (
         r"emotional (?:blunting|flattening|numbing|indifference)|(?:blunted|flat|flattened) affect"
@@ -58,6 +77,113 @@ CONCERNS: dict[str, str] = {
 _CONCERNS = {
     concern: re.compile(rf"\b(?:{pattern})\b", re.IGNORECASE) for concern, pattern in CONCERNS.items()
 }
+# More sexual desire is not a concern: a match within one of these is not counted.
+MORE_DESIRE = re.compile(
+    r"(?:increased|increase in|heightened) (?:libido|sex drive|sexual desire)"
+    r"|(?:libido|sex drive|sexual desire) increased|hypoactive sexual desire",
+    re.IGNORECASE,
+)
+# A clause denying the concern: before it ("no reports of", "without") or after it ("was not observed").
+DENIED_BEFORE = re.compile(r"\b(?:no|not|without|neither|nor|absence of)\b", re.IGNORECASE)
+DENIED_AFTER = re.compile(
+    r"^[^.;:]{0,40}?\b(?:was|were|has|have|is|are)\s+not\s+(?:been\s+)?(?:observed|reported|seen|found)",
+    re.IGNORECASE,
+)
+CLAUSE = 60  # characters before a match looked through for a denial, at most, within its clause
+# The words a salt, hydrate or dosage form adds to an ingredient's name without making it another drug.
+SALT_WORDS = frozenset(
+    [
+        "hydrochloride",
+        "hcl",
+        "dihydrochloride",
+        "hydrobromide",
+        "hbr",
+        "hydroiodide",
+        "sodium",
+        "disodium",
+        "potassium",
+        "dipotassium",
+        "calcium",
+        "magnesium",
+        "zinc",
+        "lithium",
+        "aluminum",
+        "ammonium",
+        "maleate",
+        "mesylate",
+        "dimesylate",
+        "methanesulfonate",
+        "besylate",
+        "besilate",
+        "tosylate",
+        "citrate",
+        "tartrate",
+        "bitartrate",
+        "succinate",
+        "hemisuccinate",
+        "fumarate",
+        "hemifumarate",
+        "sulfate",
+        "bisulfate",
+        "hemisulfate",
+        "phosphate",
+        "diphosphate",
+        "acetate",
+        "lactate",
+        "gluconate",
+        "malate",
+        "oxalate",
+        "napsylate",
+        "pamoate",
+        "mandelate",
+        "xinafoate",
+        "tromethamine",
+        "meglumine",
+        "bromide",
+        "chloride",
+        "iodide",
+        "nitrate",
+        "hydrate",
+        "monohydrate",
+        "dihydrate",
+        "trihydrate",
+        "hemihydrate",
+        "sesquihydrate",
+        "anhydrous",
+        "oral",
+        "orally",
+        "tablet",
+        "tablets",
+        "capsule",
+        "capsules",
+        "solution",
+        "suspension",
+        "injection",
+        "injectable",
+        "intravenous",
+        "liquid",
+        "concentrate",
+        "extended",
+        "delayed",
+        "release",
+        "er",
+        "xr",
+        "sr",
+        "disintegrating",
+        "chewable",
+        "topical",
+        "gel",
+        "cream",
+        "ointment",
+        "transdermal",
+        "patch",
+        "film",
+        "spray",
+        "nasal",
+        "ophthalmic",
+        "for",
+    ]
+)
 EXCERPT = 150  # characters kept on each side of a match, at most, within its sentence
 MARKETED = ("Prescription", "Over-the-counter")  # Drugs@FDA's statuses of a product still sold
 SOURCE = re.compile(r"PMID:\d+|DOI:10\.\S+|https://\S+")  # a cited source of a risk
@@ -67,7 +193,7 @@ class SafetyError(Exception):
     """openFDA answered with something unusable, or the risks table is malformed."""
 
 
-class Getter(Protocol):
+class JsonService(Protocol):
     """A service's requests (`drugs.Service`): JSON answers to a path and its parameters."""
 
     def get(self, path: str, params: dict[str, str]) -> Any: ...
@@ -77,8 +203,8 @@ class Getter(Protocol):
 class Mention:
     """A concern a label states, with the text it states it in."""
 
-    concern: str  # one of `CONCERNS`
-    section: str  # one of `SECTIONS`
+    concern: Concern
+    section: Section
     excerpt: str  # the label's words around it
 
 
@@ -104,19 +230,46 @@ class Risk:
 
 @dataclass(frozen=True)
 class Safety:
-    label: Label | None  # None when openFDA holds no US label of it
+    label: Label | None  # None when openFDA holds no US label of it, or was not asked
     risks: tuple[Risk, ...]
-    generic: bool  # a generic (ANDA) product of it is still marketed in the US
-    generic_applications: tuple[str, ...]  # those ANDAs: "ANDA090121"
+    generic_applications: tuple[str, ...] | None  # its ANDAs still marketed: "ANDA090121"; None unchecked
+    unchecked: str | None = None  # why openFDA could not answer for it, when it could not
 
     @property
-    def concerns(self) -> tuple[str, ...]:
+    def generic(self) -> bool | None:
+        """A generic (ANDA) product of it is still marketed in the US; None when unchecked."""
+        return None if self.generic_applications is None else bool(self.generic_applications)
+
+    @property
+    def concerns(self) -> tuple[Concern, ...]:
         return tuple(m.concern for m in self.label.mentions) if self.label else ()
 
     @property
-    def penalty(self) -> int:
-        """The label's concerns and the listed risks: the more, the worse (spec R3)."""
-        return len(self.concerns) + len(self.risks)
+    def penalty(self) -> int | None:
+        """The label's concerns and the listed risks: the more, the worse (spec R3). None, unknown,
+        with no label to read."""
+        return None if self.label is None else len(self.concerns) + len(self.risks)
+
+    @classmethod
+    def from_json(cls, data: Mapping[str, Any]) -> Safety:
+        """The safety `dataclasses.asdict` wrote of one."""
+        label, applications = data["label"], data["generic_applications"]
+        for m in label["mentions"] if label else ():
+            if m["concern"] not in CONCERNS or m["section"] not in SECTIONS:
+                raise SafetyError(f"not a concern of a label section: {m['concern']!r}, {m['section']!r}")
+        return cls(
+            None
+            if label is None
+            else Label(
+                label["set_id"],
+                label["effective_time"],
+                label["application"],
+                tuple(Mention(m["concern"], m["section"], m["excerpt"]) for m in label["mentions"]),
+            ),
+            tuple(Risk(r["risk"], r["source"]) for r in data["risks"]),
+            None if applications is None else tuple(applications),
+            data["unchecked"],
+        )
 
 
 def _words(name: str) -> frozenset[str]:
@@ -131,14 +284,14 @@ def _ingredients(name: str) -> list[frozenset[str]]:
 
 def same_ingredients(drug: str, ingredients: Iterable[str]) -> bool:
     """Whether `ingredients` (names, maybe each a combination) are the drug's own, a salt or
-    hydrate counting as its parent."""
+    hydrate counting as its parent: each may add only `SALT_WORDS` to one of the drug's."""
     theirs = [i for name in ingredients for i in _ingredients(name)]
     ours = _ingredients(drug)
     if not ours or len(theirs) != len(ours):
         return False
     left = list(theirs)
     for words in ours:
-        match = next((i for i in left if words <= i), None)
+        match = next((i for i in left if words <= i and i - words <= SALT_WORDS), None)
         if match is None:
             return False
         left.remove(match)
@@ -160,19 +313,26 @@ def _excerpt(text: str, start: int, end: int) -> str:
     return f"{'…' if left > sentence_start else ''}{excerpt}{'…' if right < sentence_end else ''}"
 
 
-def mentions(label: Mapping[str, Any]) -> tuple[Mention, ...]:
+def _stated(text: str, match: re.Match[str]) -> bool:
+    """Whether the label states the concern it matched: not a denial of it, nor more desire."""
+    nearby = MORE_DESIRE.finditer(text, max(0, match.start() - 25), match.end() + 25)
+    if any(m.start() <= match.start() and match.end() <= m.end() for m in nearby):
+        return False
+    before = text[max(0, match.start() - CLAUSE) : match.start()]
+    clause = re.split(r"[.;:]", before)[-1]
+    return not DENIED_BEFORE.search(clause) and not DENIED_AFTER.search(text[match.end() :])
+
+
+def find_mentions(label: Mapping[str, Any]) -> tuple[Mention, ...]:
     """Each concern the label states, from the first section stating it."""
     found: list[Mention] = []
     for concern, pattern in _CONCERNS.items():
         for section in SECTIONS:
-            texts = label.get(section) or ()
-            match = next(
-                ((t, m) for t in (texts if isinstance(texts, list) else [texts]) if isinstance(t, str)
-                 for m in [pattern.search(t)] if m),
-                None,
-            )  # fmt: skip
-            if match:
-                text, m = match
+            given = label.get(section) or ()
+            texts = [t for t in (given if isinstance(given, list) else [given]) if isinstance(t, str)]
+            stated = next(((t, m) for t in texts for m in pattern.finditer(t) if _stated(t, m)), None)
+            if stated:
+                text, m = stated
                 found.append(Mention(concern, section, _excerpt(text, m.start(), m.end())))
                 break
     return tuple(found)
@@ -191,11 +351,9 @@ def _results(answer: object, what: str) -> tuple[list[dict[str, Any]], int]:
         raise SafetyError(f"openFDA {what}: {answer['error'].get('message')}")
     try:
         results, total = answer["results"], int(answer["meta"]["results"]["total"])  # type: ignore[index]
-    except (KeyError, TypeError, ValueError) as error:
+        return [r for r in results if isinstance(r, dict)], total
+    except (KeyError, TypeError, ValueError) as error:  # TypeError too when `results` is no list
         raise SafetyError(f"openFDA {what}: an answer without its results") from error
-    if not isinstance(results, list):
-        raise SafetyError(f"openFDA {what}: an answer without its results")
-    return [r for r in results if isinstance(r, dict)], total
 
 
 def _first(value: object) -> str | None:
@@ -207,33 +365,33 @@ def _first(value: object) -> str | None:
 class OpenFDA:
     """Looks a drug's label and generics up in openFDA."""
 
-    def __init__(self, service: Getter, risks: Mapping[str, Sequence[Risk]] | None = None) -> None:
+    def __init__(self, service: JsonService, risks: Mapping[str, Sequence[Risk]]) -> None:
         self._service = service
-        self._risks = {name.casefold(): tuple(r) for name, r in (risks or {}).items()}
+        self._risks = {name.casefold(): tuple(r) for name, r in risks.items()}
 
     def label(self, name: str) -> Label | None:
-        """The latest brand-name label of the drug, or else the latest label of any."""
+        """The latest brand-name label of the drug, or else the latest label of any: up to
+        `LABEL_PAGES` pages of each search looked through for one of the drug's own."""
         phrase = _phrase(name)
         for search in (f"openfda.generic_name:{phrase} AND openfda.application_number:NDA*",
                        f"openfda.generic_name:{phrase}"):  # fmt: skip
-            answer = self._service.get(
-                "drug/label.json", {"search": search, "sort": "effective_time:desc", "limit": str(LABELS)}
-            )
-            labels, _total = _results(answer, "label")
-            for label in labels:
-                given = label.get("openfda")
-                generic_names = given.get("generic_name") if isinstance(given, dict) else None
-                if (
-                    isinstance(generic_names, list)
-                    and generic_names
-                    and same_ingredients(name, generic_names[:1])
-                ):
-                    return Label(
-                        str(label.get("set_id")),
-                        _first(label.get("effective_time")),
-                        _first(given.get("application_number")) if isinstance(given, dict) else None,
-                        mentions(label),
-                    )
+            for page in range(LABEL_PAGES):
+                params = {"search": search, "sort": "effective_time:desc", "limit": str(LABEL_PAGE),
+                          "skip": str(page * LABEL_PAGE)}  # fmt: skip
+                labels, total = _results(self._service.get("drug/label.json", params), "label")
+                for label in labels:
+                    given = label.get("openfda")
+                    given = given if isinstance(given, dict) else {}
+                    names = [n for n in given.get("generic_name") or () if isinstance(n, str)]
+                    if any(same_ingredients(name, [n]) for n in names):
+                        return Label(
+                            str(label.get("set_id")),
+                            _first(label.get("effective_time")),
+                            _first(given.get("application_number")),
+                            find_mentions(label),
+                        )
+                if (page + 1) * LABEL_PAGE >= total:
+                    break
         return None
 
     def generic_applications(self, name: str) -> tuple[str, ...]:
@@ -245,7 +403,7 @@ class OpenFDA:
                 "drug/drugsfda.json",
                 {
                     "search": f"products.active_ingredients.name:{_phrase(name)} AND application_number:ANDA*",
-                    "limit": str(APPLICATIONS),
+                    "limit": str(APPLICATION_PAGE),
                     "skip": str(skip),
                 },
             )
@@ -264,13 +422,21 @@ class OpenFDA:
                     for p in application.get("products") or ()
                 ):
                     found.append(number)
-            skip += APPLICATIONS
+            skip += APPLICATION_PAGE
             if not applications or skip >= total:
                 return tuple(sorted(set(found)))
 
+    def risks(self, name: str) -> tuple[Risk, ...]:
+        """The risks `interventions.toml` lists for the drug."""
+        return self._risks.get(name.casefold(), ())
+
     def safety(self, name: str) -> Safety:
         generics = self.generic_applications(name)
-        return Safety(self.label(name), self._risks.get(name.casefold(), ()), bool(generics), generics)
+        return Safety(self.label(name), self.risks(name), generics)
+
+    def unchecked(self, name: str, reason: str) -> Safety:
+        """The drug's safety when openFDA could not answer for it: its listed risks, nothing more."""
+        return Safety(None, self.risks(name), None, reason)
 
 
 def load_risks(text: str) -> dict[str, tuple[Risk, ...]]:

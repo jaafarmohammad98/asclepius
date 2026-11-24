@@ -21,9 +21,8 @@ MyChem.info is asked instead: the molecules whose DrugCentral bioactivities name
 mechanism of action, with the ChEMBL id, phase and properties MyChem keeps of each.
 
 The only free text sent is the target's gene symbol, and to openFDA the drug's name; everything
-else is a ChEMBL id. Every request
-goes through the library's `PrivateTextGuard` first all the same (M4-08), so a private paper's
-text could not leave in one.
+else is a ChEMBL id. Every request goes through the library's `PrivateTextGuard` first all the
+same (M4-08), so a private paper's text could not leave in one.
 
 The properties are those ChEMBL gives for a CNS MPO estimate (M6-06): ChEMBL 36 no longer gives
 the ChemAxon values (`cx_logp`, `cx_logd`, `cx_most_bpka`), which are kept as None when absent;
@@ -34,10 +33,11 @@ isotretinoin) are kept, tagged with what they are, so they can be listed as "kno
 excluded" and never ranked.
 
 Then each drug's label concerns, listed risks and generic availability are asked of openFDA
-(`safety.py`), by the drug's name.
+(`safety.py`), by the drug's name. A drug openFDA cannot answer for (an unreadable answer, an HTTP
+error other than "no match") is kept unchecked, with the reason, and the rest are asked.
 
-Nothing is written until every target and drug has been looked up, so a failed fetch leaves the previous
-cache as it was. All three services are free, need no account and are sent no email; requests are
+Nothing is written until every target and drug has been looked up, so a failed fetch (a service
+down) leaves the previous cache as it was. All three services are free, need no account and are sent no email; requests are
 spaced at most 3 a second and a transient failure (HTTP 429, 5xx, a dropped connection) is sent
 again (`pubmed.send_politely`).
 """
@@ -64,11 +64,11 @@ from hypothesis_engine.home import DATA
 from hypothesis_engine.library import Library
 from hypothesis_engine.privacy import PrivateTextGuard
 from hypothesis_engine.pubmed import RateLimiter, TransientError, Transport, send_politely
-from hypothesis_engine.safety import Label, Mention, OpenFDA, Risk, Safety
+from hypothesis_engine.safety import OpenFDA, Risk, Safety, SafetyError
 from hypothesis_engine.vocabulary import Vocabulary
 
 DEFAULT_DRUGS = DATA / "drugs.json"
-CACHE_VERSION = 2  # 2: each drug's safety, from openFDA (M6-05b)
+CACHE_VERSION = 3  # 2: each drug's safety, from openFDA (M6-05b); 3: unknown penalties, unchecked drugs
 TOP_TARGETS = 20  # genes, highest bottleneck score first
 APPROVED = 4  # ChEMBL's max_phase of an approved drug
 RATE = 3  # requests a second, to each service
@@ -443,14 +443,20 @@ def fetch_drugs(
 def add_safety(
     found: Sequence[Drug], openfda: OpenFDA, progress: Callable[[str], None] = lambda _message: None
 ) -> list[Drug]:
-    """The drugs, each with its safety from openFDA."""
+    """The drugs, each with its safety from openFDA; one openFDA cannot answer for is kept unchecked.
+    openFDA down (a `TransientError` after the retries) stops it."""
     kept = []
     for drug in found:
-        safety = openfda.safety(drug.name)
-        progress(
-            f"{drug.name}: label concerns {', '.join(safety.concerns) or 'none'}"
-            f"{'' if safety.label else ' (no US label)'}, {'a generic' if safety.generic else 'no generic'}"
-        )
+        try:
+            safety = openfda.safety(drug.name)
+        except (SafetyError, DrugsError) as error:
+            safety = openfda.unchecked(drug.name, str(error))
+            progress(f"{drug.name}: openFDA could not answer ({error}); kept unchecked")
+        else:
+            progress(
+                f"{drug.name}: label concerns {', '.join(safety.concerns) or 'none'}"
+                f"{'' if safety.label else ' (no US label)'}, {'a generic' if safety.generic else 'no generic'}"
+            )
         kept.append(replace(drug, safety=safety))
     return kept
 
@@ -462,7 +468,7 @@ def update_drugs(
     chembl_transport: Transport,
     mychem_transport: Transport,
     openfda_transport: Transport,
-    risks: dict[str, tuple[Risk, ...]] | None = None,
+    risks: dict[str, tuple[Risk, ...]],
     limiter: Callable[[], RateLimiter] = lambda: RateLimiter(RATE),
     sleep: Callable[[float], None] = time.sleep,
     now: Callable[[], datetime] = lambda: datetime.now(UTC),
@@ -501,25 +507,6 @@ def write_drug_cache(path: Path, cache: DrugCache) -> None:
         raise
 
 
-def _safety(data: dict[str, Any] | None) -> Safety | None:
-    if data is None:
-        return None
-    label = data["label"]
-    return Safety(
-        None
-        if label is None
-        else Label(
-            label["set_id"],
-            label["effective_time"],
-            label["application"],
-            tuple(Mention(**m) for m in label["mentions"]),
-        ),
-        tuple(Risk(**r) for r in data["risks"]),
-        data["generic"],
-        tuple(data["generic_applications"]),
-    )
-
-
 def read_drug_cache(path: Path = DEFAULT_DRUGS) -> DrugCache:
     """The cache `update_drugs` wrote; no network is needed."""
     try:
@@ -548,10 +535,10 @@ def read_drug_cache(path: Path = DEFAULT_DRUGS) -> DrugCache:
                     d["known_cause"],
                     d["source"],
                     d["withdrawn"],
-                    _safety(d["safety"]),
+                    None if d["safety"] is None else Safety.from_json(d["safety"]),
                 )
                 for d in data["drugs"]
             ),
         )
-    except (KeyError, TypeError) as error:
+    except (KeyError, TypeError, SafetyError) as error:
         raise DrugsError(f"{path}: not a drug cache ({error})") from error
