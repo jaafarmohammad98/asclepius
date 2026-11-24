@@ -3,6 +3,7 @@ run only by hand:
 
     uv run python tests/record_responses.py build      # PubMed answers, fixtures/build
     uv run python tests/record_responses.py fulltext   # Europe PMC answers, fixtures/fulltext
+    uv run python tests/record_responses.py drugs      # ChEMBL and MyChem.info answers, fixtures/drugs
 
 Then update the literal values in those tests (and `fulltext_fixture.py`) if the answers changed.
 """
@@ -15,13 +16,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+import drugs_fixture  # noqa: E402
 import fulltext_fixture  # noqa: E402
-from replay import recording  # noqa: E402
+from replay import recording, response_path  # noqa: E402
 
-from hypothesis_engine import europepmc  # noqa: E402
+from hypothesis_engine import drugs, europepmc  # noqa: E402
 from hypothesis_engine.build import build_library  # noqa: E402
 from hypothesis_engine.fulltext import fetch_full_texts  # noqa: E402
-from hypothesis_engine.pubmed import PubMed, RateLimiter, http_transport  # noqa: E402
+from hypothesis_engine.pubmed import PubMed, RateLimiter, TransientError, Transport, http_transport  # noqa: E402
 from hypothesis_engine.topics import load_topics  # noqa: E402
 
 FOLDER = Path(__file__).parent / "fixtures" / "build"
@@ -57,10 +59,44 @@ def record_build() -> None:
     print(report)
 
 
+def record_drugs() -> None:
+    """ChEMBL often answers HTTP 500 for a while: answers already recorded are kept (`--fresh`
+    deletes them first), and a target is asked again until it is answered."""
+    folder = drugs_fixture.FOLDER
+    folder.mkdir(exist_ok=True)
+    if "--fresh" in sys.argv:
+        for old in folder.glob("*"):
+            old.unlink()
+
+    def kept(transport: Transport) -> Transport:
+        def send(path: str, params: dict[str, str]) -> bytes:
+            stored = response_path(folder, path, params)
+            return stored.read_bytes() if stored.exists() else transport(path, params)
+
+        return send
+
+    def service(base: str) -> drugs.Service:
+        return drugs.Service(kept(recording(drugs.http_transport(base), folder)), RateLimiter(drugs.RATE))
+
+    chembl, mychem = drugs.ChEMBL(service(drugs.CHEMBL)), drugs.MyChem(service(drugs.MYCHEM))
+    for symbol in drugs_fixture.SYMBOLS:
+        for _attempt in range(10):
+            try:
+                found = chembl.drugs(symbol, chembl.targets(symbol))
+                break
+            except TransientError as error:
+                print(symbol, "ChEMBL failed, asking again:", error)
+        else:
+            raise SystemExit(f"{symbol}: ChEMBL did not answer")
+        print(symbol, "ChEMBL:", sorted(d.name for d in found))
+    for symbol in drugs_fixture.MYCHEM_SYMBOLS:
+        print(symbol, "MyChem.info:", sorted(d.name for d in mychem.drugs(symbol)))
+
+
 def main() -> None:
-    which = sys.argv[1:] or ["build", "fulltext"]
+    which = [a for a in sys.argv[1:] if not a.startswith("--")] or ["build", "fulltext", "drugs"]
     for name in which:
-        {"build": record_build, "fulltext": record_full_text}[name]()
+        {"build": record_build, "fulltext": record_full_text, "drugs": record_drugs}[name]()
     shutil.rmtree(Path(__file__).parent / "fixtures" / "__pycache__", ignore_errors=True)
 
 

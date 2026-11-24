@@ -1,4 +1,4 @@
-"""Recorded PubMed and Europe PMC responses, so the suite never touches the network.
+"""Recorded PubMed, Europe PMC, ChEMBL and MyChem.info responses, so the suite never touches the network.
 
 Each response is a file named after its request. `record_responses.py` makes them.
 """
@@ -14,11 +14,12 @@ from hypothesis_engine.pubmed import Transport
 
 def request_key(endpoint: str, params: dict[str, str]) -> str:
     digest = hashlib.sha256(json.dumps(params, sort_keys=True).encode()).hexdigest()[:16]
-    return f"{endpoint}-{digest}"
+    return f"{endpoint.replace('/', '_')}-{digest}"
 
 
 def response_path(folder: Path, endpoint: str, params: dict[str, str]) -> Path:
-    suffix = ".json" if endpoint in ("esearch", "searchPOST") else ".xml"
+    json_answer = endpoint in ("esearch", "searchPOST", "query") or endpoint.endswith(".json")
+    suffix = ".json" if json_answer else ".xml"
     return folder / f"{request_key(endpoint, params)}{suffix}"
 
 
