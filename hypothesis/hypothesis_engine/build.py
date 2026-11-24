@@ -15,9 +15,11 @@ copies of papers that had none a month ago. Running it twice in a row adds nothi
 second time.
 
 After the full text, `build` fetches the approved drugs acting on the knowledge graph's top
-bottleneck targets from ChEMBL (MyChem.info when ChEMBL fails) and caches them in the data folder
-(`drugs.py`); `drugs` does only that, for the current version. The app reads the cache and never
-fetches. Only the targets' gene symbols and ChEMBL ids are sent, through the privacy guard.
+bottleneck targets from ChEMBL (MyChem.info when ChEMBL fails), with each one's label concerns
+and generic availability from openFDA, and caches them in the data folder (`drugs.py`,
+`safety.py`); `drugs` does only that, for the current version. The app reads the cache and never
+fetches. Only the targets' gene symbols, ChEMBL ids and the drugs' names are sent, through the
+privacy guard.
 
 `index` builds the local search index of the current version (`search.py`), downloading the
 embedding model the first time; `search` prints the passages most relevant to a question.
@@ -54,7 +56,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-from hypothesis_engine import drugs, europepmc
+from hypothesis_engine import drugs, europepmc, safety
 from hypothesis_engine.embedding import DEFAULT_MODELS, LocalEmbedder, ModelMissing
 from hypothesis_engine.evidence import FindingsError, gather_evidence, read_findings
 from hypothesis_engine.fulltext import describe, fetch_full_texts
@@ -209,7 +211,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "refresh", help="monthly update: add new papers and the private folder's PDFs, then their full text"
     )
     drugs_command = commands.add_parser(
-        "drugs", help="fetch the approved drugs acting on the top bottleneck targets, from ChEMBL"
+        "drugs", help="fetch the approved drugs acting on the top bottleneck targets (ChEMBL, openFDA)"
     )
     index = commands.add_parser(
         "index", help="build the local search index of the current version (downloads the model once)"
@@ -339,6 +341,8 @@ def _drugs(args: argparse.Namespace, say: Callable[[str], None]) -> int:
             args.drugs,
             drugs.http_transport(drugs.CHEMBL),
             drugs.http_transport(drugs.MYCHEM),
+            drugs.http_transport(safety.OPENFDA, not_found_ok=True),
+            safety.read_risks(),
             progress=say,
         )
     except KeyboardInterrupt:
@@ -349,7 +353,7 @@ def _drugs(args: argparse.Namespace, say: Callable[[str], None]) -> int:
     except PrivateTextLeak as error:
         say(f"asclepius-library: stopped before sending {error}; the drug cache is as it was")
         return 1
-    except (LibraryError, VocabularyError, drugs.DrugsError, TransientError) as error:
+    except (LibraryError, VocabularyError, drugs.DrugsError, safety.SafetyError, TransientError) as error:
         say(f"asclepius-library: {error}")
         say("the drug cache is as it was; `asclepius-library drugs` fetches it again")
         return 1

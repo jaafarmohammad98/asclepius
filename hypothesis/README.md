@@ -374,8 +374,9 @@ that file (`read_drug_cache`) and never fetches.
 from hypothesis_engine.drugs import read_drug_cache
 
 cache = read_drug_cache()  # DrugCache(fetched_at, library_version, targets, drugs)
-cache.ranked  # Drug(chembl_id, name, max_phase, properties, actions, known_cause, source, withdrawn)
+cache.ranked  # Drug(chembl_id, name, max_phase, properties, actions, known_cause, source, withdrawn, safety)
 cache.excluded  # the drugs that cause the syndromes, never ranked
+drug.safety  # Safety(label, risks, generic_applications, unchecked); .generic, .concerns, .penalty
 ```
 
 - **ChEMBL** is asked, per gene symbol, for the human targets with that gene among their
@@ -383,8 +384,24 @@ cache.excluded  # the drugs that cause the syndromes, never ranked
   them, and those molecules. Only `max_phase` 4 is kept; a salt counts as its parent molecule.
 - **MyChem.info** answers for a gene ChEMBL fails on (ChEMBL often answers HTTP 500 for a
   while): the molecules whose DrugCentral bioactivities name the gene as a mechanism of action.
-- **Sent** is only the gene symbol and ChEMBL ids, each request through the privacy guard
-  first. No account, key or email. At most 3 requests a second to each service; HTTP 429, 5xx
+- **openFDA** gives each drug's US label (the latest brand-name one, else the latest of any)
+  and its Drugs@FDA applications. The label's boxed warning, warnings, precautions and adverse
+  reactions are read for sexual dysfunction, libido, anhedonia and emotional blunting; each
+  concern found keeps the label text it was found in, its section and the label's DailyMed set
+  id. A concern its clause denies ("was not observed") or more desire ("increased libido") is
+  not counted. `generic` is true when an ANDA of the drug has a product still marketed. A label
+  or application counts when its ingredients are the drug's: a salt, hydrate or dosage form
+  counts, another word ("ETHINYL ESTRADIOL" for estradiol) or a combination does not. Up to 20
+  labels are looked through for one of the drug's own.
+- **Unchecked**: a drug openFDA cannot answer for (an unreadable answer, an HTTP error other than
+  "no match") is kept with `unchecked` saying why, and `generic` and `penalty` None; the rest
+  are still asked. openFDA down stops the fetch and leaves the cache as it was.
+- **Risks** listed for a drug in the `[risks]` table of `interventions.toml`, each with a PMID,
+  DOI or https source, are merged in. `Safety.penalty` counts the label concerns and those risks:
+  the safety criterion of the ranking (M6-06). It is None, unknown rather than safe, for a drug
+  with no US label or unchecked.
+- **Sent** is only the gene symbol, ChEMBL ids and, to openFDA, the drug's name, each request
+  through the privacy guard first. No account, key or email. At most 3 requests a second to each service; HTTP 429, 5xx
   and dropped connections are sent again.
 - **Properties** for the CNS MPO estimate: `alogp`, `mw_freebase`, `psa`, `hbd`, `hba`.
   ChEMBL 36 no longer gives the ChemAxon `cx_logp`, `cx_logd` and `cx_most_bpka`, kept as None.

@@ -11,6 +11,8 @@ FOLDER = Path(__file__).parent / "fixtures" / "drugs"
 # TSPO: alpidem, approved and withdrawn since.
 SYMBOLS = ("SRD5A2", "SLC6A4", "TSPO", "AR")  # AR: a short symbol ChEMBL's search refuses
 MYCHEM_SYMBOLS = ("SRD5A2",)  # recorded from MyChem.info too, for the fallback
+SAFETY_FOLDER = Path(__file__).parent / "fixtures" / "openfda"
+SAFETY_SYMBOLS = ("SRD5A2", "SLC6A4", "TSPO")  # the targets whose drugs' openFDA answers are recorded
 
 
 def target(symbol: str, score: float = 0.5) -> Bottleneck:

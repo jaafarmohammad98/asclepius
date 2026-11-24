@@ -35,7 +35,6 @@ import tomllib
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import asdict, dataclass
 from functools import cache
-from pathlib import Path
 from typing import Any
 
 from hypothesis_engine.citations import Problem, problem, quoted
@@ -53,11 +52,12 @@ from hypothesis_engine.evidence import (
 )
 from hypothesis_engine.library import Library
 from hypothesis_engine.llm import LLM, Completion, LLMError, Message
+from hypothesis_engine.safety import INTERVENTIONS
 
 PROMPT_VERSION = "hypothesis-3"  # 2: failing quotes are sent back; 3: interventions named are listed
 RISK_PROMPT_VERSION = "risks-1"
 MENTION_PROMPT_VERSION = "mentions-1"
-VOCABULARY = Path(__file__).with_name("interventions.toml")
+VOCABULARY = INTERVENTIONS
 ATTEMPTS = 3
 SELF_REPORT_LABEL = "based on self-reports, no controls"  # section 1 of a self-report finding (H7)
 SELF_REPORT_MEASURE = "self-report"
