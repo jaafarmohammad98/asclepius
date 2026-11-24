@@ -13,7 +13,8 @@ settings screen for the LLM.
 ```sh
 cd hypothesis
 uv sync
-uv run asclepius-library build    # writes data/library.sqlite: records, then full text; prints coverage
+uv run asclepius-library build    # writes data/library.sqlite: records, then full text, then drug data
+uv run asclepius-library drugs    # only the drug step: approved drugs on the top bottleneck targets
 uv run asclepius-library fulltext # only the full-text step; continues an interrupted download
 uv run asclepius-library refresh  # monthly: new papers and the private folder, then their full text
 uv run asclepius-library index    # after each of those: the search index (downloads the model once)
@@ -363,6 +364,36 @@ bottlenecks(graph, Weights(overlap=0.45, cascade=0.35, betweenness=0.20))  # the
   where the syndromes converge. A score says where to look, not what causes what. The built
   library takes a few seconds.
 
+## Drug data
+
+The last step of `build`, and all of `drugs`, looks up the approved drugs acting on the 20 genes
+with the highest bottleneck scores and writes them to `data/drugs.json`. The web app only reads
+that file (`read_drug_cache`) and never fetches.
+
+```python
+from hypothesis_engine.drugs import read_drug_cache
+
+cache = read_drug_cache()  # DrugCache(fetched_at, library_version, targets, drugs)
+cache.ranked  # Drug(chembl_id, name, max_phase, properties, actions, known_cause, source, withdrawn)
+cache.excluded  # the drugs that cause the syndromes, never ranked
+```
+
+- **ChEMBL** is asked, per gene symbol, for the human targets with that gene among their
+  components (the protein, and the families and complexes it is in), the drug mechanisms on
+  them, and those molecules. Only `max_phase` 4 is kept; a salt counts as its parent molecule.
+- **MyChem.info** answers for a gene ChEMBL fails on (ChEMBL often answers HTTP 500 for a
+  while): the molecules whose DrugCentral bioactivities name the gene as a mechanism of action.
+- **Sent** is only the gene symbol and ChEMBL ids, each request through the privacy guard
+  first. No account, key or email. At most 3 requests a second to each service; HTTP 429, 5xx
+  and dropped connections are sent again.
+- **Properties** for the CNS MPO estimate: `alogp`, `mw_freebase`, `psa`, `hbd`, `hba`.
+  ChEMBL 36 no longer gives the ChemAxon `cx_logp`, `cx_logd` and `cx_most_bpka`, kept as None.
+- **Known causes** (SSRIs, SNRIs, finasteride, dutasteride, isotretinoin) are tagged with what
+  they are, by any word of the name or ATC class N06AB, and listed apart. A drug withdrawn
+  since its approval (alpidem, sibutramine) is kept and flagged `withdrawn`.
+- **A failure** leaves the previous `drugs.json` as it was; `asclepius-library drugs` fetches
+  again.
+
 ## The LLM
 
 The engine reaches an LLM only through `hypothesis_engine.llm`, and the researcher pays for
@@ -489,9 +520,12 @@ with Library.open(Path("data/library.sqlite")) as library:
 `tests/fixtures/build/` holds real PubMed answers for a three-topic search, and
 `tests/fixtures/fulltext/` real Europe PMC and PubMed Central answers for five papers
 (`tests/fulltext_fixture.py`; the three articles are CC BY or CC BY-NC-ND, kept unchanged),
-both recorded 2026-11-22. To record them again (needs the network):
-`uv run python tests/record_responses.py build` or `... fulltext`, then update the values in `tests/test_build.py`,
-`tests/test_fulltext.py` and `tests/fulltext_fixture.py`.
+both recorded 2026-11-22. `tests/fixtures/drugs/` holds ChEMBL answers for SRD5A2, SLC6A4,
+TSPO and AR and a MyChem.info answer for SRD5A2 (`tests/drugs_fixture.py`), recorded 2026-11-24. To
+record them again (needs the network): `uv run python tests/record_responses.py build`,
+`... fulltext` or `... drugs --fresh` (without `--fresh` it keeps what is recorded and asks only
+for the rest), then update the values in `tests/test_build.py`, `tests/test_fulltext.py`,
+`tests/fulltext_fixture.py` and `tests/test_drugs.py`.
 
 An older library (schema 1 or 2) is upgraded in place by `build`, `fulltext` or `refresh`;
 text downloaded before versions covered it belongs to the version it was downloaded under.

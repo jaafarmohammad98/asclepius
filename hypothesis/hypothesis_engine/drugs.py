@@ -6,7 +6,8 @@ on their own. The web app only reads the cache this writes (`read_drug_cache`) a
 The targets are the genes with the highest bottleneck scores (`bottlenecks.bottlenecks` on the
 library's graph, `TOP_TARGETS` of them). For each, ChEMBL is asked
 
-1. which human targets have the gene among their components, by its HGNC symbol: the protein
+1. which human targets have the gene among their components, by its HGNC symbol (exactly, as a
+   gene symbol of a component): the protein
    itself, and the families and complexes it is part of (finasteride's 5-alpha reductase is a
    family of SRD5A1 to SRD5A3);
 2. which drug mechanisms act on those targets, and so which parent molecules (a salt counts as
@@ -41,16 +42,17 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import tempfile
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from collections.abc import Callable, Iterable, Sequence
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from hypothesis_engine.bottlenecks import Bottleneck, bottlenecks
 from hypothesis_engine.graph import library_graph
@@ -74,21 +76,39 @@ MYCHEM = "https://mychem.info/v1/"
 HUMAN = "Homo sapiens"
 PROPERTIES = ("alogp", "cx_logp", "cx_logd", "cx_most_bpka", "mw_freebase", "psa", "hbd", "hba")
 
-# The drugs that cause PSSD, PFS and PAS (spec R6), by ChEMBL's name of the parent molecule.
-# Dapoxetine is an SSRI, though sold for premature ejaculation. Vilazodone and vortioxetine act on
-# the serotonin transporter among other targets and are not counted as SSRIs.
+# The drugs that cause PSSD, PFS and PAS (spec R6), by any word of ChEMBL's name of the parent
+# molecule (so "OLANZAPINE AND FLUOXETINE" counts), and any drug of ATC class N06AB (`SSRI_ATC`).
+# Dapoxetine is an SSRI, though sold for premature ejaculation; indalpine and zimelidine are SSRIs
+# withdrawn long ago, sibutramine a withdrawn serotonin-noradrenaline reuptake inhibitor sold for
+# weight loss. Vilazodone and vortioxetine act on the serotonin transporter among other targets and
+# are not counted as SSRIs.
 KNOWN_CAUSES = {
     **dict.fromkeys(
-        ("citalopram", "escitalopram", "fluoxetine", "fluvoxamine", "paroxetine", "sertraline", "dapoxetine"),
+        (
+            "citalopram",
+            "escitalopram",
+            "fluoxetine",
+            "fluvoxamine",
+            "paroxetine",
+            "sertraline",
+            "dapoxetine",
+            "indalpine",
+            "zimelidine",
+        ),  # fmt: skip
         "SSRI",
     ),
     **dict.fromkeys(
-        ("venlafaxine", "desvenlafaxine", "duloxetine", "milnacipran", "levomilnacipran"), "SNRI"
+        ("venlafaxine", "desvenlafaxine", "duloxetine", "milnacipran", "levomilnacipran", "sibutramine"),
+        "SNRI",
     ),
     "finasteride": "5-alpha reductase inhibitor",
     "dutasteride": "5-alpha reductase inhibitor",
     "isotretinoin": "retinoid",
 }
+SSRI_ATC = "N06AB"  # selective serotonin reuptake inhibitors
+
+
+Source = Literal["chembl", "mychem"]  # which service answered
 
 
 class DrugsError(Exception):
@@ -101,8 +121,9 @@ class Target:
 
     symbol: str
     score: float
+    syndromes: tuple[str, ...]  # the syndromes linking to it: "PSSD", "PFS", "PAS"
     chembl_ids: tuple[str, ...]  # the ChEMBL targets it is a component of; none when MyChem answered
-    source: str  # "chembl" or "mychem"
+    source: Source
 
 
 @dataclass(frozen=True)
@@ -112,7 +133,7 @@ class Action:
     target: str  # the gene symbol
     target_chembl_id: str | None
     action_type: str | None  # "INHIBITOR", "AGONIST"...
-    mechanism: str | None  # "Steroid 5-alpha-reductase 2 inhibitor"
+    mechanism: str | None  # "Steroid 5-alpha-reductase 2 inhibitor"; DrugCentral's target name from MyChem
 
 
 @dataclass(frozen=True)
@@ -123,7 +144,7 @@ class Drug:
     properties: dict[str, float | None]  # `PROPERTIES`, None where ChEMBL gives none
     actions: tuple[Action, ...]
     known_cause: str | None  # what it is when it causes a syndrome ("SSRI"): never ranked
-    source: str  # "chembl" or "mychem"
+    source: Source
     withdrawn: bool | None = None  # withdrawn from some market after approval; None when unknown (MyChem)
 
     @property
@@ -147,10 +168,13 @@ class DrugCache:
         return [d for d in self.drugs if d.known_cause is not None]
 
 
-def known_cause(name: str) -> str | None:
-    """What a drug of this name is when it causes a syndrome: its first word, with case aside."""
-    words = name.casefold().split()
-    return KNOWN_CAUSES.get(words[0]) if words else None
+def known_cause(name: str, atc: Iterable[str] = ()) -> str | None:
+    """What a drug is when it causes a syndrome: by any word of its name, with case aside, or by
+    its ATC codes."""
+    for word in re.findall(r"[a-z]+", name.casefold()):
+        if word in KNOWN_CAUSES:
+            return KNOWN_CAUSES[word]
+    return "SSRI" if any(code.startswith(SSRI_ATC) for code in atc) else None
 
 
 def top_targets(scores: Iterable[Bottleneck], n: int = TOP_TARGETS) -> list[Bottleneck]:
@@ -242,7 +266,15 @@ class ChEMBL:
 
     def targets(self, symbol: str) -> list[str]:
         """The human ChEMBL targets with the gene among their components."""
-        found = self._all("target/search.json", {"q": symbol}, "targets")
+        # the exact-synonym filter, not the search: the search fails on short symbols ("AR")
+        found = self._all(
+            "target.json",
+            {
+                "target_components__target_component_synonyms__component_synonym__iexact": symbol,
+                "organism": HUMAN,
+            },
+            "targets",
+        )
         return sorted(
             {
                 t["target_chembl_id"]
@@ -288,7 +320,7 @@ class ChEMBL:
                     phase,
                     _properties(molecule.get("molecule_properties")),
                     tuple(actions[chembl_id]),
-                    known_cause(name),
+                    known_cause(name, molecule.get("atc_classifications") or ()),
                     "chembl",
                     bool(molecule.get("withdrawn_flag")),
                 )
@@ -320,20 +352,31 @@ class MyChem:
             raise DrugsError("MyChem.info query: an answer without its hits") from error
         drugs: dict[str, Drug] = {}
         for hit in hits:
-            chembl, bioactivity = hit.get("chembl"), (hit.get("drugcentral") or {}).get("bioactivity")
-            for record in chembl if isinstance(chembl, list) else [chembl]:
+            chembl = hit.get("chembl")
+            bioactivity = [  # MyChem gives one record or a list of them, at each level
+                b
+                for record in _listed(hit.get("drugcentral"))
+                if isinstance(record, dict)
+                for b in _listed(record.get("bioactivity"))
+            ]
+            for record in _listed(chembl):
                 if not isinstance(record, dict):
                     continue
                 chembl_id, phase = record.get("molecule_chembl_id"), _number(record.get("max_phase"))
                 if not chembl_id or phase is None or phase < APPROVED:
                     continue
                 actions = tuple(
-                    Action(symbol, None, b.get("action_type"), None)
-                    for b in (bioactivity if isinstance(bioactivity, list) else [bioactivity])
-                    if isinstance(b, dict)
-                    and str(b.get("moa")) == "1"
-                    and b.get("organism") == HUMAN
-                    and (b.get("uniprot") or {}).get("gene_symbol") == symbol
+                    dict.fromkeys(  # each distinct action once, in order
+                        Action(symbol, None, b.get("action_type"), b.get("target_name"))
+                        for b in bioactivity
+                        if isinstance(b, dict)
+                        and str(b.get("moa")) == "1"
+                        and b.get("organism") == HUMAN
+                        and any(
+                            isinstance(u, dict) and u.get("gene_symbol") == symbol
+                            for u in _listed(b.get("uniprot"))
+                        )
+                    )
                 )
                 if actions and chembl_id not in drugs:
                     name = record.get("pref_name") or chembl_id
@@ -342,11 +385,18 @@ class MyChem:
                         name,
                         phase,
                         _properties(record.get("molecule_properties")),
-                        actions[:1],
+                        actions,
                         known_cause(name),
                         "mychem",
                     )
         return list(drugs.values())
+
+
+def _listed(value: object) -> list[Any]:
+    """MyChem's one-or-many: a list as it is, anything else as a list of it (None as none)."""
+    if value is None:
+        return []
+    return value if isinstance(value, list) else [value]
 
 
 def fetch_drugs(
@@ -363,24 +413,20 @@ def fetch_drugs(
         try:
             ids = chembl.targets(symbol)
             found = chembl.drugs(symbol, ids)
-            looked_up.append(Target(symbol, bottleneck.score, tuple(ids), "chembl"))
+            looked_up.append(Target(symbol, bottleneck.score, bottleneck.syndromes, tuple(ids), "chembl"))
         except (DrugsError, TransientError) as error:
             progress(f"{symbol}: ChEMBL failed ({error}), asking MyChem.info")
             found = mychem.drugs(symbol)
-            looked_up.append(Target(symbol, bottleneck.score, (), "mychem"))
+            looked_up.append(Target(symbol, bottleneck.score, bottleneck.syndromes, (), "mychem"))
         progress(f"{symbol}: {len(found)} approved drugs")
         for drug in found:
             if drug.chembl_id in merged:
                 held = merged[drug.chembl_id]
                 actions = held.actions + tuple(a for a in drug.actions if a not in held.actions)
-                merged[drug.chembl_id] = Drug(**{**_fields(held), "actions": actions})
+                merged[drug.chembl_id] = replace(held, actions=actions)
             else:
                 merged[drug.chembl_id] = drug
     return looked_up, sorted(merged.values(), key=lambda d: (d.name.casefold(), d.chembl_id))
-
-
-def _fields(drug: Drug) -> dict[str, Any]:
-    return {f: getattr(drug, f) for f in Drug.__dataclass_fields__}
 
 
 def update_drugs(
@@ -439,7 +485,8 @@ def read_drug_cache(path: Path = DEFAULT_DRUGS) -> DrugCache:
             data["fetched_at"],
             data["library_version"],
             tuple(
-                Target(t["symbol"], t["score"], tuple(t["chembl_ids"]), t["source"]) for t in data["targets"]
+                Target(t["symbol"], t["score"], tuple(t["syndromes"]), tuple(t["chembl_ids"]), t["source"])
+                for t in data["targets"]
             ),
             tuple(
                 Drug(

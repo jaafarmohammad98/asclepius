@@ -15,6 +15,7 @@ from replay import ReplayTransport
 from test_rate_limit import FakeClock, _most_in_any_second
 
 from hypothesis_engine import drugs
+from hypothesis_engine.bottlenecks import Bottleneck
 from hypothesis_engine.drugs import (
     ChEMBL,
     DrugsError,
@@ -92,6 +93,27 @@ def test_drugs_that_cause_the_syndromes_are_tagged_for_exclusion():
     assert by_name["VORTIOXETINE"].known_cause is None  # acts on the transporter, not counted an SSRI
 
 
+def test_every_known_cause_is_tagged_however_chembl_names_or_classes_it():
+    assert drugs.known_cause("INDALPINE") == drugs.known_cause("ZIMELIDINE") == "SSRI"
+    assert drugs.known_cause("SIBUTRAMINE") == "SNRI"
+    assert drugs.known_cause("OLANZAPINE AND FLUOXETINE") == "SSRI"  # a combination product
+    assert drugs.known_cause("NEWOXETINE", ["N06AB99"]) == "SSRI"  # by its ATC class
+    assert drugs.known_cause("BUPROPION", ["N06AX12"]) is None
+
+
+def test_the_recorded_withdrawn_reuptake_inhibitors_are_excluded():
+    _targets, found = _fetch("SLC6A4")
+    by_name = {d.name: d for d in found}
+    assert (by_name["INDALPINE"].known_cause, by_name["SIBUTRAMINE"].known_cause) == ("SSRI", "SNRI")
+
+
+def test_a_target_keeps_the_syndromes_linking_to_it():
+    recorded = Recorded()
+    found = Bottleneck("SRD5A2", "gene", 0.9, 0.1, ("PFS", "PSSD"), 1.0)
+    (srd5a2,), _drugs = fetch_drugs([found], *recorded.services())
+    assert srd5a2.syndromes == ("PFS", "PSSD")
+
+
 def test_a_drug_keeps_its_phase_properties_and_chembl_id():
     _targets, found = _fetch("SRD5A2")
     (finasteride,) = [d for d in found if d.name == "FINASTERIDE"]
@@ -148,7 +170,8 @@ def test_when_chembl_is_down_mychem_answers_for_the_target():
     targets, found = _fetch("SRD5A2", recorded=recorded)
     assert targets[0].source == "mychem" and targets[0].chembl_ids == ()
     assert {"FINASTERIDE", "DUTASTERIDE"} <= _names(found)
-    assert all(d.source == "mychem" and d.max_phase == 4 for d in found)
+    assert all(d.source == "mychem" and d.max_phase == 4 and d.actions for d in found)
+    assert all(a.target == "SRD5A2" for d in found for a in d.actions)
     by_name = {d.name: d for d in found}
     assert by_name["FINASTERIDE"].known_cause == "5-alpha reductase inhibitor"
     assert by_name["FINASTERIDE"].properties["mw_freebase"] == 372.55
@@ -164,7 +187,7 @@ def test_requests_stay_under_three_a_second_to_each_service():
 def test_only_target_names_and_chembl_ids_are_sent():
     recorded = Recorded()
     _fetch("SRD5A2", "SLC6A4", recorded=recorded)
-    fixed = {"limit", "offset", "fields", "size"}
+    fixed = {"limit", "offset", "fields", "size", "organism"}  # the same in every request
     for _path, params in recorded.replay.calls:
         for key, value in params.items():
             if key in fixed:
@@ -275,3 +298,33 @@ def test_reading_a_cache_of_another_version_fails(tmp_path):
     out.write_text(json.dumps({"cache_version": 99}), encoding="utf-8")
     with pytest.raises(DrugsError, match="version"):
         read_drug_cache(out)
+
+
+def test_a_short_symbol_finds_its_targets():
+    _targets, found = _fetch("AR")
+    assert {"BICALUTAMIDE", "ENZALUTAMIDE", "TESTOSTERONE"} <= _names(found)
+
+
+def test_mychem_answers_holding_lists_at_any_level_are_read():
+    # As MyChem.info gives some molecules (AR's, 2026-11-24): drugcentral, bioactivity and uniprot
+    # each one record or a list of them.
+    answer = {
+        "hits": [
+            {
+                "chembl": [{"molecule_chembl_id": "CHEMBL1", "pref_name": "ONE", "max_phase": 4.0}],
+                "drugcentral": [
+                    {"bioactivity": {"moa": 1, "organism": drugs.HUMAN, "action_type": "AGONIST",
+                                     "uniprot": [{"gene_symbol": "XYZ"}, {"gene_symbol": "AR"}]}},
+                    {"bioactivity": [{"moa": "1", "organism": drugs.HUMAN, "action_type": "ANTAGONIST",
+                                      "uniprot": {"gene_symbol": "AR"}}]},
+                ],
+            },
+            {"chembl": {"molecule_chembl_id": "CHEMBL2", "max_phase": 4}, "drugcentral": None},
+        ]
+    }  # fmt: skip
+    clock = FakeClock()
+    mychem = MyChem(
+        Service(lambda _p, _q: json.dumps(answer).encode(), RateLimiter(3, clock.time, clock.sleep))
+    )
+    (one,) = mychem.drugs("AR")
+    assert one.name == "ONE" and [a.action_type for a in one.actions] == ["AGONIST", "ANTAGONIST"]

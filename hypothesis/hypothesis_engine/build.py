@@ -322,6 +322,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         say(f"asclepius-library: {error}")
         if downloading and not isinstance(error, LibraryError):
             say("what was downloaded is kept; `asclepius-library fulltext` continues")
+            if args.command == "build":  # the graph counts full-text passages: drugs once it is done
+                say("then `asclepius-library drugs` fetches the drug data")
         return 1
     if args.command == "build":
         return _drugs(args, say)
