@@ -14,6 +14,11 @@ stored yet, reads the private folder (`private.py`), and stores what is new as o
 copies of papers that had none a month ago. Running it twice in a row adds nothing the
 second time.
 
+After the full text, `build` fetches the approved drugs acting on the knowledge graph's top
+bottleneck targets from ChEMBL (MyChem.info when ChEMBL fails) and caches them in the data folder
+(`drugs.py`); `drugs` does only that, for the current version. The app reads the cache and never
+fetches. Only the targets' gene symbols and ChEMBL ids are sent, through the privacy guard.
+
 `index` builds the local search index of the current version (`search.py`), downloading the
 embedding model the first time; `search` prints the passages most relevant to a question.
 Both run without the network once the model is downloaded.
@@ -49,7 +54,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-from hypothesis_engine import europepmc
+from hypothesis_engine import drugs, europepmc
 from hypothesis_engine.embedding import DEFAULT_MODELS, LocalEmbedder, ModelMissing
 from hypothesis_engine.evidence import FindingsError, gather_evidence, read_findings
 from hypothesis_engine.fulltext import describe, fetch_full_texts
@@ -75,6 +80,7 @@ from hypothesis_engine.pubmed import (
 )
 from hypothesis_engine.search import DEFAULT_INDEX, Index, SearchIndexError, build_index
 from hypothesis_engine.topics import DEFAULT_TOPICS, Topic, TopicsError, load_topics
+from hypothesis_engine.vocabulary import DEFAULT_VOCABULARY, VocabularyError, load_vocabulary
 
 DEFAULT_PRIVATE = DEFAULT_LIBRARY.parent / "private"
 
@@ -202,6 +208,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     refresh = commands.add_parser(
         "refresh", help="monthly update: add new papers and the private folder's PDFs, then their full text"
     )
+    drugs_command = commands.add_parser(
+        "drugs", help="fetch the approved drugs acting on the top bottleneck targets, from ChEMBL"
+    )
     index = commands.add_parser(
         "index", help="build the local search index of the current version (downloads the model once)"
     )
@@ -240,7 +249,20 @@ def main(argv: Sequence[str] | None = None) -> int:
             default=DEFAULT_MODELS,
             help=f"embedding model folder (default {DEFAULT_MODELS})",
         )
-    for command in (build, fulltext, refresh, index, search, evidence, hypotheses):
+    for command in (build, drugs_command):
+        command.add_argument(
+            "--drugs",
+            type=Path,
+            default=drugs.DEFAULT_DRUGS,
+            help=f"drug cache (default {drugs.DEFAULT_DRUGS})",
+        )
+        command.add_argument(
+            "--vocabulary",
+            type=Path,
+            default=DEFAULT_VOCABULARY,
+            help="the knowledge graph's terms (default: the shipped list)",
+        )
+    for command in (build, fulltext, refresh, index, search, evidence, hypotheses, drugs_command):
         command.add_argument(
             "--library", type=Path, default=DEFAULT_LIBRARY, help=f"SQLite file (default {DEFAULT_LIBRARY})"
         )
@@ -265,6 +287,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _evidence(args, say)
     if args.command == "hypotheses":
         return _hypotheses(args, say)
+    if args.command == "drugs":
+        return _drugs(args, say)
     downloading = args.command == "fulltext"
     try:
         api_key = os.environ.get("NCBI_API_KEY") or None
@@ -298,7 +322,41 @@ def main(argv: Sequence[str] | None = None) -> int:
         say(f"asclepius-library: {error}")
         if downloading and not isinstance(error, LibraryError):
             say("what was downloaded is kept; `asclepius-library fulltext` continues")
+            if args.command == "build":  # the graph counts full-text passages: drugs once it is done
+                say("then `asclepius-library drugs` fetches the drug data")
         return 1
+    if args.command == "build":
+        return _drugs(args, say)
+    return 0
+
+
+def _drugs(args: argparse.Namespace, say: Callable[[str], None]) -> int:
+    """Fetch and cache the drugs; a failure leaves the previous cache as it was."""
+    try:
+        cache = drugs.update_drugs(
+            args.library,
+            load_vocabulary(args.vocabulary),
+            args.drugs,
+            drugs.http_transport(drugs.CHEMBL),
+            drugs.http_transport(drugs.MYCHEM),
+            progress=say,
+        )
+    except KeyboardInterrupt:
+        say(
+            "asclepius-library: stopped; the drug cache is as it was, `asclepius-library drugs` fetches it again"
+        )
+        return 130
+    except PrivateTextLeak as error:
+        say(f"asclepius-library: stopped before sending {error}; the drug cache is as it was")
+        return 1
+    except (LibraryError, VocabularyError, drugs.DrugsError, TransientError) as error:
+        say(f"asclepius-library: {error}")
+        say("the drug cache is as it was; `asclepius-library drugs` fetches it again")
+        return 1
+    say(
+        f"drug cache at {args.drugs}: {len(cache.ranked)} approved drugs on {len(cache.targets)} targets, "
+        f"{len(cache.excluded)} known causes excluded"
+    )
     return 0
 
 
