@@ -94,6 +94,7 @@ KNOWN_CAUSES = {
             "dapoxetine",
             "indalpine",
             "zimelidine",
+            "zimeldine",  # ChEMBL's spelling
         ),  # fmt: skip
         "SSRI",
     ),

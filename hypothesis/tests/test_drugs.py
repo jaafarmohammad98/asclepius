@@ -94,7 +94,12 @@ def test_drugs_that_cause_the_syndromes_are_tagged_for_exclusion():
 
 
 def test_every_known_cause_is_tagged_however_chembl_names_or_classes_it():
-    assert drugs.known_cause("INDALPINE") == drugs.known_cause("ZIMELIDINE") == "SSRI"
+    assert (
+        drugs.known_cause("INDALPINE")
+        == drugs.known_cause("ZIMELIDINE")
+        == drugs.known_cause("ZIMELDINE")
+        == "SSRI"
+    )
     assert drugs.known_cause("SIBUTRAMINE") == "SNRI"
     assert drugs.known_cause("OLANZAPINE AND FLUOXETINE") == "SSRI"  # a combination product
     assert drugs.known_cause("NEWOXETINE", ["N06AB99"]) == "SSRI"  # by its ATC class
