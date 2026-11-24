@@ -20,7 +20,8 @@ When ChEMBL cannot be used for a target (it is down, or answers with something u
 MyChem.info is asked instead: the molecules whose DrugCentral bioactivities name the gene as a
 mechanism of action, with the ChEMBL id, phase and properties MyChem keeps of each.
 
-The only free text sent is the target's gene symbol; everything else is a ChEMBL id. Every request
+The only free text sent is the target's gene symbol, and to openFDA the drug's name; everything
+else is a ChEMBL id. Every request
 goes through the library's `PrivateTextGuard` first all the same (M4-08), so a private paper's
 text could not leave in one.
 
@@ -32,8 +33,11 @@ The drugs said to cause the syndromes (`KNOWN_CAUSES`: SSRIs, SNRIs, finasteride
 isotretinoin) are kept, tagged with what they are, so they can be listed as "known causes,
 excluded" and never ranked.
 
-Nothing is written until every target has been looked up, so a failed fetch leaves the previous
-cache as it was. Both services are free, need no account and are sent no email; requests are
+Then each drug's label concerns, listed risks and generic availability are asked of openFDA
+(`safety.py`), by the drug's name.
+
+Nothing is written until every target and drug has been looked up, so a failed fetch leaves the previous
+cache as it was. All three services are free, need no account and are sent no email; requests are
 spaced at most 3 a second and a transient failure (HTTP 429, 5xx, a dropped connection) is sent
 again (`pubmed.send_politely`).
 """
@@ -60,10 +64,11 @@ from hypothesis_engine.home import DATA
 from hypothesis_engine.library import Library
 from hypothesis_engine.privacy import PrivateTextGuard
 from hypothesis_engine.pubmed import RateLimiter, TransientError, Transport, send_politely
+from hypothesis_engine.safety import Label, Mention, OpenFDA, Risk, Safety
 from hypothesis_engine.vocabulary import Vocabulary
 
 DEFAULT_DRUGS = DATA / "drugs.json"
-CACHE_VERSION = 1
+CACHE_VERSION = 2  # 2: each drug's safety, from openFDA (M6-05b)
 TOP_TARGETS = 20  # genes, highest bottleneck score first
 APPROVED = 4  # ChEMBL's max_phase of an approved drug
 RATE = 3  # requests a second, to each service
@@ -147,6 +152,7 @@ class Drug:
     known_cause: str | None  # what it is when it causes a syndrome ("SSRI"): never ranked
     source: Source
     withdrawn: bool | None = None  # withdrawn from some market after approval; None when unknown (MyChem)
+    safety: Safety | None = None  # from openFDA; None only before `add_safety`
 
     @property
     def url(self) -> str:
@@ -183,8 +189,9 @@ def top_targets(scores: Iterable[Bottleneck], n: int = TOP_TARGETS) -> list[Bott
     return [b for b in scores if b.kind == "gene"][:n]
 
 
-def http_transport(base: str) -> Transport:
-    """The real network: a GET to `base` + path, the parameters in the query string."""
+def http_transport(base: str, not_found_ok: bool = False) -> Transport:
+    """The real network: a GET to `base` + path, the parameters in the query string. With
+    `not_found_ok`, an HTTP 404's body is the answer (openFDA's "no matches")."""
 
     def send(path: str, params: dict[str, str]) -> bytes:
         url = f"{base}{path}?{urllib.parse.urlencode(params)}"
@@ -196,6 +203,9 @@ def http_transport(base: str) -> Transport:
                 body: bytes = response.read()
                 return body
         except urllib.error.HTTPError as error:
+            if error.code == 404 and not_found_ok:
+                found_none: bytes = error.read()
+                return found_none
             if error.code == 429 or error.code >= 500:
                 raise TransientError(f"{base}{path}: HTTP {error.code}") from error
             raise DrugsError(f"{base}{path}: HTTP {error.code} {error.reason}") from error
@@ -430,19 +440,37 @@ def fetch_drugs(
     return looked_up, sorted(merged.values(), key=lambda d: (d.name.casefold(), d.chembl_id))
 
 
+def add_safety(
+    found: Sequence[Drug], openfda: OpenFDA, progress: Callable[[str], None] = lambda _message: None
+) -> list[Drug]:
+    """The drugs, each with its safety from openFDA."""
+    kept = []
+    for drug in found:
+        safety = openfda.safety(drug.name)
+        progress(
+            f"{drug.name}: label concerns {', '.join(safety.concerns) or 'none'}"
+            f"{'' if safety.label else ' (no US label)'}, {'a generic' if safety.generic else 'no generic'}"
+        )
+        kept.append(replace(drug, safety=safety))
+    return kept
+
+
 def update_drugs(
     library_path: Path,
     vocabulary: Vocabulary,
     out: Path,
     chembl_transport: Transport,
     mychem_transport: Transport,
+    openfda_transport: Transport,
+    risks: dict[str, tuple[Risk, ...]] | None = None,
     limiter: Callable[[], RateLimiter] = lambda: RateLimiter(RATE),
     sleep: Callable[[float], None] = time.sleep,
     now: Callable[[], datetime] = lambda: datetime.now(UTC),
     top: int = TOP_TARGETS,
     progress: Callable[[str], None] = lambda _message: None,
 ) -> DrugCache:
-    """Score the library's graph, look up its top targets' drugs and write them to `out`."""
+    """Score the library's graph, look up its top targets' drugs and their safety, and write them
+    to `out`. `risks`: the `[risks]` table of `interventions.toml` (`safety.read_risks`)."""
     with Library.open(library_path) as library:
         version = library.version
         guard = PrivateTextGuard.from_library(library)
@@ -450,7 +478,9 @@ def update_drugs(
     progress(f"looking up approved drugs for {len(targets)} targets: {', '.join(t.name for t in targets)}")
     chembl = ChEMBL(Service(chembl_transport, limiter(), guard, sleep))
     mychem = MyChem(Service(mychem_transport, limiter(), guard, sleep))
-    looked_up, drugs = fetch_drugs(targets, chembl, mychem, progress)
+    openfda = OpenFDA(Service(openfda_transport, limiter(), guard, sleep), risks)
+    looked_up, found = fetch_drugs(targets, chembl, mychem, progress)
+    drugs = add_safety(found, openfda, progress)
     cache = DrugCache(now().isoformat(timespec="seconds"), version, tuple(looked_up), tuple(drugs))
     write_drug_cache(out, cache)
     return cache
@@ -469,6 +499,25 @@ def write_drug_cache(path: Path, cache: DrugCache) -> None:
     except BaseException:
         Path(scratch).unlink(missing_ok=True)
         raise
+
+
+def _safety(data: dict[str, Any] | None) -> Safety | None:
+    if data is None:
+        return None
+    label = data["label"]
+    return Safety(
+        None
+        if label is None
+        else Label(
+            label["set_id"],
+            label["effective_time"],
+            label["application"],
+            tuple(Mention(**m) for m in label["mentions"]),
+        ),
+        tuple(Risk(**r) for r in data["risks"]),
+        data["generic"],
+        tuple(data["generic_applications"]),
+    )
 
 
 def read_drug_cache(path: Path = DEFAULT_DRUGS) -> DrugCache:
@@ -499,6 +548,7 @@ def read_drug_cache(path: Path = DEFAULT_DRUGS) -> DrugCache:
                     d["known_cause"],
                     d["source"],
                     d["withdrawn"],
+                    _safety(d["safety"]),
                 )
                 for d in data["drugs"]
             ),

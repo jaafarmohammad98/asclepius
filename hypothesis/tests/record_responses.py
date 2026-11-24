@@ -4,12 +4,14 @@ run only by hand:
     uv run python tests/record_responses.py build      # PubMed answers, fixtures/build
     uv run python tests/record_responses.py fulltext   # Europe PMC answers, fixtures/fulltext
     uv run python tests/record_responses.py drugs      # ChEMBL and MyChem.info answers, fixtures/drugs
+    uv run python tests/record_responses.py safety     # openFDA answers, fixtures/openfda
 
 Then update the literal values in those tests (and `fulltext_fixture.py`) if the answers changed.
 """
 
 from __future__ import annotations
 
+import json
 import shutil
 import sys
 from pathlib import Path
@@ -18,9 +20,9 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import drugs_fixture  # noqa: E402
 import fulltext_fixture  # noqa: E402
-from replay import recording, response_path  # noqa: E402
+from replay import ReplayTransport, recording, response_path  # noqa: E402
 
-from hypothesis_engine import drugs, europepmc  # noqa: E402
+from hypothesis_engine import drugs, europepmc, safety  # noqa: E402
 from hypothesis_engine.build import build_library  # noqa: E402
 from hypothesis_engine.fulltext import fetch_full_texts  # noqa: E402
 from hypothesis_engine.pubmed import PubMed, RateLimiter, TransientError, Transport, http_transport  # noqa: E402
@@ -93,10 +95,75 @@ def record_drugs() -> None:
         print(symbol, "MyChem.info:", sorted(d.name for d in mychem.drugs(symbol)))
 
 
+def _slim(path: str, body: bytes) -> bytes:
+    """Only the parts of an openFDA answer `safety.py` reads: a label is some 150 kB otherwise."""
+    answer = json.loads(body)
+    if "results" not in answer:
+        return body
+    if path == "drug/label.json":
+        keep = {"set_id", "effective_time", *safety.SECTIONS}
+        results = [
+            {
+                **{k: v for k, v in r.items() if k in keep},
+                "openfda": {
+                    k: v
+                    for k, v in r.get("openfda", {}).items()
+                    if k in ("generic_name", "application_number")
+                },
+            }
+            for r in answer["results"]
+        ]
+    else:
+        results = [
+            {
+                "application_number": r.get("application_number"),
+                "products": [
+                    {
+                        "marketing_status": p.get("marketing_status"),
+                        "active_ingredients": [
+                            {"name": a.get("name")} for a in p.get("active_ingredients", [])
+                        ],
+                    }
+                    for p in r.get("products", [])
+                ],
+            }
+            for r in answer["results"]
+        ]
+    return json.dumps({"meta": {"results": answer["meta"]["results"]}, "results": results}).encode()
+
+
+def record_safety() -> None:
+    """The labels and generics of every drug recorded for `drugs_fixture.SAFETY_SYMBOLS`."""
+    folder = drugs_fixture.SAFETY_FOLDER
+    folder.mkdir(exist_ok=True)
+    for old in folder.glob("*"):
+        old.unlink()
+    network = drugs.http_transport(safety.OPENFDA, not_found_ok=True)
+
+    def slimmed(path: str, params: dict[str, str]) -> bytes:
+        return _slim(path, network(path, params))
+
+    openfda = safety.OpenFDA(drugs.Service(recording(slimmed, folder), RateLimiter(drugs.RATE)))
+    replayed = drugs.ChEMBL(drugs.Service(ReplayTransport(drugs_fixture.FOLDER), RateLimiter(100)))
+    names = sorted(
+        {d.name for s in drugs_fixture.SAFETY_SYMBOLS for d in replayed.drugs(s, replayed.targets(s))}
+    )
+    for name in names:
+        found = openfda.safety(name)
+        print(
+            name,
+            found.concerns,
+            "generic" if found.generic else "no generic",
+            found.label and found.label.set_id,
+        )
+
+
 def main() -> None:
-    which = [a for a in sys.argv[1:] if not a.startswith("--")] or ["build", "fulltext", "drugs"]
+    which = [a for a in sys.argv[1:] if not a.startswith("--")] or ["build", "fulltext", "drugs", "safety"]
     for name in which:
-        {"build": record_build, "fulltext": record_full_text, "drugs": record_drugs}[name]()
+        {"build": record_build, "fulltext": record_full_text, "drugs": record_drugs, "safety": record_safety}[
+            name
+        ]()
     shutil.rmtree(Path(__file__).parent / "fixtures" / "__pycache__", ignore_errors=True)
 
 

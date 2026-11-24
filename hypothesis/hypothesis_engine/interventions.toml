@@ -57,3 +57,10 @@ names = [
   "elimination diet", "intermittent fasting", "aerobic exercise", "strength training",
   "yoga", "meditation", "mindfulness", "sauna",
 ]
+
+# Known risks of a drug, merged into its safety penalty in the drug ranking (spec R3, M6-05b),
+# beside the concerns its openFDA label states. Keyed by the drug's ChEMBL name, with case aside;
+# each risk cites its source: "PMID:123", "DOI:10..." or an https URL. Add one only with a source
+# checked by hand. Example (not a real entry):
+#   "bupropion" = [{ risk = "lowers the seizure threshold", source = "PMID:00000000" }]
+[risks]

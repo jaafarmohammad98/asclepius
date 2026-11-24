@@ -10,7 +10,7 @@ import json
 from datetime import UTC, datetime
 
 import pytest
-from drugs_fixture import FOLDER, target
+from drugs_fixture import FOLDER, SAFETY_FOLDER, target
 from replay import ReplayTransport
 from test_rate_limit import FakeClock, _most_in_any_second
 
@@ -29,6 +29,7 @@ from hypothesis_engine.library import write_build
 from hypothesis_engine.privacy import PrivateTextGuard, PrivateTextLeak
 from hypothesis_engine.private import PrivatePaper
 from hypothesis_engine.pubmed import Paper, RateLimiter, TransientError
+from hypothesis_engine.safety import Risk
 from hypothesis_engine.vocabulary import Term, Vocabulary
 
 WHEN = datetime(2026, 11, 24, 12, 0, tzinfo=UTC)
@@ -41,6 +42,7 @@ class Recorded:
     def __init__(self, chembl_down: bool = False, guard: PrivateTextGuard | None = None) -> None:
         self.clock = FakeClock()
         self.replay = ReplayTransport(FOLDER)
+        self.openfda = ReplayTransport(SAFETY_FOLDER)
         self.chembl_down = chembl_down
         self.sent_at: list[float] = []
         self.guard = guard
@@ -242,7 +244,7 @@ def library(tmp_path):
     return path
 
 
-def _update(library, out, recorded: Recorded | None = None, top: int = 3):
+def _update(library, out, recorded: Recorded | None = None, top: int = 3, risks=None):
     recorded = recorded or Recorded()
     return update_drugs(
         library,
@@ -250,6 +252,8 @@ def _update(library, out, recorded: Recorded | None = None, top: int = 3):
         out,
         recorded.chembl_transport,
         recorded._send,
+        recorded.openfda,
+        risks,
         limiter=recorded.limiter,
         sleep=recorded.clock.sleep,
         now=lambda: WHEN,
@@ -276,6 +280,29 @@ def test_after_a_build_the_cache_reads_back_without_the_network(library, tmp_pat
     assert read.fetched_at == "2026-11-24T12:00:00+00:00" and read.library_version == 1
     assert {"FINASTERIDE", "PAROXETINE"} <= {d.name for d in read.excluded}
     assert read.ranked and all(d.known_cause is None for d in read.ranked)
+
+
+def test_every_cached_drug_has_its_safety_and_generic_flag(library, tmp_path):
+    out = tmp_path / "drugs.json"
+    risks = {"vortioxetine": (Risk("nausea", "PMID:1"),)}
+    written = _update(library, out, risks=risks)
+    read = read_drug_cache(out)
+    assert read == written
+    assert all(d.safety is not None for d in read.drugs)
+    by_name = {d.name: d for d in read.drugs}
+    vortioxetine, alpidem = by_name["VORTIOXETINE"].safety, by_name["ALPIDEM"].safety
+    assert vortioxetine.concerns == ("sexual dysfunction", "libido") and not vortioxetine.generic
+    assert vortioxetine.risks == risks["vortioxetine"] and vortioxetine.penalty == 3
+    assert vortioxetine.label.mentions[0].excerpt  # the label text the penalty came from
+    assert alpidem.label is None and alpidem.penalty == 0
+    assert by_name["FINASTERIDE"].safety.generic
+
+
+def test_a_cache_of_the_version_before_safety_is_fetched_again(tmp_path):
+    out = tmp_path / "drugs.json"
+    out.write_text(json.dumps({"cache_version": 1}), encoding="utf-8")
+    with pytest.raises(DrugsError, match="asclepius-library drugs"):
+        read_drug_cache(out)
 
 
 def test_a_failed_fetch_leaves_the_previous_cache_as_it_was(library, tmp_path):
