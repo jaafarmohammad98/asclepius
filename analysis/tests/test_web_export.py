@@ -119,8 +119,12 @@ def test_the_lab_report_has_each_finding_and_its_plot(lab_run):
     androsterone = [f for f in comparison["findings"] if f["marker_id"] == "androsterone"]
     assert androsterone and escape(androsterone[0]["marker_name"]) in html
     plots = sum(len(s["findings"]) for s in view["sections"])
-    assert html.count("<svg") == plots
+    assert (
+        html.count('role="img"') == plots
+    )  # one plot per finding; the page's other svg holds the hatch fill
     assert "<script src" not in html and "http://" not in html.replace("http://www.w3.org/2000/svg", "")
+    assert "https://" not in html and 'url("vendor/' not in html  # its fonts and icon are in the file
+    assert html.count("data:font/woff2;base64,") == 4 and "data:image/svg+xml;base64," in html
 
 
 def test_the_report_records_which_step_ran_which_analysis(lab_run):

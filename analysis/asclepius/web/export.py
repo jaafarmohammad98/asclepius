@@ -15,6 +15,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import re
 from html import escape
 from typing import Any
 
@@ -23,6 +24,7 @@ from asclepius.interventions import SHARES
 from asclepius.run import PROVISIONAL
 from asclepius.selfreport import LABEL as SELF_REPORT_LABEL
 from asclepius.web.findings import COUNTS, FEW, INTERVENTION_COUNTS, SHOWN_COLUMNS, STATISTICS, ZONES
+from asclepius.web.style import head as page_head
 
 ZONE_COLUMNS = tuple(f"zone_{z}" for z in ZONES)
 # an `intervention` row's own columns: the intervention outcomes ranking as the page shows it
@@ -143,39 +145,6 @@ def read_findings_csv(text: str) -> list[dict[str, object]]:
 
 # ---------------------------------------------------------------------------------- HTML report
 
-STYLE = """
-:root { color-scheme: light dark; --bg: #ffffff; --text: #1d1f21; --muted: #5f6368; --line: #dadce0;
-  --accent: #2f5d8a; --ok: #1e6b3a; --warn: #7a5200; --bar: #e8eaed;
-  --below: #4a7fb5; --within: #9aa0a6; --above: #c0723a; --unclear: #d5d8dc; }
-@media (prefers-color-scheme: dark) {
-  :root { --bg: #17181a; --text: #e8eaed; --muted: #a0a4a8; --line: #3c4043; --accent: #8ab4f8;
-    --ok: #81c995; --warn: #fdd663; --bar: #3c4043; --below: #7fa9d6; --within: #80868b;
-    --above: #e39a66; --unclear: #5f6368; }
-}
-body { margin: 0 auto; max-width: 1200px; padding: 24px 16px; background: var(--bg); color: var(--text);
-  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
-h1 { font-size: 1.5em; margin: 0 0 4px; } h2 { font-size: 1.2em; margin: 28px 0 6px; }
-h3 { font-size: 1em; margin: 14px 0 4px; }
-.muted { color: var(--muted); }
-.label { display: inline-block; border: 1px solid var(--warn); color: var(--warn); border-radius: 10px;
-  padding: 0 8px; margin: 0 6px 4px 0; font-size: .85em; }
-.nothing { border: 2px solid var(--warn); border-radius: 8px; padding: 10px 14px; font-weight: 600; }
-.scroll { overflow-x: auto; }
-table { border-collapse: collapse; margin: 6px 0 12px; }
-th, td { border-bottom: 1px solid var(--line); padding: 4px 8px; text-align: right; white-space: nowrap;
-  vertical-align: middle; }
-th:first-child, td:first-child, td.text, th.text { text-align: left; }
-dl { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; margin: 8px 0; }
-dt { color: var(--muted); } dd { margin: 0; overflow-wrap: anywhere; }
-pre { background: var(--bar); padding: 10px; border-radius: 6px; overflow-x: auto; font-size: 12px; }
-svg text { font-size: 11px; fill: var(--text); }
-.whisker { stroke: var(--muted); stroke-width: 1.5; } .box { fill: var(--bar); stroke: var(--accent); }
-.median { stroke: var(--accent); stroke-width: 2.5; }
-.share-bg { fill: var(--bar); } .share { fill: var(--accent); }
-.zone-below { fill: var(--below); } .zone-within { fill: var(--within); } .zone-above { fill: var(--above); }
-.zone-unclear { fill: var(--unclear); } .hidden-part { fill: none; stroke: var(--muted); stroke-dasharray: 3 2; }
-@media print { .scroll { overflow: visible; } }
-"""
 W, LABEL_W, ROW_H = 300, 132, 18
 
 
@@ -234,7 +203,7 @@ def distribution_svg(sides: list[dict[str, Any]]) -> str:
             y = i * ROW_H + 9
             body += [
                 f'<line class="whisker" x1="{x(s["q10"])}" x2="{x(s["q90"])}" y1="{y}" y2="{y}"/>',
-                f'<rect class="box" x="{x(s["q25"])}" y="{y - 6}" '
+                f'<rect class="box side-{i}" x="{x(s["q25"])}" y="{y - 6}" '
                 f'width="{max(1, x(s["q75"]) - x(s["q25"])):.2f}" height="12"/>',
                 f'<line class="median" x1="{x(s["median"])}" x2="{x(s["median"])}" y1="{y - 7}" y2="{y + 7}"/>',
             ]
@@ -280,7 +249,7 @@ def zones_svg(sides: list[dict[str, Any]]) -> str:
                 w = s[z] / s["n"] * width
                 body.append(f'<rect class="zone-{z}" x="{at:.2f}" y="{y}" width="{w:.2f}" height="12"/>')
                 if w > 22:
-                    body.append(f'<text x="{at + 3:.2f}" y="{y + 10}">{s[z]}</text>')
+                    body.append(f'<text class="on-{z}" x="{at + 3:.2f}" y="{y + 10}">{s[z]}</text>')
                 at += w
         if at < LABEL_W + width - 0.5:
             body.append(
@@ -300,18 +269,30 @@ def plot_svg(plot: dict[str, Any] | None) -> str:
     return PLOTS[plot["type"]](plot["sides"])
 
 
+def _figures(cell: str) -> bool:
+    """Whether a cell (escaped HTML) leads with figures: a count, a value, a share, or one hidden. They
+    are set in the number face, right-aligned, as on the page."""
+    text = re.sub(r"(?<=\d)e[+-]?(?=\d)", "", cell.split("<", 1)[0].strip())  # 1.14e+03 is a figure
+    return text in (FEW, "hidden") or (not re.search(r"[A-Za-z]", text) and bool(re.search(r"[\d–]", text)))
+
+
+def _cell_class(i: int, cell: str, text_columns: int) -> str:
+    if cell.startswith("<svg"):
+        return "plot"
+    return "num" if i >= text_columns and _figures(cell) else "text"
+
+
 def _table(head: list[str], rows: list[list[str]], text_columns: int = 1) -> str:
-    """A table of already-escaped cells; the first `text_columns` are left-aligned text."""
+    """A table of already-escaped cells; the first `text_columns` are text, and a column of figures
+    is right-aligned in the number face."""
+    classes = [[_cell_class(i, c, text_columns) for i, c in enumerate(r)] for r in rows]
+    figure_columns = {i for i in range(len(head)) if rows and all(c[i] == "num" for c in classes)}
     th = "".join(
-        f'<th class="text">{h}</th>' if i < text_columns else f"<th>{h}</th>" for i, h in enumerate(head)
+        f'<th class="{"num" if i in figure_columns else "text"}">{h}</th>' for i, h in enumerate(head)
     )
     body = "".join(
-        "<tr>"
-        + "".join(
-            f'<td class="text">{c}</td>' if i < text_columns else f"<td>{c}</td>" for i, c in enumerate(r)
-        )
-        + "</tr>"
-        for r in rows
+        "<tr>" + "".join(f'<td class="{k}">{c}</td>' for c, k in zip(r, kinds, strict=True)) + "</tr>"
+        for r, kinds in zip(rows, classes, strict=True)
     )
     return f'<div class="scroll"><table><thead><tr>{th}</tr></thead><tbody>{body}</tbody></table></div>'
 
@@ -344,6 +325,12 @@ def _tier_a(f: dict[str, Any]) -> str:
     )
 
 
+def _strength(label: object) -> str:
+    """A finding's strength as the page tags it."""
+    kind = "description" if label == "description, not a test" else str(label or "unlabelled")
+    return f'<span class="strength {_e(kind)}">{_e(label or "not labelled")}</span>'
+
+
 def _tested_table(findings: list[dict[str, Any]]) -> str:
     head = ["Marker", "Sex", "Groups", "n", "Medians", "Effect [95% CI]", "q", "Label", "Tier A", "Plot"]
     rows = []
@@ -362,7 +349,7 @@ def _tested_table(findings: list[dict[str, Any]]) -> str:
                 medians,
                 _effect(f),
                 _num(f.get("q_value")),
-                _e(f.get("label") or "not labelled")
+                _strength(f.get("label"))
                 + (f'<br><span class="muted">{_e(f["caveat"])}</span>' if f.get("caveat") else ""),
                 _tier_a(f),
                 plot_svg(f.get("plot")),
@@ -511,10 +498,7 @@ def report_html(view: dict[str, Any], record: dict[str, Any]) -> str:
         )
     sections = "".join(_section_html(s) for s in view["sections"])
     return (
-        '<!doctype html>\n<html lang="en"><head><meta charset="utf-8">'
-        '<meta name="viewport" content="width=device-width, initial-scale=1">'
-        f"<title>Asclepius report</title><style>{STYLE}</style></head><body>"
-        f"<h1>Asclepius report</h1>{_chips(labels)}{head}"
+        page_head("Asclepius report", landscape=True) + f"<h1>Asclepius report</h1>{_chips(labels)}{head}"
         '<p class="muted">Counts below 5 are hidden and no single case is shown. The thresholds and '
         "the ratio list were chosen without a clinician and are provisional until expert review.</p>"
         f"{overall}{sections}"
