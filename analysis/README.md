@@ -874,6 +874,10 @@ Each step's one-line statement is shown, and when the run finishes, its findings
      its label's concerns with their words and DailyMed page, and its listed risks with their
      sources. Filter by drug or target name, or by a syndrome its targets link to; sort by rank,
      name or any criterion. The rank is always among all the drugs.
+   - **Coverage.** The drugs are those fetched for the top targets of when the drug data was
+     fetched. When a gene now among the top ones was never looked up, a line above the table
+     names it: the library has changed since (run `asclepius-library drugs`), or this run's
+     findings raised it, and its drugs are not ranked.
    - **Known causes, excluded.** SSRIs, SNRIs, finasteride, dutasteride and isotretinoin are
      listed apart, never ranked. The section ends: computational research hypotheses, not
      medical advice.

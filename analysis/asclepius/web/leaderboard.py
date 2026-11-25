@@ -11,17 +11,24 @@ weights them and ranks by TOPSIS itself (`topsis.js`), so a slider re-ranks with
 A test checks the two rank alike. Each row has its risks with where they are stated, its ChEMBL record,
 and per target the syndrome links whose passages the page opens (`KnowledgeGraph.edge`). The known
 causes are listed apart, never ranked.
+
+The drugs are only those fetched for the targets of the cache (the library's top genes when it was
+fetched). When a gene now among as many top genes was never looked up, the view says so (`uncovered`):
+either the library has changed since (`asclepius-library drugs` fetches its drugs), or a run's findings
+raised it, which that command cannot see; its drugs are then not ranked, and the page must not look
+complete. Agreed 2026-11-25.
 """
 
 from __future__ import annotations
 
-from dataclasses import asdict, replace
+from collections.abc import Sequence
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Any
 
 import networkx as nx
 from hypothesis_engine.bottlenecks import Bottleneck
-from hypothesis_engine.drugs import DrugCache, DrugsError, read_drug_cache
+from hypothesis_engine.drugs import TOP_TARGETS, DrugCache, DrugsError, read_drug_cache, top_targets
 from hypothesis_engine.graph import FINDING, LITERATURE
 from hypothesis_engine.topsis import Row, Weights, rank
 
@@ -32,6 +39,53 @@ CACHED_SCORES = (
     "The knowledge graph could not be built, so each target's score is the one it had when the drug data "
     "was fetched, and its passages cannot be opened."
 )
+
+
+@dataclass(frozen=True)
+class Uncovered:
+    """The top genes no drugs were looked up for: those the library alone now puts at the top (the
+    drug data is stale) and those a run's findings raised there."""
+
+    stale: tuple[str, ...]
+    raised: tuple[str, ...]
+    top: int = TOP_TARGETS
+
+    @property
+    def message(self) -> str | None:
+        """What the page says of them; None when every top gene was looked up."""
+        said = []
+        if self.stale:
+            said.append(
+                f"{self._among(self.stale)} but {_its(self.stale)} drugs were not fetched: the paper library "
+                "has changed since. Run `asclepius-library drugs` to fetch them."
+            )
+        if self.raised:
+            said.append(
+                f"{self._among(self.raised)}, raised by this run's findings; {_its(self.raised)} drugs were "
+                "not fetched, so none of them are ranked."
+            )
+        return " ".join(said) or None
+
+    def _among(self, genes: Sequence[str]) -> str:
+        names = genes[0] if len(genes) == 1 else f"{', '.join(genes[:-1])} and {genes[-1]}"
+        verb = "is" if len(genes) == 1 else "are"
+        return f"{names} {verb} now among the top {self.top} target{'' if self.top == 1 else 's'}"
+
+
+def _its(genes: Sequence[str]) -> str:
+    return "its" if len(genes) == 1 else "their"
+
+
+def uncovered(cache: DrugCache, live: list[Bottleneck], library: list[Bottleneck]) -> Uncovered:
+    """The genes among the top ones by `live` scores (as many as the cache looked up) that were never
+    looked up; each stale when the `library` scores alone put it there too, else raised by a run."""
+    top = len(cache.targets) or TOP_TARGETS
+    looked_up = {t.symbol for t in cache.targets}
+    at_top = {b.name for b in top_targets(library, top)}
+    missing = [b.name for b in top_targets(live, top) if b.name not in looked_up]
+    return Uncovered(
+        tuple(g for g in missing if g in at_top), tuple(g for g in missing if g not in at_top), top
+    )
 
 
 def rescored(cache: DrugCache, scores: list[Bottleneck]) -> DrugCache:
@@ -99,10 +153,11 @@ def leaderboard_view(path: Path, knowledge: KnowledgeGraph) -> dict[str, Any]:
     except DrugsError as error:
         return {"state": MISSING, "message": str(error)}
     current = knowledge.current()
-    graph = None
+    graph, gap = None, Uncovered((), ())
     message = f"{len(cache.ranked)} drugs ranked, drug data fetched {cache.fetched_at[:10]}."
     if current is not None:
-        graph, scores = current
+        graph, scores, library = current
+        gap = uncovered(cache, scores, library)
         cache = rescored(cache, scores)
     elif knowledge.state == FAILED:
         message += f" {CACHED_SCORES}"
@@ -111,6 +166,8 @@ def leaderboard_view(path: Path, knowledge: KnowledgeGraph) -> dict[str, Any]:
         "state": READY,
         "message": message,
         "weights": asdict(Weights()),
+        "uncovered": {"stale": list(gap.stale), "raised": list(gap.raised)},
+        "coverage": gap.message,
         "rows": [_row(r, cache, graph) for r in ranking.ranked],
         "known_causes": [
             {"name": d.name, "chembl_id": d.chembl_id, "known_cause": d.known_cause, "url": d.url}

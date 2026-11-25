@@ -372,6 +372,7 @@
         <button type="button" data-sort="bbb" aria-pressed="false">CNS MPO</button>
         <button type="button" data-sort="readiness" aria-pressed="false">Readiness</button>
       </div>
+      <p id="leaderboard-coverage" class="muted" role="status" hidden></p>
       <div id="leaderboard-table"></div>
       <div id="leaderboard-panel" aria-live="polite" hidden></div>
       <h3>Known causes, excluded</h3>
@@ -1478,6 +1479,8 @@ async function loadLeaderboard() {
   LB.view = view;
   if (first) setTopsisWeights(view.weights); // a researcher's weights stay as a run re-scores the targets
   $("leaderboard-body").hidden = false;
+  $("leaderboard-coverage").textContent = view.coverage || ""; // top targets whose drugs were not fetched
+  $("leaderboard-coverage").hidden = !view.coverage;
   showKnownCauses();
   rerank();
 }

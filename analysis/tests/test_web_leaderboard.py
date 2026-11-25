@@ -1,12 +1,16 @@
 """The drug repurposing leaderboard's data (M6-07, spec R3, R5, R6): each cached drug's criteria,
 its targets scored by the app's knowledge graph, its risks and links; the known causes apart."""
 
+from dataclasses import replace
+
 import pytest
+from hypothesis_engine.bottlenecks import Bottleneck
+from hypothesis_engine.drugs import Target, write_drug_cache
 from knowledge_fixture import DRUGS, knowledge_engine, serving
 from test_web_server import api
 
 from asclepius.web.graph import READY, KnowledgeGraph
-from asclepius.web.leaderboard import leaderboard_view
+from asclepius.web.leaderboard import Uncovered, leaderboard_view, uncovered
 
 
 @pytest.fixture
@@ -37,6 +41,7 @@ def test_the_leaderboard_gives_the_criteria_and_default_weights(engine, knowledg
         "readiness": 0.10,
     }
     assert set(rows(view)) == {"alphadrug", "betadrug", "gammadrug"}
+    assert view["coverage"] is None  # both genes of the graph were looked up
 
 
 def test_impact_and_coverage_come_from_the_app_s_graph_not_the_cache(engine, knowledge):
@@ -127,3 +132,50 @@ def test_the_app_serves_the_leaderboard(tmp_path):
         status, view = api(url, "/api/leaderboard")
     assert status == 200
     assert view["state"] == READY and len(view["rows"]) == 3
+
+
+def _genes(*names):
+    """Bottleneck scores of genes, highest first."""
+    return [Bottleneck(n, "gene", 1 - i / 10, 0.0, (), 0.0) for i, n in enumerate(names)]
+
+
+def _looked_up(*symbols):
+    return replace(DRUGS, targets=tuple(Target(s, 0.5, (), (), "chembl") for s in symbols))
+
+
+def test_every_top_target_looked_up_leaves_nothing_uncovered():
+    scores = _genes("BDNF", "COMT", "TNF")
+    assert uncovered(_looked_up("BDNF", "COMT"), scores, scores) == Uncovered((), (), top=2)
+
+
+def test_a_top_target_of_the_library_never_looked_up_means_the_drug_data_is_stale():
+    scores = _genes("TNF", "BDNF", "COMT")  # the library was rebuilt: TNF has come to the top
+    found = uncovered(_looked_up("BDNF", "COMT"), scores, scores)
+    assert (found.stale, found.raised) == (("TNF",), ())
+    assert "asclepius-library drugs" in found.message
+
+
+def test_a_target_raised_by_the_run_s_findings_is_said_so_without_a_command_to_run():
+    library = _genes("BDNF", "COMT", "SRD5A2")
+    live = _genes("SRD5A2", "BDNF", "COMT")  # the run's findings lifted SRD5A2
+    found = uncovered(_looked_up("BDNF", "COMT"), live, library)
+    assert (found.stale, found.raised) == ((), ("SRD5A2",))
+    assert "this run's findings" in found.message and "asclepius-library" not in found.message
+
+
+def test_only_genes_count_as_targets():
+    scores = [Bottleneck("serotonin", "hormone", 1.0, 0.0, (), 0.0), *_genes("BDNF", "COMT")]
+    assert uncovered(_looked_up("BDNF", "COMT"), scores, scores).message is None
+
+
+def test_the_leaderboard_says_which_top_targets_have_no_drugs_fetched(tmp_path):
+    engine = knowledge_engine(tmp_path)
+    write_drug_cache(
+        engine.drugs, replace(DRUGS, targets=DRUGS.targets[1:])
+    )  # COMT only; BDNF tops the graph
+    built = KnowledgeGraph(engine)
+    built.start()
+    assert built.wait(timeout=30) == READY
+    view = leaderboard_view(engine.drugs, built)
+    assert view["uncovered"] == {"stale": ["BDNF"], "raised": []}
+    assert view["coverage"].startswith("BDNF is now among the top 1 target")

@@ -54,6 +54,7 @@ try {
   }
   check(same(await order(), expected.safety_only), `safety-only order ${await order()} not ${expected.safety_only}`);
   check((await page.textContent("#topsis-safety-value")) === "100%", "safety weight shown as 100%");
+  check(await page.isHidden("#leaderboard-coverage"), "no coverage notice when every top target was looked up");
   check(asked.length === before, `a slider asked the server: ${asked.slice(before)}`);
   await page.click("#topsis-reset");
   check(same(await order(), expected.default), "default weights restore the order");
