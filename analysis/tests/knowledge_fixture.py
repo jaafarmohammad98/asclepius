@@ -3,6 +3,11 @@
 BDNF is in a PSSD paper and a PFS paper, so two syndromes link to it; it is co-mentioned with
 serotonin in two papers (31000001, 31000003) and with COMT in one (31000002).
 
+A drug cache (`DRUGS`) gives the leaderboard (M6-07) four drugs on BDNF and COMT: alphadrug on BDNF,
+safe and generic; betadrug on COMT, its label naming libido and a listed risk; gammadrug on both, with
+no US label and withdrawn; and sertraline, a known cause. The cache's target scores are not the
+graph's, so a test can tell which the leaderboard used.
+
 `with_androsterone` adds androsterone, in a paper of its own and linked to no syndrome, so the
 built-in lab-report example's strong PSSD finding on it adds a finding link (M6-04b).
 """
@@ -14,8 +19,10 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
+from hypothesis_engine.drugs import Action, Drug, DrugCache, Target, write_drug_cache
 from hypothesis_engine.library import write_build
 from hypothesis_engine.pubmed import Paper
+from hypothesis_engine.safety import Label, Mention, Risk, Safety
 
 from asclepius.run import Settings
 from asclepius.web.graph import READY
@@ -99,6 +106,51 @@ ANDROSTERONE_PAPER = Paper(
 )
 
 
+GOOD_MPO = {"alogp": 2.0, "mw_freebase": 300.0, "psa": 50.0, "hbd": 0.0}  # CNS MPO 6 of 6
+FAIR_MPO = {"alogp": 4.0, "mw_freebase": 430.0, "psa": 105.0, "hbd": 2.0}  # 3 of 6
+PROPERTIES = ("alogp", "cx_logp", "cx_logd", "cx_most_bpka", "mw_freebase", "psa", "hbd", "hba")
+LISTED_RISK = Risk("raises blood pressure", "PMID:31000009")
+
+
+def _drug(name: str, targets: tuple[str, ...], mpo: dict[str, float], safety: Safety | None, **more) -> Drug:
+    return Drug(
+        f"CHEMBL_{name.upper()}",
+        name,
+        4.0,
+        {k: mpo.get(k) for k in PROPERTIES},
+        tuple(Action(t, None, "INHIBITOR", f"{t} inhibitor") for t in targets),
+        more.get("known_cause"),
+        "chembl",
+        more.get("withdrawn", False),
+        safety,
+    )
+
+
+DRUGS = DrugCache(
+    "2026-11-25T00:00:00+00:00",
+    1,
+    (  # scores and syndromes unlike the graph's: BDNF scores 0.85 there, linked to PFS and PSSD
+        Target("BDNF", 0.1, ("PAS",), ("CHEMBL1",), "chembl"),
+        Target("COMT", 0.9, ("PAS", "PFS", "PSSD"), ("CHEMBL2",), "chembl"),
+    ),
+    (
+        _drug("alphadrug", ("BDNF",), GOOD_MPO, Safety(Label("set-a", None, "NDA1", ()), (), ("ANDA1",))),
+        _drug(
+            "betadrug",
+            ("COMT",),
+            FAIR_MPO,
+            Safety(
+                Label("set-b", None, "NDA2", (Mention("libido", "adverse_reactions", "decreased libido"),)),
+                (LISTED_RISK,),
+                (),
+            ),
+        ),
+        _drug("gammadrug", ("BDNF", "COMT"), FAIR_MPO, Safety(None, (), ()), withdrawn=True),
+        _drug("SERTRALINE", ("BDNF",), GOOD_MPO, Safety(None, (), ()), known_cause="SSRI"),
+    ),
+)
+
+
 def knowledge_engine(folder: Path, with_androsterone: bool = False) -> Engine:
     """An engine whose library and vocabulary are the ones above, written into `folder`."""
     papers, topics, vocabulary = PAPERS, TOPICS, VOCABULARY
@@ -108,7 +160,10 @@ def knowledge_engine(folder: Path, with_androsterone: bool = False) -> Engine:
         vocabulary = VOCABULARY + ANDROSTERONE
     write_build(folder / "library.sqlite", papers, topics, "sha", "2026-11-24", [])
     (folder / "vocabulary.toml").write_text(vocabulary, encoding="utf-8")
-    return Engine(library=folder / "library.sqlite", vocabulary=folder / "vocabulary.toml")
+    write_drug_cache(folder / "drugs.json", DRUGS)
+    return Engine(
+        library=folder / "library.sqlite", vocabulary=folder / "vocabulary.toml", drugs=folder / "drugs.json"
+    )
 
 
 @contextmanager

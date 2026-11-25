@@ -140,6 +140,13 @@ class KnowledgeGraph:
         if self._library is not None:
             self.graph, self.scores = self._library
 
+    def current(self) -> tuple[nx.DiGraph, list[Bottleneck]] | None:
+        """The graph and its scores as of one moment, run's findings and all; None until built."""
+        with self._lock:
+            if self.state != READY or self.graph is None:
+                return None
+            return self.graph, self.scores
+
     def map_view(self) -> dict[str, Any]:
         """The bottleneck map's data once the graph is built; until then its state and why. `run` is
         the run whose findings are in (or being added), with its fingerprint's first characters."""

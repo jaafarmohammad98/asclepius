@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from hypothesis_engine.citations import quote_span
+from hypothesis_engine.drugs import DEFAULT_DRUGS
 from hypothesis_engine.embedding import DEFAULT_MODELS, LocalEmbedder, ModelMissing
 from hypothesis_engine.evidence import EvidenceBundle, FindingsError, read_findings
 from hypothesis_engine.hypotheses import Failure, Hypothesis, export
@@ -60,6 +61,7 @@ class Engine:
     models: Path = DEFAULT_MODELS
     settings: Path = DEFAULT_SETTINGS
     vocabulary: Path = DEFAULT_VOCABULARY  # the knowledge graph's terms (`asclepius.web.graph`)
+    drugs: Path = DEFAULT_DRUGS  # the drug cache the leaderboard ranks (`asclepius.web.leaderboard`)
     env: Mapping[str, str] = field(default_factory=lambda: os.environ)
     embedder: Callable[[Path], Embedder] = LocalEmbedder
     connect_llm: Connect = connect

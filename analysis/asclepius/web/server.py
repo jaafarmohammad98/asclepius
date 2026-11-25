@@ -21,6 +21,8 @@ The page (`index.html`) talks to a small JSON API over `asclepius.web.workspace.
 | `POST /api/settings/check` | ask the LLM one short question; which model answered |
 | `GET /api/graph` | the bottleneck map (`asclepius.web.graph`): scored terms, co-mentions and syndrome links (with the latest run's finding links, and `run`, its dataset), or the graph's state while it builds |
 | `GET /api/graph/edge?a=<term>&b=<term>` | the link a → b and the passages it was counted from; 404 when the graph has none |
+| `GET /api/leaderboard` | the drug repurposing leaderboard (`asclepius.web.leaderboard`): each cached drug's TOPSIS criteria, risks and targets, and the known causes apart |
+| `GET /topsis.js` | the leaderboard's TOPSIS, which the page ranks with as the weight sliders move |
 | `GET /vendor/cytoscape.min.js` | the network-drawing library, shipped with the app so the page needs no network |
 | `GET /extractor/...` | the extractor's browser page (`extractor/`, built by `npm run build`), for reading report PDFs |
 
@@ -52,11 +54,15 @@ from asclepius.run import Settings
 from asclepius.web import llm_settings
 from asclepius.web.graph import KnowledgeGraph
 from asclepius.web.hypotheses import Engine
+from asclepius.web.leaderboard import leaderboard_view
 from asclepius.web.llm_settings import SettingsError
 from asclepius.web.workspace import ROLES, LoadError, RunError, Workspace
 
 PAGE = Path(__file__).parent / "index.html"
-VENDOR = {"/vendor/cytoscape.min.js": Path(__file__).parent / "vendor" / "cytoscape.min.js"}
+VENDOR = {  # the page's scripts
+    "/vendor/cytoscape.min.js": Path(__file__).parent / "vendor" / "cytoscape.min.js",
+    "/topsis.js": Path(__file__).parent / "topsis.js",
+}
 PACKAGED_EXTRACTOR = Path(__file__).parent / "extractor"  # in the installed app
 CHECKOUT_EXTRACTOR = Path(__file__).resolve().parents[3] / "extractor" / "dist"  # in a source checkout
 EXTRACTOR_TYPES = {
@@ -125,6 +131,8 @@ class Handler(BaseHTTPRequestHandler):
             self._json(HTTPStatus.OK, llm_settings.read(engine.settings, engine.env))
         elif path == "/api/graph":
             self._json(HTTPStatus.OK, self.server.knowledge.map_view())
+        elif path == "/api/leaderboard":
+            self._json(HTTPStatus.OK, leaderboard_view(self.server.engine.drugs, self.server.knowledge))
         elif path == "/api/graph/edge":
             self._edge(parse_qs(urlsplit(self.path).query))
         elif path in VENDOR:
