@@ -442,6 +442,34 @@ rank(cache, Weights(impact=0.30, coverage=0.25, safety=0.20, bbb=0.15, readiness
   that cannot be told from the rest (alone, say) scores 0.5. Ties go by name.
 - **Known causes** are never ranked: `known_causes` lists them apart.
 
+## Experiment designs
+
+`design` builds a two-level fractional factorial over 2 to 8 chosen compounds or targets, each
+present or absent, from the standard generators (no DoE library).
+
+```python
+from hypothesis_engine.doe import design
+
+d = design(["sildenafil", "TSPO", "C", "D", "E"], seed=42, replicates=2)
+d.matrix  # ±1 runs in standard order; d.run_order the run ids shuffled by d.seed
+d.resolution, d.generators, d.defining_relation  # 5, ("E=ABCD",), ("ABCDE",)
+d.confounded, d.note  # two-factor alias chains, and what can and cannot be separated
+d.csv(responses=["libido"])  # the CSV to download, under its safety warning
+```
+
+- **2 to 4 factors** are the full factorial (4, 8 or 16 runs), nothing aliased; `resolution` None.
+- **5 factors** are the 16-run resolution V half fraction, E = ABCD: main effects and two-factor
+  interactions all separable.
+- **6 to 8 factors** are the 16-run resolution IV fractions (Box, Hunter and Hunter, table 6.22):
+  main effects clear, two-factor interactions confounded with each other, which `note` names.
+  More than 8 is refused.
+- **Run order** is a shuffle seeded by `seed`; without one a seed is drawn and recorded, so the
+  same seed always gives the same order.
+- **The CSV** lists the runs in run order: run id (its position in standard order), run order,
+  seed, one column per factor (`present` or `absent`), the replicate count, and an empty column
+  per response, one per replicate (`libido_1`, `libido_2`) when there is more than one. Its first
+  line warns that every combination needs a safety review before any wet-lab or animal use.
+
 ## The LLM
 
 The engine reaches an LLM only through `hypothesis_engine.llm`, and the researcher pays for
