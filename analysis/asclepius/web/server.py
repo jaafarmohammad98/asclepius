@@ -25,6 +25,8 @@ The page (`index.html`) talks to a small JSON API over `asclepius.web.workspace.
 | `POST /api/experiment` | build a lab experiment (`asclepius.web.experiment`), `{"factors": [{"kind": "drug" or "target", "name": ...}], "seed": ..., "replicates": ..., "responses": [...]}`: its design, each factor's known risks, its runs and its CSV; 400 when a factor or setting is refused |
 | `GET /topsis.js` | the leaderboard's TOPSIS, which the page ranks with as the weight sliders move |
 | `GET /vendor/cytoscape.min.js` | the network-drawing library, shipped with the app so the page needs no network |
+| `GET /almanac.css` | the page's styles |
+| `GET /vendor/fonts/<name>.woff2`, `GET /favicon.svg` | the page's fonts (SIL Open Font License) and icon, shipped with the app |
 | `GET /extractor/...` | the extractor's browser page (`extractor/`, built by `npm run build`), for reading report PDFs |
 
 The server listens on 127.0.0.1 and refuses requests naming another host or coming from another
@@ -60,10 +62,18 @@ from asclepius.web.leaderboard import leaderboard_view
 from asclepius.web.llm_settings import SettingsError
 from asclepius.web.workspace import ROLES, LoadError, RunError, Workspace
 
-PAGE = Path(__file__).parent / "index.html"
-SCRIPTS = {  # the page's scripts
-    "/vendor/cytoscape.min.js": Path(__file__).parent / "vendor" / "cytoscape.min.js",
-    "/topsis.js": Path(__file__).parent / "topsis.js",
+WEB = Path(__file__).parent
+PAGE = WEB / "index.html"
+FONTS = ("hanken-grotesk", "newsreader", "ibm-plex-mono-400", "ibm-plex-mono-500")
+STATIC = {  # the page's own files, served from the app so it needs no network: path -> (file, type)
+    "/vendor/cytoscape.min.js": (WEB / "vendor" / "cytoscape.min.js", "text/javascript; charset=utf-8"),
+    "/topsis.js": (WEB / "topsis.js", "text/javascript; charset=utf-8"),
+    "/almanac.css": (WEB / "almanac.css", "text/css; charset=utf-8"),
+    "/favicon.svg": (WEB / "favicon.svg", "image/svg+xml"),
+    **{
+        f"/vendor/fonts/{name}.woff2": (WEB / "vendor" / "fonts" / f"{name}.woff2", "font/woff2")
+        for name in FONTS
+    },
 }
 PACKAGED_EXTRACTOR = Path(__file__).parent / "extractor"  # in the installed app
 CHECKOUT_EXTRACTOR = Path(__file__).resolve().parents[3] / "extractor" / "dist"  # in a source checkout
@@ -137,8 +147,9 @@ class Handler(BaseHTTPRequestHandler):
             self._json(HTTPStatus.OK, leaderboard_view(self.server.engine.drugs, self.server.knowledge))
         elif path == "/api/graph/edge":
             self._edge(parse_qs(urlsplit(self.path).query))
-        elif path in SCRIPTS:
-            self._send(HTTPStatus.OK, SCRIPTS[path].read_bytes(), "text/javascript; charset=utf-8")
+        elif path in STATIC:
+            file, kind = STATIC[path]
+            self._send(HTTPStatus.OK, file.read_bytes(), kind)
         elif path in EXPORTS:
             self._export(path)
         elif path == "/extractor":  # the page's file paths are relative to the folder

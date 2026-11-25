@@ -4,278 +4,215 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Asclepius</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/almanac.css">
 <style>
-  :root {
-    --bg: #fbfbfa; --panel: #ffffff; --text: #1d1f21; --muted: #5f6368; --line: #dadce0;
-    --accent: #2f5d8a; --accent-text: #ffffff; --bad-bg: #fdecea; --bad: #8a1c12;
-    --ok: #1e6b3a; --warn: #7a5200; --bar: #e8eaed;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg: #17181a; --panel: #202124; --text: #e8eaed; --muted: #a0a4a8; --line: #3c4043;
-      --accent: #8ab4f8; --accent-text: #0b1b2e; --bad-bg: #3b1d1a; --bad: #f6aea6;
-      --ok: #81c995; --warn: #fdd663; --bar: #3c4043; }
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text);
-    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  main { max-width: 860px; margin: 0 auto; padding: 24px 16px 64px; }
-  h1 { font-size: 1.5rem; margin: 0 0 4px; }
-  h2 { font-size: 1.1rem; margin: 0 0 12px; }
-  p { margin: 0 0 12px; }
-  .muted { color: var(--muted); }
-  section { background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
-    padding: 16px; margin-top: 16px; }
-  section[hidden] { display: none; }
-  fieldset { border: 1px solid var(--line); border-radius: 6px; margin: 0 0 12px; padding: 12px; }
-  legend { font-weight: 600; padding: 0 4px; }
-  label { display: block; margin: 8px 0 4px; }
-  input[type=file] { max-width: 100%; }
-  button { font: inherit; border-radius: 6px; padding: 8px 16px; cursor: pointer;
-    border: 1px solid var(--accent); background: var(--accent); color: var(--accent-text); }
-  button:disabled { opacity: .5; cursor: default; }
-  select { font: inherit; padding: 4px; max-width: 100%; background: var(--panel); color: var(--text);
-    border: 1px solid var(--line); border-radius: 4px; }
-  .error { background: var(--bad-bg); color: var(--bad); border-radius: 6px; padding: 10px 12px;
-    margin: 12px 0 0; white-space: pre-wrap; }
-  .table-wrap { overflow-x: auto; margin-bottom: 12px; }
-  table { border-collapse: collapse; min-width: 100%; }
-  th, td { border-bottom: 1px solid var(--line); padding: 4px 10px; text-align: right; white-space: nowrap; }
-  th:first-child, td:first-child { text-align: left; }
-  thead th { font-weight: 600; }
-  .label { display: inline-block; border: 1px solid var(--warn); color: var(--warn);
-    border-radius: 4px; padding: 0 6px; font-size: .9em; }
-  .groups { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-bottom: 12px; }
-  .groups label { margin: 0 0 4px; }
-  progress { width: 100%; height: 10px; accent-color: var(--accent); }
-  ol.steps { padding-left: 20px; margin: 12px 0 0; }
-  ol.steps li { margin-bottom: 8px; }
-  .state { font-weight: 600; }
-  .state.done { color: var(--ok); }
-  .state.refused, .state.not-built-yet { color: var(--warn); }
-  .state.failed { color: var(--bad); }
-  .state.running, .state.waiting { color: var(--muted); }
-  main.wide { max-width: 1280px; }
-  .findings-table th[scope=row] { white-space: normal; min-width: 140px; max-width: 220px; }
-  td.wrap { white-space: normal; min-width: 120px; max-width: 170px; text-align: left; }
-  td .sub, th .sub { display: block; font-weight: 400; color: var(--muted); font-size: .85em; }
-  .nothing { border: 2px solid var(--warn); border-radius: 8px; padding: 12px 16px; margin: 0 0 12px;
-    font-size: 1.15rem; font-weight: 600; }
-  .nothing .muted { display: block; font-size: .95rem; font-weight: 400; margin-top: 4px; }
-  details.finding-group { border-top: 1px solid var(--line); padding: 12px 0 0; margin-top: 12px; }
-  details.finding-group > summary { cursor: pointer; font-weight: 600; font-size: 1.05rem; }
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
-  .strength { display: inline-block; border-radius: 4px; padding: 0 6px; font-size: .9em; font-weight: 600;
-    border: 1px solid var(--line); }
-  .strength.strong { border-color: var(--ok); color: var(--ok); }
-  .strength.suggestive { border-color: var(--warn); color: var(--warn); }
-  .strength.noise-level, .strength.description, .strength.unlabelled { color: var(--muted); font-weight: 400; }
-  .sort { display: flex; gap: 8px; align-items: center; margin: 8px 0; flex-wrap: wrap; }
-  .exports { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  a.button { border-radius: 6px; padding: 6px 14px; border: 1px solid var(--accent); color: var(--accent);
-    text-decoration: none; }
-  a.button:hover { background: var(--accent); color: var(--accent-text); }
-  .sort button { padding: 2px 10px; background: var(--panel); color: var(--text); border-color: var(--line); }
-  .sort button[aria-pressed=true] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
-  td.plot { padding: 2px 6px; }
-  td.plot svg { display: block; }
-  svg text { fill: var(--text); font: 11px system-ui, sans-serif; }
-  svg .axis { stroke: var(--line); }
-  svg .box { fill: var(--bar); stroke: var(--accent); }
-  svg .whisker, svg .median { stroke: var(--accent); stroke-width: 1.5; }
-  svg .median { stroke-width: 2.5; }
-  svg .zone-below { fill: #4e79a7; } svg .zone-within { fill: var(--bar); }
-  svg .zone-above { fill: #e15759; } svg .zone-unclear { fill: #b0a36b; }
-  svg .hidden-part { fill: none; stroke: var(--muted); stroke-dasharray: 2 2; }
-  svg .share { fill: var(--accent); } svg .share-bg { fill: var(--bar); }
-  .legend { font-size: .9em; color: var(--muted); margin: 4px 0 8px; }
-  .legend i { display: inline-block; width: 10px; height: 10px; margin: 0 4px 0 10px; vertical-align: middle; }
-  details.settings > summary { cursor: pointer; font-weight: 600; font-size: 1.1rem; }
-  .settings input[type=text], .settings input[type=password], .settings select { font: inherit; padding: 4px 6px;
-    width: 100%; max-width: 420px; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 4px; }
-  .settings label.inline { display: inline-flex; gap: 6px; align-items: center; margin-right: 16px; }
-  .buttons { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
-  .ok-box { background: var(--panel); border: 1px solid var(--ok); color: var(--ok); border-radius: 6px; padding: 8px 12px; margin: 12px 0 0; }
-  .notice { border: 2px solid var(--bad); color: var(--bad); border-radius: 8px; padding: 10px 14px; font-weight: 600; margin: 0 0 12px; }
-  article.hypothesis { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 16px; }
-  article.hypothesis h3 { font-size: 1.05rem; margin: 0 0 4px; }
-  article.hypothesis h4 { font-size: .95rem; margin: 14px 0 4px; }
-  article.hypothesis ol, article.hypothesis ul { padding-left: 22px; margin: 4px 0; }
-  article.hypothesis li { margin-bottom: 10px; }
-  blockquote { margin: 4px 0 2px; padding: 2px 10px; border-left: 3px solid var(--accent); }
-  .cite { font-size: .9em; color: var(--muted); }
-  .cite a { color: var(--accent); }
-  mark { background: color-mix(in srgb, var(--accent) 28%, transparent); color: inherit; }
-  a.jump { font-size: .85em; font-weight: 400; color: var(--accent); margin-left: 6px; }
-  :target { scroll-margin-top: 16px; outline: 2px solid var(--accent); outline-offset: 2px; }
-  /* the bottleneck map: overlap 1-3 syndromes as one blue ramp (validated ordinal), none in grey */
-  :root { --overlap-0: #b9b8b3; --overlap-1: #86b6ef; --overlap-2: #3987e5; --overlap-3: #184f95; --edge: #c3c6ca; }
-  @media (prefers-color-scheme: dark) {
-    :root { --overlap-0: #6b6b66; --overlap-1: #1c5cab; --overlap-2: #3987e5; --overlap-3: #9ec5f4; --edge: #4f5357; }
-  }
-  .weights { display: grid; grid-template-columns: max-content 1fr 3.5em; gap: 4px 12px; align-items: center; }
-  .weights label { margin: 0; }
-  .weights input[type=range] { width: 100%; accent-color: var(--accent); }
-  .weights output { text-align: right; font-variant-numeric: tabular-nums; }
-  .map-controls { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 8px 0; }
+  /* the page's own parts; the shared look is in almanac.css */
+  /* the bottleneck map */
+  .controls { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: var(--space-xl); align-items: start;
+    border-top: 2px solid var(--color-rule-2); padding-top: var(--space-md); margin-bottom: var(--space-lg); }
+  .controls legend, .controls h3 { font-size: var(--text-base); margin: 0 0 var(--space-sm); }
+  .controls .buttons { margin-top: var(--space-sm); font-size: var(--text-sm); }
+  .weights { display: grid; grid-template-columns: max-content minmax(0, 1fr) 3.2em; gap: 6px var(--space-md); align-items: center; }
+  .weights label { margin: 0; max-width: 34ch; }
+  .weights output { text-align: right; font-family: var(--font-num); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+  .filters label { display: block; font-size: var(--text-sm); color: var(--color-muted); margin-bottom: var(--space-md); }
+  .filters input, .filters select { display: block; width: 100%; margin-top: var(--space-xs); }
+  .filters .muted { font-size: var(--text-sm); }
+  .map-controls-side input[type=number] { display: inline-block; width: 5.5em; margin: 0 4px; }
+  .map-controls { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-sm) var(--space-md); align-items: center;
+    font-size: var(--text-sm); padding-bottom: var(--space-sm); border-bottom: 1px solid var(--color-rule); margin-bottom: var(--space-sm); }
   .map-controls label { margin: 0; }
-  .map-controls input[type=number] { width: 5em; font: inherit; padding: 2px 4px; background: var(--panel);
-    color: var(--text); border: 1px solid var(--line); border-radius: 4px; }
+  .map-controls input[type=number] { width: 5em; padding: 3px 6px; }
+  .mapgrid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: var(--space-lg); align-items: start; }
+  .mapgrid:has(> #edge-panel[hidden]) { grid-template-columns: minmax(0, 1fr); }
   .map-wrap { position: relative; }
-  #network { height: 560px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
-  #map-tip { position: absolute; pointer-events: none; background: var(--panel); color: var(--text);
-    border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; font-size: .85em; max-width: 280px;
-    box-shadow: 0 2px 6px rgb(0 0 0 / .15); z-index: 2; }
-  .legend i.dot { border-radius: 50%; }
-  .legend i.syndrome { background: var(--text); transform: rotate(45deg); width: 9px; height: 9px; }
-  #edge-panel { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 12px; }
-  #edge-panel h3, #bottlenecks h3 { font-size: 1.05rem; margin: 0 0 8px; }
-  #edge-panel ol { padding-left: 22px; margin: 4px 0; max-height: 480px; overflow-y: auto; }
-  #edge-panel li { margin-bottom: 10px; }
-  .bottleneck-table td.wrap { max-width: 220px; }
+  #network { height: 600px; background: var(--color-sheet); }
+  #map-tip { position: absolute; pointer-events: none; background: var(--color-sheet); color: var(--color-ink);
+    border-top: 2px solid var(--color-ink); padding: 4px 8px; font-size: 0.85rem; max-width: 280px;
+    box-shadow: 0 2px 8px oklch(16% 0.02 245 / .18); z-index: 2; }
+  #map-legend i { width: 10px; height: 10px; }
+  #map-legend i.dot { border-radius: 50%; }
+  #map-legend i.syndrome { background: var(--color-ink); transform: rotate(45deg) scale(.8); }
+  #edge-panel { border-left: 1px solid var(--color-rule); padding-left: var(--space-lg); }
+  #edge-panel h3 { font-size: var(--text-lg); margin: 0 0 var(--space-sm); }
+  #edge-panel ol, #leaderboard-panel ol { padding-left: 22px; margin: var(--space-xs) 0; max-height: 520px; overflow-y: auto; }
+  #edge-panel li, #leaderboard-panel li { margin-bottom: var(--space-sm); font-size: var(--text-sm); }
+  #edge-panel ul { padding-left: 20px; font-size: var(--text-sm); }
+  .bn-h { font-size: var(--text-lg); margin: var(--space-xl) 0 var(--space-sm); }
   .bottleneck-table tbody tr { cursor: pointer; }
-  .bottleneck-table tbody tr.picked { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .bottleneck-table tbody tr.picked > td, .bottleneck-table tbody tr.picked > th { background: var(--color-paper-2); }
+  .bottleneck-table tbody tr.picked > td:first-child { box-shadow: inset 2px 0 0 var(--color-accent); }
+  .bottleneck-table td.wrap { max-width: 220px; }
+  #bottleneck-more { margin-top: var(--space-sm); }
   /* the drug repurposing leaderboard (M6-07) */
   .leaderboard-table td.wrap { max-width: 240px; }
-  .leaderboard-table tr.detail > td { text-align: left; white-space: normal; background: var(--bg); }
-  .leaderboard-table tr.detail h4 { font-size: .95rem; margin: 8px 0 4px; }
-  .leaderboard-table tr.detail ul { padding-left: 20px; margin: 4px 0; }
-  .leaderboard-table button.details, .leaderboard-table tr.detail button { padding: 1px 8px; font-size: .9em;
-    background: var(--panel); color: var(--accent); }
-  .leaderboard-table tr.detail button { margin: 2px 4px 2px 0; }
-  .assumed { color: var(--warn); }
-  input[type=search] { font: inherit; padding: 2px 6px; background: var(--panel); color: var(--text);
-    border: 1px solid var(--line); border-radius: 4px; }
-  #leaderboard-panel { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 12px; }
-  #leaderboard-panel h3 { font-size: 1.05rem; margin: 0 0 8px; }
-  #leaderboard-panel ol { padding-left: 22px; margin: 4px 0; max-height: 480px; overflow-y: auto; }
-  #leaderboard-panel li { margin-bottom: 10px; }
-  #known-causes { padding-left: 20px; margin: 4px 0 12px; }
+  .leaderboard-table td.drug { min-width: 220px; }
+  .leaderboard-table td.drug .label { margin-left: 4px; }
+  .leaderboard-table tr.detail > td { background: var(--color-paper); padding: var(--space-sm) var(--space-md) var(--space-md); }
+  .leaderboard-table tr.detail h4 { margin: var(--space-sm) 0 var(--space-xs); }
+  .leaderboard-table tr.detail ul { padding-left: 20px; margin: var(--space-xs) 0; }
+  .leaderboard-table tr.detail button { margin: 2px 10px 2px 0; }
+  .leaderboard-table tr:has(+ tr.detail) > td { background: var(--color-paper-2); }
+  input.factor { width: 18px; height: 18px; cursor: pointer; }
+  td.pick, th.pick { width: 44px; text-align: center; }
+  #leaderboard-panel { border-top: 2px solid var(--color-rule-2); margin-top: var(--space-md); padding-top: var(--space-sm); }
+  #leaderboard-panel h3 { margin: 0 0 var(--space-sm); }
+  #known-causes { padding-left: 20px; margin: var(--space-xs) 0 var(--space-md); font-size: var(--text-sm); }
   /* the lab experiment builder (M6-09) */
-  input.factor { width: 1.1em; height: 1.1em; accent-color: var(--accent); cursor: pointer; }
-  #experiment-factors { padding-left: 20px; margin: 4px 0 8px; }
-  #experiment-factors li { margin-bottom: 4px; }
-  #experiment-factors button, #experiment-design button.download { padding: 1px 8px; font-size: .9em; margin-left: 6px; }
-  #experiment-design { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 12px; }
-  #experiment-design h3 { font-size: 1.05rem; margin: 0 0 8px; }
-  #experiment-design h4 { font-size: .95rem; margin: 12px 0 4px; }
-  #experiment-design ul { padding-left: 20px; margin: 4px 0; }
-  .experiment-table td.absent { color: var(--muted); }
-  input[type=text].setting { font: inherit; padding: 2px 6px; background: var(--panel); color: var(--text);
-    border: 1px solid var(--line); border-radius: 4px; }
-  .disclaimer { border-top: 1px solid var(--line); margin: 16px 0 0; padding-top: 10px; font-weight: 600; }
+  .builder { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: var(--space-xl); align-items: start; }
+  .builder:has(> #experiment-design[hidden]) { grid-template-columns: minmax(0, 1fr); }
+  .builder:has(> #experiment-design[hidden]) > aside { max-width: 560px; }
+  .builder aside h3 { font-size: var(--text-base); margin: 0 0 var(--space-sm); border-top: 2px solid var(--color-rule-2); padding-top: var(--space-sm); }
+  .builder aside > p { font-size: var(--text-sm); }
+  #experiment-factors { list-style: none; padding: 0; margin: 0 0 var(--space-lg); counter-reset: factor; }
+  #experiment-factors li { display: flex; justify-content: space-between; gap: var(--space-sm); align-items: baseline;
+    padding: var(--space-sm) 0; border-bottom: 1px solid var(--color-rule); font-size: var(--text-sm); }
+  #experiment-factors li::first-line { color: var(--color-ink); }
+  .builder .settings { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-sm) var(--space-md); margin-bottom: var(--space-md); }
+  .builder .settings label { color: var(--color-muted); }
+  .builder .settings input { display: block; width: 100%; margin-top: 2px; }
+  .builder .settings .wide { grid-column: 1 / -1; }
+  #experiment-design { margin-top: 0; }
+  #experiment-design h3 { font-size: var(--text-xl); margin: 0 0 var(--space-xs); line-height: 1.1; }
+  #experiment-design h4 { margin: var(--space-md) 0 var(--space-xs); }
+  #experiment-design ul { padding-left: 20px; margin: var(--space-xs) 0 var(--space-md); font-size: var(--text-sm); }
+  #experiment-design > p:last-child { margin-top: var(--space-md); font-size: var(--text-sm); }
+  #experiment-download { margin-right: var(--space-sm); }
+  .experiment-table td.present { color: var(--color-ink); font-weight: 500; }
+  .experiment-table td.absent { color: var(--color-muted); }
+  /* settings */
+  details.settings > summary { list-style: none; }
+  details.settings > summary::-webkit-details-marker { display: none; }
+  details.settings > summary::after { content: "+"; font: 400 0.6em/1 var(--font-num); color: var(--color-muted); margin-left: 0.4em; vertical-align: 0.3em; }
+  details.settings[open] > summary::after { content: "−"; }
+  .settings-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-lg); align-items: start; }
+  .settings-grid > .panel { margin-top: 0; }
+  .backends legend { font-size: var(--text-base); }
+  .choice { display: flex; gap: var(--space-sm); align-items: center; padding: var(--space-md); border: 1px solid var(--color-rule);
+    background: var(--color-sheet); cursor: pointer; font: 600 var(--text-base)/1.3 var(--font-display); color: var(--color-ink); }
+  .choice + .choice { margin-top: var(--space-sm); }
+  .choice:has(input:checked) { border-color: var(--color-ink); box-shadow: inset 3px 0 0 var(--color-accent); }
+  .field { display: grid; gap: var(--space-xs); margin-bottom: var(--space-md); color: var(--color-muted); }
+  .field input, .field select { width: 100%; }
+  .settings label.inline { display: inline-flex; gap: 6px; align-items: center; margin: 0 0 var(--space-md); color: var(--color-ink-2); }
+  @media (max-width: 900px) {
+    .controls, .mapgrid, .builder, .settings-grid { grid-template-columns: minmax(0, 1fr); }
+    #edge-panel { border-left: 0; padding-left: 0; border-top: 1px solid var(--color-rule); padding-top: var(--space-md); }
+    #network { height: 440px; }
+  }
 </style>
 </head>
 <body>
-<main>
-  <h1>Asclepius</h1>
-  <p class="muted">Runs on this computer only. Files you pick are not sent anywhere else, and are
+<svg width="0" height="0" style="position: absolute" aria-hidden="true"><defs>
+  <pattern id="almanac-hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect width="4" height="4" fill="oklch(89.5% 0.012 245)"/><rect width="1" height="4" fill="oklch(82% 0.013 240)"/></pattern>
+</defs></svg>
+<div class="shell">
+<nav class="contents" aria-label="Sections">
+  <h1 class="wordmark">Asclepius</h1>
+  <div class="strip">
+    <ol>
+      <li><a href="#load"><span class="n">1</span>Load a dataset</a></li>
+      <li><a href="#review"><span class="n">2</span>Check what was loaded</a></li>
+      <li><a href="#run"><span class="n">3</span>Run the analysis</a></li>
+      <li><a href="#findings"><span class="n">4</span>Findings</a></li>
+      <li><a href="#hypotheses"><span class="n">5</span>Hypotheses</a></li>
+    </ol>
+    <ol>
+      <li><a href="#bottlenecks"><span class="n"></span>Systems bottleneck map</a></li>
+      <li><a href="#leaderboard"><span class="n"></span>Drug repurposing leaderboard</a></li>
+      <li><a href="#experiment"><span class="n"></span>Lab experiment builder</a></li>
+    </ol>
+    <ol>
+      <li><a href="#settings-panel"><span class="n"></span>Settings: the LLM that writes hypotheses</a></li>
+    </ol>
+  </div>
+  <p class="local">Runs on this computer only. Files you pick are not sent anywhere else, and are
     deleted when the app stops. Thresholds are provisional, needs expert review.</p>
-  <p>Reading DUTCH report PDFs? <a href="/extractor/">Open the extractor page</a>: it reads them in
-    the browser and gives the dataset file (CSV) to load below.</p>
-
-  <section id="settings-panel">
-    <details class="settings" id="settings">
-      <summary>Settings: the LLM that writes hypotheses</summary>
-      <p class="muted">Hypotheses are written by an LLM you choose: Claude with your own Anthropic API key,
-        or a model server on this computer (Ollama, llama-server, LM Studio), so nothing leaves it. Only
-        group-level findings and library passages are sent, never a patient's record. The key is kept in
-        <code id="settings-path"></code>, readable by you alone, and is never shown again.</p>
-      <fieldset>
-        <legend>Back end</legend>
-        <label class="inline"><input type="radio" name="backend" value="anthropic"> Claude (Anthropic API key)</label>
-        <label class="inline"><input type="radio" name="backend" value="local"> A local model</label>
-      </fieldset>
-      <fieldset id="anthropic-fields">
-        <legend>Claude</legend>
-        <label for="api-key">API key</label>
-        <input id="api-key" type="password" autocomplete="off" spellcheck="false">
-        <label class="inline"><input id="forget-key" type="checkbox"> Forget the stored key</label>
-        <label for="anthropic-model">Model</label>
-        <input id="anthropic-model" type="text" placeholder="claude-opus-5-5" spellcheck="false">
-        <label for="effort">Effort</label>
-        <select id="effort"><option value="">the model's default</option>
-          <option>low</option><option>medium</option><option>high</option><option>xhigh</option><option>max</option></select>
-      </fieldset>
-      <fieldset id="local-fields">
-        <legend>Local model</legend>
-        <label for="local-model">Model, as your server names it</label>
-        <input id="local-model" type="text" placeholder="llama3.1:8b" spellcheck="false">
-        <label for="local-url">Server address</label>
-        <input id="local-url" type="text" placeholder="http://localhost:11434/v1" spellcheck="false">
-      </fieldset>
-      <div class="buttons">
-        <button id="settings-save" type="button">Save</button>
-        <button id="settings-check" type="button">Check: ask it one short question</button>
-      </div>
-      <p id="settings-active" class="muted" aria-live="polite"></p>
-      <div id="settings-ok" class="ok-box" role="status" hidden></div>
-      <div id="settings-error" class="error" role="alert" hidden></div>
-    </details>
-  </section>
-
+</nav>
+<main>
   <section id="load">
-    <h2>1. Load a dataset</h2>
-    <p class="muted">Load one kind at a time: the two kinds are never pooled.</p>
-    <fieldset>
-      <legend>Lab reports</legend>
-      <label for="reports">Dataset files from the extractor (CSV, one or more)</label>
-      <input id="reports" type="file" accept=".csv,text/csv" multiple>
-      <label for="metadata">Metadata file: group and tier of each report (optional)</label>
-      <input id="metadata" type="file" accept=".csv,text/csv">
-    </fieldset>
-    <fieldset>
-      <legend>Self-reports</legend>
-      <label for="export">The harvester's export folder (<code>data/export</code>)</label>
-      <input id="export" type="file" webkitdirectory directory>
-    </fieldset>
-    <button id="load-button" type="button">Load</button>
-    <p class="muted">No data yet? Try an example, invented by the tool (no real patient or post is in it):</p>
-    <div class="buttons">
-      <button class="example" type="button" data-kind="lab-report">Example: lab reports</button>
-      <button class="example" type="button" data-kind="self-report">Example: self-reports</button>
+    <h2><span class="n">1.</span> Load a dataset</h2>
+    <p class="lede">Load one kind at a time: the two kinds are never pooled.</p>
+    <div class="cols2">
+      <fieldset class="panel">
+        <legend>Lab reports</legend>
+        <div class="drop">
+          <label for="reports">Dataset files from the extractor (CSV, one or more)</label>
+          <input id="reports" type="file" accept=".csv,text/csv" multiple>
+        </div>
+        <div class="drop">
+          <label for="metadata">Metadata file: group and tier of each report (optional)</label>
+          <input id="metadata" type="file" accept=".csv,text/csv">
+        </div>
+        <p class="hint">Reading DUTCH report PDFs? <a href="/extractor/">Open the extractor page</a>: it reads them in
+          the browser and gives the dataset file (CSV) to load below.</p>
+      </fieldset>
+      <fieldset class="panel">
+        <legend>Self-reports</legend>
+        <div class="drop">
+          <label for="export">The harvester's export folder (<code>data/export</code>)</label>
+          <input id="export" type="file" webkitdirectory directory>
+        </div>
+      </fieldset>
+    </div>
+    <div class="actions"><button id="load-button" class="primary" type="button">Load</button></div>
+    <div class="examples">
+      <p>No data yet? Try an example, invented by the tool (no real patient or post is in it):</p>
+      <div class="buttons">
+        <button class="example" type="button" data-kind="lab-report">Example: lab reports</button>
+        <button class="example" type="button" data-kind="self-report">Example: self-reports</button>
+      </div>
     </div>
     <div id="load-error" class="error" role="alert" hidden></div>
   </section>
 
   <section id="review" hidden>
-    <h2>2. Check what was loaded</h2>
+    <h2><span class="n">2.</span> Check what was loaded</h2>
     <div id="review-body"></div>
   </section>
 
   <section id="run" hidden>
-    <h2>3. Run the analysis</h2>
-    <div id="group-choice" class="groups" hidden>
-      <div><label for="group-a">Compare</label><select id="group-a"></select></div>
-      <div><label for="group-b">with</label><select id="group-b"></select></div>
+    <h2><span class="n">3.</span> Run the analysis</h2>
+    <div class="choose">
+      <div id="group-choice" class="groups" hidden>
+        <div><label for="group-a">Compare</label><select id="group-a"></select></div>
+        <div><label for="group-b">with</label><select id="group-b"></select></div>
+      </div>
+      <button id="run-button" class="primary" type="button">Run the full analysis</button>
     </div>
-    <button id="run-button" type="button">Run the full analysis</button>
     <div id="run-error" class="error" role="alert" hidden></div>
-    <div id="progress" hidden>
-      <p><span id="run-label" class="label" hidden></span></p>
-      <p id="progress-text" class="muted" aria-live="polite"></p>
+    <div id="progress" class="sheet" hidden>
+      <div class="sheet-head">
+        <p id="progress-text" class="muted" aria-live="polite"></p>
+        <p><span id="run-label" class="label" hidden></span></p>
+      </div>
       <progress id="progress-bar" value="0" max="1"></progress>
       <ol id="steps" class="steps"></ol>
     </div>
   </section>
 
   <section id="findings" hidden>
-    <h2>4. Findings</h2>
-    <p class="exports">
-      <a class="button" href="/api/export/findings.csv" download>Export findings (CSV)</a>
-      <a class="button" href="/api/export/report.html" download>Export report (HTML)</a>
-      <span class="muted">Each export names the tool and dataset versions and carries the run's labels;
-        the report adds the plots and the run record.</span>
-    </p>
+    <h2><span class="n">4.</span> Findings</h2>
+    <div class="find-head exports">
+      <p class="muted">Each export names the tool and dataset versions and carries the run's labels;
+        the report adds the plots and the run record.</p>
+      <div class="actions">
+        <a class="button" href="/api/export/findings.csv" download>Export findings (CSV)</a>
+        <a class="button" href="/api/export/report.html" download>Export report (HTML)</a>
+      </div>
+    </div>
     <div id="findings-body"></div>
   </section>
 
   <section id="hypotheses" hidden>
-    <h2>5. Hypotheses</h2>
-    <p class="muted">For each strong or suggestive finding, the LLM set in Settings proposes how it could come
+    <h2><span class="n">5.</span> Hypotheses</h2>
+    <p class="lede">For each strong or suggestive finding, the LLM set in Settings proposes how it could come
       about, from passages of your paper library. Every quote is checked word for word against the paper it
       cites; one that is not found is removed. These are ideas to test, not conclusions.</p>
     <div class="buttons">
-      <button id="hypotheses-button" type="button">Write hypotheses</button>
+      <button id="hypotheses-button" class="primary" type="button">Write hypotheses</button>
       <a id="hypotheses-export" class="button" href="/api/export/hypotheses.html" download hidden>Export hypotheses (HTML)</a>
     </div>
     <div id="hypotheses-error" class="error" role="alert" hidden></div>
@@ -288,105 +225,116 @@
 
   <section id="bottlenecks">
     <h2>Systems bottleneck map</h2>
-    <p class="muted">The terms of your paper library (genes, hormones, receptors, symptoms) and where PSSD, PFS
+    <p class="lede">The terms of your paper library (genes, hormones, receptors, symptoms) and where PSSD, PFS
       and PAS converge on them. A line between two terms means they were co-mentioned in the same passages of
       that many papers, not that one acts on the other; a score says where to look, not a cause. Click a line
       to read the passages it was counted from.</p>
-    <p id="map-status" class="muted" aria-live="polite">Loading the knowledge graph…</p>
+    <p id="map-status" class="status" aria-live="polite">Loading the knowledge graph…</p>
     <div id="map-error" class="error" role="alert" hidden></div>
     <div id="map-body" hidden>
-      <fieldset>
-        <legend>Bottleneck weights</legend>
-        <div class="weights">
-          <label for="weight-overlap">Overlap: how many of PSSD, PFS, PAS link to it</label>
-          <input id="weight-overlap" type="range" min="0" max="100" step="1" data-weight="overlap">
-          <output id="weight-overlap-value" for="weight-overlap"></output>
-          <label for="weight-cascade">Cascade: its reach through co-mentions</label>
-          <input id="weight-cascade" type="range" min="0" max="100" step="1" data-weight="cascade">
-          <output id="weight-cascade-value" for="weight-cascade"></output>
-          <label for="weight-betweenness">Betweenness: how often it lies between other terms</label>
-          <input id="weight-betweenness" type="range" min="0" max="100" step="1" data-weight="betweenness">
-          <output id="weight-betweenness-value" for="weight-betweenness"></output>
+      <div class="controls">
+        <fieldset>
+          <legend>Bottleneck weights</legend>
+          <div class="weights">
+            <label for="weight-overlap">Overlap: how many of PSSD, PFS, PAS link to it</label>
+            <input id="weight-overlap" type="range" min="0" max="100" step="1" data-weight="overlap">
+            <output id="weight-overlap-value" for="weight-overlap"></output>
+            <label for="weight-cascade">Cascade: its reach through co-mentions</label>
+            <input id="weight-cascade" type="range" min="0" max="100" step="1" data-weight="cascade">
+            <output id="weight-cascade-value" for="weight-cascade"></output>
+            <label for="weight-betweenness">Betweenness: how often it lies between other terms</label>
+            <input id="weight-betweenness" type="range" min="0" max="100" step="1" data-weight="betweenness">
+            <output id="weight-betweenness-value" for="weight-betweenness"></output>
+          </div>
+          <div class="buttons"><button id="weights-reset" class="small" type="button">Default weights</button>
+            <span id="weights-note" class="muted"></span></div>
+        </fieldset>
+        <div class="filters map-controls-side">
+          <label>Draw the top <input id="map-top" type="number" min="5" max="500" step="5" value="40"> terms</label>
+          <label>and co-mentions in at least <input id="map-min-papers" type="number" min="1" step="1" value="10"> papers</label>
         </div>
-        <div class="buttons"><button id="weights-reset" type="button">Default weights</button>
-          <span id="weights-note" class="muted"></span></div>
-      </fieldset>
-      <div class="map-controls">
-        <label>Draw the top <input id="map-top" type="number" min="5" max="500" step="5" value="40"> terms</label>
-        <label>and co-mentions in at least <input id="map-min-papers" type="number" min="1" step="1" value="10"> papers</label>
-        <span id="map-count" class="muted"></span>
       </div>
-      <div class="legend" id="map-legend">Syndromes linking to a term:
-        <i class="dot" style="background: var(--overlap-0)"></i>none
-        <i class="dot" style="background: var(--overlap-1)"></i>one
-        <i class="dot" style="background: var(--overlap-2)"></i>two
-        <i class="dot" style="background: var(--overlap-3)"></i>all three
-        <i class="syndrome"></i>a syndrome. Larger circles score higher; a dashed line
-        joins a syndrome to a term found in its papers, a solid one to a term in a strong or suggestive
-        finding of this run.</div>
-      <div class="map-wrap">
-        <div id="network" role="img" aria-label="Network of the top-scoring terms; the ranked table below lists the same terms"></div>
-        <div id="map-tip" hidden></div>
+      <div class="sheet">
+        <div class="map-controls"><span id="map-count" class="muted"></span></div>
+        <div class="mapgrid">
+          <div class="map-wrap">
+            <div id="network" role="img" aria-label="Network of the top-scoring terms; the ranked table below lists the same terms"></div>
+            <div id="map-tip" hidden></div>
+            <div class="legend" id="map-legend">Syndromes linking to a term:
+              <i class="dot" style="background: var(--ov-0)"></i>none
+              <i class="dot" style="background: var(--ov-1)"></i>one
+              <i class="dot" style="background: var(--ov-2)"></i>two
+              <i class="dot" style="background: var(--ov-3)"></i>all three
+              <i class="syndrome"></i>a syndrome. Larger circles score higher; a dashed line
+              joins a syndrome to a term found in its papers, a solid one to a term in a strong or suggestive
+              finding of this run.</div>
+          </div>
+          <div id="edge-panel" aria-live="polite" hidden></div>
+        </div>
+        <h3 class="bn-h">Ranked bottlenecks</h3>
+        <div id="bottleneck-table"></div>
+        <button id="bottleneck-more" class="small" type="button" hidden></button>
       </div>
-      <div id="edge-panel" aria-live="polite" hidden></div>
-      <h3 style="margin-top: 16px">Ranked bottlenecks</h3>
-      <div id="bottleneck-table"></div>
-      <button id="bottleneck-more" type="button" hidden></button>
     </div>
   </section>
+
   <section id="leaderboard">
     <h2>Drug repurposing leaderboard</h2>
-    <p class="muted">Approved drugs that act on the top bottleneck targets of the map above, ranked by TOPSIS on
+    <p class="lede">Approved drugs that act on the top bottleneck targets of the map above, ranked by TOPSIS on
       five criteria. Every one is a candidate for study, not a treatment: a rank says which drugs might be worth
       studying, never that a drug helps, and each row lists the risks known of it. A value marked assumed was
       unknown, and the worst seen stands in for it. The score is TOPSIS closeness (0 to 1) among these drugs
       alone, under the weights below: it orders them, it measures no benefit. Targets are scored with the
       default bottleneck weights, not the map's sliders, and the drugs are those fetched for the top targets
       when the drug data was fetched. The drugs that cause PSSD, PFS and PAS are never ranked.</p>
-    <p id="leaderboard-status" class="muted" aria-live="polite">Loading the drug data…</p>
+    <p id="leaderboard-status" class="status" aria-live="polite">Loading the drug data…</p>
     <div id="leaderboard-error" class="error" role="alert" hidden></div>
     <div id="leaderboard-body" hidden>
-      <fieldset>
-        <legend>Criteria weights</legend>
-        <div class="weights">
-          <label for="topsis-impact">Bottleneck impact: the best score of the targets it acts on</label>
-          <input id="topsis-impact" type="range" min="0" max="100" step="1" data-topsis-weight="impact">
-          <output id="topsis-impact-value" for="topsis-impact"></output>
-          <label for="topsis-coverage">Coverage: how many of PSSD, PFS, PAS link to its targets</label>
-          <input id="topsis-coverage" type="range" min="0" max="100" step="1" data-topsis-weight="coverage">
-          <output id="topsis-coverage-value" for="topsis-coverage"></output>
-          <label for="topsis-safety">Safety: fewer label concerns and listed risks (a cost)</label>
-          <input id="topsis-safety" type="range" min="0" max="100" step="1" data-topsis-weight="safety">
-          <output id="topsis-safety-value" for="topsis-safety"></output>
-          <label for="topsis-bbb">Brain penetration: the CNS MPO estimate</label>
-          <input id="topsis-bbb" type="range" min="0" max="100" step="1" data-topsis-weight="bbb">
-          <output id="topsis-bbb-value" for="topsis-bbb"></output>
-          <label for="topsis-readiness">Readiness: approved, and a generic marketed</label>
-          <input id="topsis-readiness" type="range" min="0" max="100" step="1" data-topsis-weight="readiness">
-          <output id="topsis-readiness-value" for="topsis-readiness"></output>
+      <div class="controls">
+        <fieldset>
+          <legend>Criteria weights</legend>
+          <div class="weights">
+            <label for="topsis-impact">Bottleneck impact: the best score of the targets it acts on</label>
+            <input id="topsis-impact" type="range" min="0" max="100" step="1" data-topsis-weight="impact">
+            <output id="topsis-impact-value" for="topsis-impact"></output>
+            <label for="topsis-coverage">Coverage: how many of PSSD, PFS, PAS link to its targets</label>
+            <input id="topsis-coverage" type="range" min="0" max="100" step="1" data-topsis-weight="coverage">
+            <output id="topsis-coverage-value" for="topsis-coverage"></output>
+            <label for="topsis-safety">Safety: fewer label concerns and listed risks (a cost)</label>
+            <input id="topsis-safety" type="range" min="0" max="100" step="1" data-topsis-weight="safety">
+            <output id="topsis-safety-value" for="topsis-safety"></output>
+            <label for="topsis-bbb">Brain penetration: the CNS MPO estimate</label>
+            <input id="topsis-bbb" type="range" min="0" max="100" step="1" data-topsis-weight="bbb">
+            <output id="topsis-bbb-value" for="topsis-bbb"></output>
+            <label for="topsis-readiness">Readiness: approved, and a generic marketed</label>
+            <input id="topsis-readiness" type="range" min="0" max="100" step="1" data-topsis-weight="readiness">
+            <output id="topsis-readiness-value" for="topsis-readiness"></output>
+          </div>
+          <div class="buttons"><button id="topsis-reset" class="small" type="button">Default weights</button>
+            <span id="topsis-note" class="muted"></span></div>
+        </fieldset>
+        <div class="filters">
+          <label>Filter by drug or target <input id="leaderboard-filter" type="search"></label>
+          <label>Acting on a target linked to <select id="leaderboard-syndrome">
+            <option value="">any syndrome</option><option>PSSD</option><option>PFS</option><option>PAS</option>
+          </select></label>
+          <span id="leaderboard-count" class="muted"></span>
         </div>
-        <div class="buttons"><button id="topsis-reset" type="button">Default weights</button>
-          <span id="topsis-note" class="muted"></span></div>
-      </fieldset>
-      <div class="map-controls">
-        <label>Filter by drug or target <input id="leaderboard-filter" type="search"></label>
-        <label>Acting on a target linked to <select id="leaderboard-syndrome">
-          <option value="">any syndrome</option><option>PSSD</option><option>PFS</option><option>PAS</option>
-        </select></label>
-        <span id="leaderboard-count" class="muted"></span>
       </div>
-      <div class="sort" id="leaderboard-sort">Sort by:
-        <button type="button" data-sort="rank" aria-pressed="true">Rank</button>
-        <button type="button" data-sort="name" aria-pressed="false">Name</button>
-        <button type="button" data-sort="impact" aria-pressed="false">Impact</button>
-        <button type="button" data-sort="coverage" aria-pressed="false">Coverage</button>
-        <button type="button" data-sort="safety" aria-pressed="false">Safety</button>
-        <button type="button" data-sort="bbb" aria-pressed="false">CNS MPO</button>
-        <button type="button" data-sort="readiness" aria-pressed="false">Readiness</button>
+      <div class="sheet">
+        <div class="sort" id="leaderboard-sort">Sort by:
+          <button type="button" data-sort="rank" aria-pressed="true">Rank</button>
+          <button type="button" data-sort="name" aria-pressed="false">Name</button>
+          <button type="button" data-sort="impact" aria-pressed="false">Impact</button>
+          <button type="button" data-sort="coverage" aria-pressed="false">Coverage</button>
+          <button type="button" data-sort="safety" aria-pressed="false">Safety</button>
+          <button type="button" data-sort="bbb" aria-pressed="false">CNS MPO</button>
+          <button type="button" data-sort="readiness" aria-pressed="false">Readiness</button>
+        </div>
+        <p id="leaderboard-coverage" class="example-note" role="status" hidden></p>
+        <div id="leaderboard-table"></div>
+        <div id="leaderboard-panel" aria-live="polite" hidden></div>
       </div>
-      <p id="leaderboard-coverage" class="muted" role="status" hidden></p>
-      <div id="leaderboard-table"></div>
-      <div id="leaderboard-panel" aria-live="polite" hidden></div>
       <h3>Known causes, excluded</h3>
       <p class="muted">SSRIs, SNRIs, finasteride, dutasteride and isotretinoin are said to cause PSSD, PFS or
         PAS, and are never ranked. Those among the drugs fetched:</p>
@@ -395,30 +343,80 @@
     <p id="leaderboard-disclaimer" class="disclaimer">Computational research hypotheses, not medical advice.
       This is a researcher's tool: it ranks drugs to study, and no one should take or change a drug because of it.</p>
   </section>
+
   <section id="experiment">
     <h2>Lab experiment builder</h2>
-    <p class="muted">A two-level design over the drugs and targets you tick in the leaderboard and the ranked
+    <p class="lede">A two-level design over the drugs and targets you tick in the leaderboard and the ranked
       bottlenecks above, each present or absent in a run. 2 to 4 factors take the full factorial, nothing
       confounded; 5 take the 16-run resolution V half fraction, whose main effects and two-factor interactions
       are all separable; 6 to 8 take a 16-run resolution IV fraction, whose two-factor interactions are
       confounded with each other; more than 8 are refused. The app builds the design, and its seed gives the
       same run order again. Every combination is a candidate for study, untested, and needs a safety review
       before any wet-lab or animal use.</p>
-    <h3>Factors</h3>
-    <p id="experiment-empty" class="muted">None ticked yet: tick drugs in the leaderboard or terms in the ranked bottlenecks.</p>
-    <p id="experiment-dropped" class="muted" role="status" hidden></p>
-    <ol id="experiment-factors"></ol>
-    <div class="map-controls">
-      <label>Replicates <input id="experiment-replicates" type="number" min="1" max="20" step="1" value="1"></label>
-      <label>Response columns <input id="experiment-responses" class="setting" type="text" value="response"
-        title="Names separated by commas, one empty column each (per replicate) in the CSV"></label>
-      <label>Seed <input id="experiment-seed" type="number" min="0" step="1" placeholder="drawn"></label>
-      <button id="experiment-build" type="button" disabled>Build the design</button>
+    <div class="builder">
+      <aside>
+        <h3>Factors</h3>
+        <p id="experiment-empty" class="muted">None ticked yet: tick drugs in the leaderboard or terms in the ranked bottlenecks.</p>
+        <p id="experiment-dropped" class="example-note" role="status" hidden></p>
+        <ol id="experiment-factors"></ol>
+        <div class="settings">
+          <label>Replicates <input id="experiment-replicates" type="number" min="1" max="20" step="1" value="1"></label>
+          <label>Seed <input id="experiment-seed" type="number" min="0" step="1" placeholder="drawn"></label>
+          <label class="wide">Response columns <input id="experiment-responses" class="setting" type="text" value="response"
+            title="Names separated by commas, one empty column each (per replicate) in the CSV"></label>
+        </div>
+        <button id="experiment-build" type="button" disabled>Build the design</button>
+        <div id="experiment-error" class="error" role="alert" hidden></div>
+      </aside>
+      <div id="experiment-design" class="sheet" aria-live="polite" hidden></div>
     </div>
-    <div id="experiment-error" class="error" role="alert" hidden></div>
-    <div id="experiment-design" aria-live="polite" hidden></div>
+  </section>
+
+  <section id="settings-panel">
+    <details class="settings" id="settings">
+      <summary>Settings: the LLM that writes hypotheses</summary>
+      <p class="lede">Hypotheses are written by an LLM you choose: Claude with your own Anthropic API key,
+        or a model server on this computer (Ollama, llama-server, LM Studio), so nothing leaves it. Only
+        group-level findings and library passages are sent, never a patient's record. The key is kept in
+        <code id="settings-path"></code>, readable by you alone, and is never shown again.</p>
+      <div class="settings-grid">
+        <fieldset class="backends">
+          <legend>Back end</legend>
+          <label class="choice"><input type="radio" name="backend" value="anthropic"> Claude (Anthropic API key)</label>
+          <label class="choice"><input type="radio" name="backend" value="local"> A local model</label>
+        </fieldset>
+        <div class="panel">
+          <fieldset id="anthropic-fields">
+            <legend>Claude</legend>
+            <label class="field" for="api-key">API key
+              <input id="api-key" type="password" autocomplete="off" spellcheck="false"></label>
+            <label class="inline"><input id="forget-key" type="checkbox"> Forget the stored key</label>
+            <label class="field" for="anthropic-model">Model
+              <input id="anthropic-model" type="text" placeholder="claude-opus-5-5" spellcheck="false"></label>
+            <label class="field" for="effort">Effort
+              <select id="effort"><option value="">the model's default</option>
+                <option>low</option><option>medium</option><option>high</option><option>xhigh</option><option>max</option></select></label>
+          </fieldset>
+          <fieldset id="local-fields">
+            <legend>Local model</legend>
+            <label class="field" for="local-model">Model, as your server names it
+              <input id="local-model" type="text" placeholder="llama3.1:8b" spellcheck="false"></label>
+            <label class="field" for="local-url">Server address
+              <input id="local-url" type="text" placeholder="http://localhost:11434/v1" spellcheck="false"></label>
+          </fieldset>
+          <div class="buttons">
+            <button id="settings-save" class="primary" type="button">Save</button>
+            <button id="settings-check" type="button">Check: ask it one short question</button>
+          </div>
+          <p id="settings-active" class="muted" aria-live="polite"></p>
+          <div id="settings-ok" class="ok-box" role="status" hidden></div>
+          <div id="settings-error" class="error" role="alert" hidden></div>
+        </div>
+      </div>
+    </details>
   </section>
 </main>
+</div>
 <script src="/vendor/cytoscape.min.js"></script>
 <script src="/topsis.js"></script>
 <script>
@@ -436,6 +434,26 @@ function el(tag, text, attrs = {}) {
   return node;
 }
 
+// a cell of figures (a count, a value, a share; or one hidden) is set in the number face, right-aligned
+function figures(text) {
+  const t = String(text ?? "").trim();
+  return t === FEW || t === "hidden" || (!/[A-Za-z]/.test(t) && /[\d–]/.test(t));
+}
+
+/** Mark the cells of figures in `wrap`'s table, judged by each cell's first text, and the heading of a
+ * column holding only figures. */
+function alignFigures(wrap) {
+  const rows = [...wrap.querySelectorAll("tbody tr")].filter((tr) => !tr.classList.contains("detail"));
+  for (const tr of rows) {
+    for (const c of tr.cells) if (c.tagName === "TD" && figures(c.firstChild ? c.firstChild.textContent : "")) c.classList.add("num");
+  }
+  const head = wrap.querySelector("thead tr");
+  if (head && rows.length) {
+    [...head.cells].forEach((th, j) => { if (rows.every((tr) => tr.cells[j]?.classList.contains("num"))) th.classList.add("num"); });
+  }
+  return wrap;
+}
+
 function table(head, rows) {
   const wrap = el("div", null, { class: "table-wrap" });
   const t = el("table");
@@ -448,7 +466,7 @@ function table(head, rows) {
     cells.forEach((c, i) => r.append(el(i === 0 ? "th" : "td", c, i === 0 ? { scope: "row" } : {})));
   });
   wrap.append(t);
-  return wrap;
+  return alignFigures(wrap);
 }
 
 function showError(id, message) {
@@ -527,15 +545,17 @@ for (const button of document.querySelectorAll("button.example")) {
 function showReview(review) {
   const body = $("review-body");
   body.replaceChildren();
-  if (review.example) body.appendChild(el("p", null)).append(el("span", review.example, { class: "label" }));
+  if (review.example) body.append(el("p", review.example, { class: "example-note" }));
   if (review.kind === "self-report") {
     body.appendChild(el("p", null)).append(el("span", review.label, { class: "label" }));
-    body.append(el("p", `${count(review.authors)} authors, each counted once however many posts they wrote.`));
-    body.append(table(["Condition", "Authors"], review.conditions.map((c) => [c.condition, count(c.authors)])));
-    body.append(el("p", `Left out: ${count(review.excluded.unverified)} posts that failed the evidence check ` +
-      `(evidence_ok false), and ${count(review.excluded.no_author)} posts from deleted accounts, which cannot be merged per author.`));
+    const sheet = body.appendChild(el("div", null, { class: "sheet" }));
+    sheet.append(el("p", `${count(review.authors)} authors, each counted once however many posts they wrote.`));
+    sheet.append(table(["Condition", "Authors"], review.conditions.map((c) => [c.condition, count(c.authors)])));
+    sheet.append(el("p", `Left out: ${count(review.excluded.unverified)} posts that failed the evidence check ` +
+      `(evidence_ok false), and ${count(review.excluded.no_author)} posts from deleted accounts, which cannot be merged per author.`,
+      { class: "muted" }));
   } else {
-    body.append(table(["Group", "Reports"], review.groups.map((g) => [g.group, count(g.records)])));
+    body.appendChild(el("div", null, { class: "sheet" })).append(table(["Group", "Reports"], review.groups.map((g) => [g.group, count(g.records)])));
     const sexes = [...new Set(review.records.map((c) => c.sex))].sort();
     const tiers = [...new Set(review.records.map((c) => c.tier))].sort();
     const head = ["Group", ...sexes.flatMap((s) => tiers.map((t) => `${s}, tier ${t}`))];
@@ -544,10 +564,12 @@ function showReview(review) {
       const cell = review.records.find((c) => c.group === g && c.sex === s && c.tier === t);
       return cell ? count(cell.records) : "0";
     }))]);
-    body.append(el("p", "Reports per group, sex and tier (A: confirmed by a clinician; B: the default; C: least trusted):"));
-    body.append(table(head, rows));
+    const sheet = body.appendChild(el("div", null, { class: "sheet" }));
+    const top = sheet.appendChild(el("div", null, { class: "sheet-head" }));
+    top.append(el("h3", "Reports per group, sex and tier"), el("p", "A: confirmed by a clinician; B: the default; C: least trusted"));
+    sheet.append(table(head, rows));
     if (review.unmatched !== 0) {
-      body.append(el("p", `${count(review.unmatched)} metadata rows name no loaded report and were left out.`, { class: "muted" }));
+      sheet.append(el("p", `${count(review.unmatched)} metadata rows name no loaded report and were left out.`, { class: "muted" }));
     }
   }
   $("review").hidden = false;
@@ -607,10 +629,13 @@ function showStatus(status) {
   $("progress-bar").value = status.done;
   $("progress-text").textContent = status.state === "finished"
     ? `Finished: ${status.total} steps.` : `Running: step ${Math.min(status.done + 1, status.total)} of ${status.total}...`;
-  $("steps").replaceChildren(...status.steps.map((step) => {
+  $("steps").replaceChildren(...status.steps.map((step, i) => {
     const item = el("li");
-    item.append(el("span", step.name + ": "), el("span", step.state, { class: `state ${step.state.replaceAll(" ", "-")}` }));
-    if (step.message) item.append(el("div", step.message, { class: "muted" }));
+    const what = el("div");
+    what.append(el("b", step.name));
+    if (step.message) what.append(el("span", step.message, { class: "msg" }));
+    item.append(el("span", String(i + 1), { class: "n" }), what,
+      el("span", step.state, { class: `state ${step.state.replaceAll(" ", "-")}` }));
     return item;
   }));
 }
@@ -650,7 +675,6 @@ function showFindings(view) {
       "No finding in this run is strong or suggestive. That is a result, not an error (spec S8)."));
   }
   view.sections.forEach((s) => body.append(findingSection(s)));
-  document.querySelector("main").classList.add("wide");
   $("findings").hidden = false;
   lastFindings = view;
   $("hypotheses").hidden = false;
@@ -712,7 +736,9 @@ function syndromeSummary(s) {
       ...(s.reference === "reference range" ? [] : [count(r.n_reference)]), r.differ || "–", r.pattern,
     ].forEach((t) => row.append(el("td", t)));
     row.appendChild(el("td")).append(strength(r.label));
+    if (r.label === "strong") row.classList.add("is-picked");
   });
+  alignFigures(t);
   return wrap;
 }
 
@@ -788,9 +814,7 @@ function legend(s) {
   if (zones) {
     box.append("Values per zone:");
     [["below", "below range"], ["within", "within"], ["above", "above range"], ["unclear", "unclear"]].forEach(([z, t]) => {
-      const sw = el("i", null, { class: `swatch-${z}` });
-      sw.style.background = { below: "#4e79a7", within: "var(--bar)", above: "#e15759", unclear: "#b0a36b" }[z];
-      box.append(sw, t);
+      box.append(el("i", null, { class: `swatch-${z}` }), t);
     });
     box.append(". Dashed, and <5 in the table: counts of 1 to 4, which are never shown, and any count hidden with them so the total cannot give them back.");
   }
@@ -864,7 +888,9 @@ function testRows(findings, s) {
     r.append(el("td", sizes(f)), effectCell(f), el("td", num(f.q_value)));
     r.appendChild(el("td")).append(strength(f.label));
     r.append(tierA(f), plotCell(f));
+    if (f.label === "strong") r.classList.add("is-picked");
   });
+  alignFigures(t);
   return wrap;
 }
 
@@ -881,8 +907,9 @@ function rangeRows(findings, s) {
       num(f.median_position)].forEach((t) => r.append(el("td", t)));
     r.appendChild(el("td")).append(strength(f.label));
     r.append(plotCell(f));
+    if (f.label === "strong") r.classList.add("is-picked");
   });
-  return wrap;
+  return alignFigures(wrap);
 }
 
 function refusedList(refused) {
@@ -1154,7 +1181,7 @@ function distributionPlot(sides) {
     if (s.median === null) return;
     const y = i * ROW_H + 9;
     root.append(svg("line", { class: "whisker", x1: x(s.q10), x2: x(s.q90), y1: y, y2: y }));
-    root.append(svg("rect", { class: "box", x: x(s.q25), y: y - 6, width: Math.max(1, x(s.q75) - x(s.q25)), height: 12 }));
+    root.append(svg("rect", { class: `box side-${i}`, x: x(s.q25), y: y - 6, width: Math.max(1, x(s.q75) - x(s.q25)), height: 12 }));
     root.append(svg("line", { class: "median", x1: x(s.median), x2: x(s.median), y1: y - 7, y2: y + 7 }));
   });
   const y = sides.length * ROW_H + 12;
@@ -1191,7 +1218,7 @@ function zonesPlot(sides) {
       if (!s[z]) return; // hidden, or 0
       const w = (s[z] / s.n) * width;
       root.append(svg("rect", { class: `zone-${z}`, x: at, y, width: w, height: 12 }));
-      if (w > 22) root.append(svg("text", { x: at + 3, y: y + 10 }, String(s[z])));
+      if (w > 22) root.append(svg("text", { x: at + 3, y: y + 10, class: `on-${z}` }, String(s[z])));
       at += w;
     });
     if (at < left + width - 0.5) root.append(svg("rect", { class: "hidden-part", x: at, y, width: left + width - at, height: 12 }));
@@ -1304,10 +1331,11 @@ function showTable() {
     fixed(t.score, 2), t.syndromes.length ? t.syndromes.join(", ") : "none", fixed(t.cascade, 2), fixed(t.betweenness, 3)]);
   const wrap = table(head, rows);
   wrap.classList.add("bottleneck-table");
-  wrap.querySelector("thead tr").prepend(el("th", "Pick", { scope: "col" }));
+  wrap.querySelector("thead tr").prepend(el("th", "Pick", { scope: "col", class: "pick" }));
   wrap.querySelectorAll("tbody tr").forEach((tr, i) => {
     const name = MAP.ranked[i].name;
     const pick = tr.insertCell(0);
+    pick.className = "pick";
     if (MAP.ranked[i].kind !== "symptom") pick.append(factorBox(TARGET, name)); // a symptom is a response
     tr.dataset.term = name;
     if (name === MAP.picked) tr.classList.add("picked");
@@ -1330,6 +1358,17 @@ function pickTerm(name) {
 }
 
 function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+const PAINT = document.createElement("canvas").getContext("2d", { willReadFrequently: true });
+/** A colour token as rgb(), which the network library reads (it cannot read the tokens' oklch). */
+function colour(name) {
+  PAINT.clearRect(0, 0, 1, 1);
+  PAINT.fillStyle = "#000";
+  PAINT.fillStyle = css(name);
+  PAINT.fillRect(0, 0, 1, 1);
+  const [r, g, b] = PAINT.getImageData(0, 0, 1, 1).data;
+  return `rgb(${r}, ${g}, ${b})`;
+}
 
 function networkElements() {
   const view = MAP.view;
@@ -1392,26 +1431,27 @@ function drawNetwork() {
   if (typeof cytoscape !== "function") { showError("map-error", "The network library did not load; the table below still ranks every term."); return; }
   const elements = networkElements();
   MAP.cy?.destroy();
-  const text = css("--text"), panel = css("--panel");
+  const text = colour("--color-ink"), sheet = colour("--color-sheet"), accent = colour("--color-accent");
   const cy = cytoscape({
     container: $("network"),
     elements,
     wheelSensitivity: 0.3,
     style: [
       { selector: "node", style: { width: "data(size)", height: "data(size)", label: "data(label)", color: text,
-        "font-size": 10, "text-valign": "bottom", "text-margin-y": 2, "text-outline-color": panel,
-        "text-outline-width": 2, "border-width": 2, "border-color": panel } },
-      { selector: "node[overlap = 0]", style: { "background-color": css("--overlap-0") } },
-      { selector: "node[overlap = 1]", style: { "background-color": css("--overlap-1") } },
-      { selector: "node[overlap = 2]", style: { "background-color": css("--overlap-2") } },
-      { selector: "node[overlap = 3]", style: { "background-color": css("--overlap-3") } },
-      { selector: "node.syndrome", style: { shape: "diamond", width: 26, height: 26, "background-color": text,
-        "font-size": 12, "font-weight": 700 } },
-      { selector: "node:selected", style: { "border-color": css("--accent"), "border-width": 4 } },
-      { selector: "edge", style: { "curve-style": "haystack", "line-color": css("--edge"), width: "data(width)", opacity: 0.45 } },
-      { selector: "edge[kind = 'literature']", style: { "line-style": "dashed", width: 1, "line-color": css("--muted"), opacity: 0.5 } },
-      { selector: "edge[kind = 'finding']", style: { width: 3, "line-color": css("--accent"), opacity: 0.9 } },
-      { selector: "edge:selected, edge.hover", style: { "line-color": css("--accent"), opacity: 1, "z-index": 9 } },
+        "font-family": css("--font-body"), "font-size": 10, "text-valign": "bottom", "text-margin-y": 2,
+        "text-outline-color": sheet, "text-outline-width": 3, "border-width": 2, "border-color": sheet } },
+      { selector: "node[overlap = 0]", style: { "background-color": colour("--ov-0") } },
+      { selector: "node[overlap = 1]", style: { "background-color": colour("--ov-1") } },
+      { selector: "node[overlap = 2]", style: { "background-color": colour("--ov-2") } },
+      { selector: "node[overlap = 3]", style: { "background-color": colour("--ov-3") } },
+      { selector: "node.syndrome", style: { shape: "diamond", width: 22, height: 22, "background-color": text, "border-width": 0,
+        "font-family": css("--font-display"), "font-size": 13, "font-weight": 600, "text-valign": "top", "text-margin-y": -4 } },
+      { selector: "node:selected", style: { "background-color": accent, "border-color": sheet, "border-width": 3 } },
+      { selector: "edge", style: { "curve-style": "haystack", "line-color": colour("--edge"), width: "data(width)", opacity: 0.35 } },
+      { selector: "edge[kind = 'literature']", style: { "line-style": "dashed", "line-dash-pattern": [3, 3], width: 1,
+        "line-color": colour("--color-muted"), opacity: 0.45 } },
+      { selector: "edge[kind = 'finding']", style: { width: 2, "line-color": accent, opacity: 0.9 } },
+      { selector: "edge:selected, edge.hover", style: { "line-color": accent, opacity: 0.9, "z-index": 9 } },
     ],
     layout: { name: "preset", positions: overlapPositions(elements), padding: 24 },
   });
@@ -1587,9 +1627,9 @@ function showLeaderboard() {
   const body = wrap.querySelector("tbody");
   for (const r of rows) {
     const tr = body.appendChild(el("tr", null, { "data-drug": r.name }));
-    tr.appendChild(el("td")).append(factorBox(DRUG, r.name));
+    tr.appendChild(el("td", null, { class: "pick" })).append(factorBox(DRUG, r.name));
     tr.append(el("td", String(r.rank)));
-    const drug = el("td", null, { class: "wrap" });
+    const drug = el("td", null, { class: "wrap drug" });
     drug.append(el("strong", r.name), " ", el("span", r.label, { class: "label" }));
     const sub = el("span", null, { class: "sub" });
     sub.append(el("a", `ChEMBL ${r.chembl_id}`, { class: "chembl", href: r.url, target: "_blank", rel: "noopener" }));
@@ -1611,7 +1651,8 @@ function showLeaderboard() {
     tr.appendChild(el("td")).append(toggle);
     if (LB.open.has(r.name)) body.append(detailRow(r, head.length));
   }
-  $("leaderboard-table").replaceChildren(wrap);
+  wrap.querySelector("thead th").classList.add("pick");
+  $("leaderboard-table").replaceChildren(alignFigures(wrap));
   $("leaderboard-count").textContent = `${rows.length} of ${LB.ranked.length} drugs shown`;
 }
 
@@ -1777,9 +1818,12 @@ function showDesign() {
   const head = ["Run order", "Run id", ...v.factors.map((f) => `${f.letter}: ${f.name}`)];
   const wrap = table(head, v.runs.map((r) => [String(r.run_order), String(r.run_id), ...r.levels.map((l) => (l > 0 ? "present" : "absent"))]));
   wrap.classList.add("experiment-table");
-  wrap.querySelectorAll("tbody td").forEach((td) => { if (td.textContent === "absent") td.classList.add("absent"); });
+  wrap.querySelectorAll("tbody td").forEach((td) => {
+    if (td.textContent === "absent") td.classList.add("absent");
+    if (td.textContent === "present") td.classList.add("present");
+  });
   box.append(wrap);
-  const download = el("button", "Download the CSV", { type: "button", class: "download", id: "experiment-download" });
+  const download = el("button", "Download the CSV", { type: "button", class: "download primary", id: "experiment-download" });
   download.addEventListener("click", () => {
     const url = URL.createObjectURL(new Blob([v.csv], { type: "text/csv" }));
     const link = el("a", null, { href: url, download: v.filename });
@@ -1792,6 +1836,36 @@ function showDesign() {
   box.lastChild.prepend(download, " ");
   box.hidden = false;
 }
+
+// ------------------------------------------------------------------ the contents
+// Each entry marks the section in view, and is greyed while its section is hidden (not ready yet).
+
+const CONTENTS = [...document.querySelectorAll("nav.contents a[href^='#']")].map((a) => [a, $(a.hash.slice(1))]);
+
+function showContents() {
+  for (const [a, section] of CONTENTS) {
+    if (section.hidden) a.setAttribute("aria-disabled", "true"); else a.removeAttribute("aria-disabled");
+  }
+}
+
+function markCurrent(section) {
+  for (const [a, s] of CONTENTS) { if (s === section) a.setAttribute("aria-current", "true"); else a.removeAttribute("aria-current"); }
+}
+
+for (const [a, section] of CONTENTS) {
+  a.addEventListener("click", (event) => {
+    if (section.hidden) { event.preventDefault(); return; }
+    const details = section.querySelector("details.settings");
+    if (details) details.open = true;
+  });
+}
+const watch = new MutationObserver(showContents);
+for (const [, section] of CONTENTS) watch.observe(section, { attributes: true, attributeFilter: ["hidden"] });
+const seen = new IntersectionObserver((entries) => entries.forEach((e) => { if (e.isIntersecting) markCurrent(e.target); }),
+  { rootMargin: "-30% 0px -60% 0px" });
+for (const [, section] of CONTENTS) seen.observe(section);
+showContents();
+markCurrent($("load"));
 
 showFactors();
 loadMap();
