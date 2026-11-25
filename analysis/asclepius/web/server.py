@@ -22,6 +22,7 @@ The page (`index.html`) talks to a small JSON API over `asclepius.web.workspace.
 | `GET /api/graph` | the bottleneck map (`asclepius.web.graph`): scored terms, co-mentions and syndrome links (with the latest run's finding links, and `run`, its dataset), or the graph's state while it builds |
 | `GET /api/graph/edge?a=<term>&b=<term>` | the link a → b and the passages it was counted from; 404 when the graph has none |
 | `GET /api/leaderboard` | the drug repurposing leaderboard (`asclepius.web.leaderboard`): each cached drug's TOPSIS criteria, risks and targets, and the known causes apart |
+| `POST /api/experiment` | build a lab experiment (`asclepius.web.experiment`), `{"factors": [{"kind": "drug" or "target", "name": ...}], "seed": ..., "replicates": ..., "responses": [...]}`: its design, each factor's known risks, its runs and its CSV; 400 when a factor or setting is refused |
 | `GET /topsis.js` | the leaderboard's TOPSIS, which the page ranks with as the weight sliders move |
 | `GET /vendor/cytoscape.min.js` | the network-drawing library, shipped with the app so the page needs no network |
 | `GET /extractor/...` | the extractor's browser page (`extractor/`, built by `npm run build`), for reading report PDFs |
@@ -52,6 +53,7 @@ from urllib.parse import parse_qs, unquote, urlsplit
 from asclepius.examples import EXAMPLES
 from asclepius.run import Settings
 from asclepius.web import llm_settings
+from asclepius.web.experiment import ExperimentError, experiment_view
 from asclepius.web.graph import KnowledgeGraph
 from asclepius.web.hypotheses import Engine
 from asclepius.web.leaderboard import leaderboard_view
@@ -205,12 +207,17 @@ class Handler(BaseHTTPRequestHandler):
                 with self.server.lock:  # one save at a time
                     saved = llm_settings.save(engine.settings, form, engine.env)
                 self._json(HTTPStatus.OK, saved)
+            elif path == "/api/experiment":
+                request = json.loads(body or b"{}")
+                self._json(
+                    HTTPStatus.OK, experiment_view(request, self.server.engine.drugs, self.server.knowledge)
+                )
             elif path == "/api/settings/check":
                 engine = self.server.engine
                 self._json(HTTPStatus.OK, llm_settings.check(engine.settings, engine.env, engine.connect_llm))
             else:
                 self._json(HTTPStatus.NOT_FOUND, {"error": "Not found."})
-        except (LoadError, RunError, SettingsError) as error:
+        except (LoadError, RunError, SettingsError, ExperimentError) as error:
             self._json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
         except json.JSONDecodeError:
             self._json(HTTPStatus.BAD_REQUEST, {"error": "The request was not valid JSON."})

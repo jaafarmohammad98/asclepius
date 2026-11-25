@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import csv
 import io
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from itertools import combinations, product
 from math import prod
@@ -55,6 +55,11 @@ GENERATORS: dict[int, tuple[tuple[str, str], ...]] = {
 def _word_product(a: str, b: str) -> str:
     """The product of two effect words: letters in both cancel, since every column squares to 1."""
     return "".join(sorted(set(a) ^ set(b)))
+
+
+def _one_line(text: str) -> str:
+    """The text on one line, so it stays inside its comment."""
+    return " ".join(text.split())
 
 
 @dataclass(frozen=True)
@@ -134,10 +139,16 @@ class Design:
             f"but two-factor interactions are confounded with each other: {chains}."
         )
 
-    def csv(self, responses: Sequence[str] = ("response",)) -> str:
+    def csv(
+        self, responses: Sequence[str] = ("response",), risks: Mapping[str, Sequence[str]] | None = None
+    ) -> str:
         """The runs in run order as CSV under the safety warning (D4): run id, run order, seed, one
         column per factor (present or absent), the replicate count, and an empty column for each
-        response, one per replicate (`libido_1`, `libido_2`…) when there is more than one."""
+        response, one per replicate (`libido_1`, `libido_2`…) when there is more than one.
+
+        `risks` gives each factor's known risks (rule 6), written as a `#` line per factor under the
+        warning, "none known" when its list is empty; it must name every factor and no other. What a
+        risk says (unknown, say, rather than none) is the caller's to choose."""
         if self.replicates == 1:
             measured = list(responses)
         else:
@@ -147,6 +158,14 @@ class Design:
             raise ValueError("Each column needs its own name: " + ", ".join(header))
         out = io.StringIO()
         out.write(SAFETY_WARNING + "\n")
+        if risks is not None:
+            named = set(risks)
+            if named != set(self.factors):
+                odd = sorted(named ^ set(self.factors))
+                raise ValueError("The risks must name every factor and no other: " + ", ".join(odd))
+            for factor in self.factors:
+                said = "; ".join(_one_line(r) for r in risks[factor]) or "none known"
+                out.write(f"# Known risks of {_one_line(factor)}: {said}\n")
         writer = csv.writer(out, lineterminator="\n")
         writer.writerow(header)
         for position, run_id in enumerate(self.run_order, start=1):

@@ -455,7 +455,7 @@ d.matrix  # ±1 runs in standard order; d.run_order the run ids shuffled by d.se
 d.label  # "Fractional factorial 2^(5-1), resolution V, 16 runs"
 d.resolution, d.generators, d.defining_relation  # 5, ("E=ABCD",), ("ABCDE",)
 d.confounded, d.note  # two-factor alias chains, and what can and cannot be separated
-d.csv(responses=["libido"])  # the CSV to download, under its safety warning
+d.csv(responses=["libido"], risks={"sildenafil": ["headache"], ...})  # the CSV, under its safety warning
 ```
 
 - **2 to 4 factors** are the full factorial (4, 8 or 16 runs), nothing aliased; `resolution` is
@@ -471,7 +471,8 @@ d.csv(responses=["libido"])  # the CSV to download, under its safety warning
   seed, one column per factor (`present` or `absent`), the replicate count, and an empty column
   per response, one per replicate (`libido_1`, `libido_2`) when there is more than one. Its first
   line warns that every combination needs a safety review before any wet-lab or animal use, a
-  `#` comment: read it with `pandas.read_csv(path, comment="#")`.
+  `#` comment. With `risks` (every factor named), a `#` line per factor lists its known risks,
+  "none known" for an empty list. Read it with `pandas.read_csv(path, comment="#")`.
 - **The seed** reproduces its order only in Python (`random.Random`), so the web app builds
   designs on the server, not in the browser.
 
