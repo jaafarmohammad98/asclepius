@@ -856,8 +856,34 @@ Each step's one-line statement is shown, and when the run finishes, its findings
      counting as its share of their sum), re-score and re-rank in the page at once, by the same
      formula as `hypothesis_engine.bottlenecks`; a browser test checks both rank alike.
 
+8. **Drug repurposing leaderboard** (milestone 6), below the map, ranks the approved drugs acting
+   on the top bottleneck targets (`asclepius.web.leaderboard`, `GET /api/leaderboard`), from the
+   drug data `asclepius-library drugs` fetched (`hypothesis/data/drugs.json`); nothing is fetched
+   while the app runs. Without that data the section says how to fetch it.
+   - **Criteria.** TOPSIS on five (`hypothesis_engine.topsis`): bottleneck impact, coverage of
+     PSSD, PFS and PAS, safety (a cost: label concerns, listed risks, a withdrawal), the CNS MPO
+     estimate and readiness. Each target's score and syndromes are the knowledge graph's as it is
+     now, so a run's finding links re-rank the drugs; without a graph, those of when the drugs
+     were fetched, and the section says so. An unknown is given the worst seen and marked
+     *assumed*.
+   - **Weights.** Five sliders (30, 25, 20, 15, 10 by default, each its share of their sum)
+     re-rank in the page at once, by TOPSIS in `asclepius/web/topsis.js`, with no request to the
+     server; `tests/test_web_topsis_parity.py` checks it ranks as the Python reference does.
+   - **Rows.** Each is labelled "candidate for study", with its known risks and its ChEMBL
+     record; **Details** lists its targets and opens the passages that tie each to a syndrome,
+     its label's concerns with their words and DailyMed page, and its listed risks with their
+     sources. Filter by drug or target name, or by a syndrome its targets link to; sort by rank,
+     name or any criterion. The rank is always among all the drugs.
+   - **Coverage.** The drugs are those fetched for the top targets of when the drug data was
+     fetched. When a gene now among the top ones was never looked up, a line above the table
+     names it: the library has changed since (run `asclepius-library drugs`), or this run's
+     findings raised it, and its drugs are not ranked.
+   - **Known causes, excluded.** SSRIs, SNRIs, finasteride, dutasteride and isotretinoin are
+     listed apart, never ranked. The section ends: computational research hypotheses, not
+     medical advice.
+
 A run of 100 PSSD, 40 PFS and 100 controls takes about 7 seconds; the full
 r/PSSD export loads (3,153 authors) and runs in about 3. The logic is
 `asclepius.web.workspace.Workspace` (files, review, run), with the findings view in
 `asclepius.web.findings`, the exports in `asclepius.web.export`, the hypotheses in
-`asclepius.web.hypotheses`, the settings screen in `asclepius.web.llm_settings` and the bottleneck map in `asclepius.web.graph`; `asclepius.web.server` only serves them.
+`asclepius.web.hypotheses`, the settings screen in `asclepius.web.llm_settings`, the bottleneck map in `asclepius.web.graph` and the leaderboard in `asclepius.web.leaderboard`; `asclepius.web.server` only serves them.

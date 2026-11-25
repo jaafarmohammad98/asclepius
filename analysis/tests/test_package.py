@@ -49,6 +49,7 @@ def test_it_holds_the_app_the_engine_the_extractor_page_and_the_examples(wheel):
         "asclepius/web/index.html",
         "asclepius/web/vendor/cytoscape.min.js",  # the bottleneck map draws with it, no CDN
         "asclepius/web/vendor/cytoscape.LICENSE",
+        "asclepius/web/topsis.js",  # the leaderboard ranks with it in the page
         "asclepius/examples.py",
         "asclepius/synthetic.py",
         "hypothesis_engine/pipeline.py",

@@ -21,8 +21,9 @@ as none marketed, an unknown withdrawal as one, and the row says what was assume
 The drugs that cause the syndromes (`Drug.known_cause`) are never ranked: they are returned apart
 as "known causes, excluded". Every row is a candidate for study, with its known risks.
 
-This is the reference implementation. The web app's leaderboard (M6-07) will rank in the browser,
-with a test that the two agree.
+This is the reference implementation. The web app's leaderboard (M6-07, `asclepius.web.leaderboard`)
+ranks in the browser from each row's criteria (`asclepius/web/topsis.js`), and a test checks the two
+agree.
 """
 
 from __future__ import annotations
