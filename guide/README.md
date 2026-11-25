@@ -156,7 +156,7 @@ controls".
 
 ### Set up the language model
 
-Open **Settings: the LLM that writes hypotheses** at the top of the page. Until it is set up it
+Open **Settings: the LLM that writes hypotheses**, last in the contents on the left. Until it is set up it
 shows a red "No LLM is configured" message; that is expected.
 
 ![The settings panel on a new install](images/02-settings.png)
@@ -198,7 +198,7 @@ to test, not recommendations. **Export hypotheses (HTML)** saves them with the r
 
 ### DUTCH reports (PDF)
 
-The app links to the **extractor page** ("Open the extractor page" at the top). Drop DUTCH report
+The app links to the **extractor page** ("Open the extractor page", under **Lab reports**). Drop DUTCH report
 PDFs onto it. It reads them inside the browser tab; the PDFs are never uploaded, and the page works
 with the internet switched off.
 

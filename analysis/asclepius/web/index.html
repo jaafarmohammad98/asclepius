@@ -1848,8 +1848,12 @@ function showContents() {
   }
 }
 
-function markCurrent(section) {
-  for (const [a, s] of CONTENTS) { if (s === section) a.setAttribute("aria-current", "true"); else a.removeAttribute("aria-current"); }
+/** Mark the section in view: the last shown one whose top has passed a line a third down the window. */
+function markCurrent() {
+  const line = window.innerHeight * 0.35;
+  let current = CONTENTS[0][1];
+  for (const [, s] of CONTENTS) if (!s.hidden && s.getBoundingClientRect().top <= line) current = s;
+  for (const [a, s] of CONTENTS) { if (s === current) a.setAttribute("aria-current", "true"); else a.removeAttribute("aria-current"); }
 }
 
 for (const [a, section] of CONTENTS) {
@@ -1859,13 +1863,14 @@ for (const [a, section] of CONTENTS) {
     if (details) details.open = true;
   });
 }
-const watch = new MutationObserver(showContents);
+const watch = new MutationObserver(() => { showContents(); markCurrent(); });
 for (const [, section] of CONTENTS) watch.observe(section, { attributes: true, attributeFilter: ["hidden"] });
-const seen = new IntersectionObserver((entries) => entries.forEach((e) => { if (e.isIntersecting) markCurrent(e.target); }),
-  { rootMargin: "-30% 0px -60% 0px" });
-for (const [, section] of CONTENTS) seen.observe(section);
+let marking = 0;
+for (const event of ["scroll", "resize"]) {
+  window.addEventListener(event, () => { cancelAnimationFrame(marking); marking = requestAnimationFrame(markCurrent); }, { passive: true });
+}
 showContents();
-markCurrent($("load"));
+markCurrent();
 
 showFactors();
 loadMap();
