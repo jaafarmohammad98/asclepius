@@ -46,6 +46,7 @@ try {
   check(beta.includes("libido") && beta.includes("raises blood pressure"), `betadrug's risks: ${beta}`);
   const gamma = rows[expected.default.indexOf("gammadrug")].text;
   check(gamma.includes("assumed"), `gammadrug's penalty is marked assumed: ${gamma}`);
+  check(gamma.includes("no US label") && !gamma.includes("none known"), `gammadrug's unknown label risks: ${gamma}`);
 
   const before = asked.length;
   for (const [key, value] of [["impact", "0"], ["coverage", "0"], ["bbb", "0"], ["readiness", "0"], ["safety", "100"]]) {

@@ -36,7 +36,6 @@ def test_the_leaderboard_gives_the_criteria_and_default_weights(engine, knowledg
         "bbb": 0.15,
         "readiness": 0.10,
     }
-    assert view["cost"] == ["safety"]
     assert set(rows(view)) == {"alphadrug", "betadrug", "gammadrug"}
 
 

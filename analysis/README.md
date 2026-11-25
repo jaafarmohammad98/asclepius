@@ -882,4 +882,4 @@ A run of 100 PSSD, 40 PFS and 100 controls takes about 7 seconds; the full
 r/PSSD export loads (3,153 authors) and runs in about 3. The logic is
 `asclepius.web.workspace.Workspace` (files, review, run), with the findings view in
 `asclepius.web.findings`, the exports in `asclepius.web.export`, the hypotheses in
-`asclepius.web.hypotheses`, the settings screen in `asclepius.web.llm_settings` the bottleneck map in `asclepius.web.graph` and the leaderboard in `asclepius.web.leaderboard`; `asclepius.web.server` only serves them.
+`asclepius.web.hypotheses`, the settings screen in `asclepius.web.llm_settings`, the bottleneck map in `asclepius.web.graph` and the leaderboard in `asclepius.web.leaderboard`; `asclepius.web.server` only serves them.

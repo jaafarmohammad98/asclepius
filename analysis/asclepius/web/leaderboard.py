@@ -23,7 +23,7 @@ import networkx as nx
 from hypothesis_engine.bottlenecks import Bottleneck
 from hypothesis_engine.drugs import DrugCache, DrugsError, read_drug_cache
 from hypothesis_engine.graph import FINDING, LITERATURE
-from hypothesis_engine.topsis import COST, CRITERIA, Row, Weights, rank
+from hypothesis_engine.topsis import Row, Weights, rank
 
 from asclepius.web.graph import BUILDING, FAILED, READY, KnowledgeGraph
 
@@ -110,8 +110,6 @@ def leaderboard_view(path: Path, knowledge: KnowledgeGraph) -> dict[str, Any]:
     return {
         "state": READY,
         "message": message,
-        "criteria": list(CRITERIA),
-        "cost": sorted(COST),
         "weights": asdict(Weights()),
         "rows": [_row(r, cache, graph) for r in ranking.ranked],
         "known_causes": [

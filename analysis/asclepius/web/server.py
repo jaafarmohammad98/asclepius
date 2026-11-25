@@ -59,7 +59,7 @@ from asclepius.web.llm_settings import SettingsError
 from asclepius.web.workspace import ROLES, LoadError, RunError, Workspace
 
 PAGE = Path(__file__).parent / "index.html"
-VENDOR = {  # the page's scripts
+SCRIPTS = {  # the page's scripts
     "/vendor/cytoscape.min.js": Path(__file__).parent / "vendor" / "cytoscape.min.js",
     "/topsis.js": Path(__file__).parent / "topsis.js",
 }
@@ -135,8 +135,8 @@ class Handler(BaseHTTPRequestHandler):
             self._json(HTTPStatus.OK, leaderboard_view(self.server.engine.drugs, self.server.knowledge))
         elif path == "/api/graph/edge":
             self._edge(parse_qs(urlsplit(self.path).query))
-        elif path in VENDOR:
-            self._send(HTTPStatus.OK, VENDOR[path].read_bytes(), "text/javascript; charset=utf-8")
+        elif path in SCRIPTS:
+            self._send(HTTPStatus.OK, SCRIPTS[path].read_bytes(), "text/javascript; charset=utf-8")
         elif path in EXPORTS:
             self._export(path)
         elif path == "/extractor":  # the page's file paths are relative to the folder

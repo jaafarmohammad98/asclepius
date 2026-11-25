@@ -327,7 +327,10 @@
     <p class="muted">Approved drugs that act on the top bottleneck targets of the map above, ranked by TOPSIS on
       five criteria. Every one is a candidate for study, not a treatment: a rank says which drugs might be worth
       studying, never that a drug helps, and each row lists the risks known of it. A value marked assumed was
-      unknown, and the worst seen stands in for it. The drugs that cause PSSD, PFS and PAS are never ranked.</p>
+      unknown, and the worst seen stands in for it. The score is TOPSIS closeness (0 to 1) among these drugs
+      alone, under the weights below: it orders them, it measures no benefit. Targets are scored with the
+      default bottleneck weights, not the map's sliders, and the drugs are those fetched for the top targets
+      when the drug data was fetched. The drugs that cause PSSD, PFS and PAS are never ranked.</p>
     <p id="leaderboard-status" class="muted" aria-live="polite">Loading the drug data…</p>
     <div id="leaderboard-error" class="error" role="alert" hidden></div>
     <div id="leaderboard-body" hidden>
@@ -372,7 +375,8 @@
       <div id="leaderboard-table"></div>
       <div id="leaderboard-panel" aria-live="polite" hidden></div>
       <h3>Known causes, excluded</h3>
-      <p class="muted">Said to cause PSSD, PFS or PAS, and so never ranked.</p>
+      <p class="muted">SSRIs, SNRIs, finasteride, dutasteride and isotretinoin are said to cause PSSD, PFS or
+        PAS, and are never ranked. Those among the drugs fetched:</p>
       <ul id="known-causes"></ul>
     </div>
     <p id="leaderboard-disclaimer" class="disclaimer">Computational research hypotheses, not medical advice.
@@ -1165,6 +1169,8 @@ const MAP = { view: null, weights: null, ranked: [], shown: TOP_ROWS, cy: null, 
 const LABELLED = 15; // the top terms named on the network; every term is named on hover and in the table
 const KIND_NAMES = { gene: "gene", hormone: "hormone or neurosteroid", receptor: "receptor", symptom: "symptom" };
 
+function byName(a, b) { return a.name < b.name ? -1 : a.name > b.name ? 1 : 0; }
+
 function weightTotal(w) { return w.overlap + w.cascade + w.betweenness; }
 
 function fixed(x, digits) { return x === null || x === undefined ? "–" : x.toFixed(digits); }
@@ -1182,7 +1188,7 @@ function rescore(view, weights) {
     .map((t) => ({ ...t, score: total ? (weights.overlap * t.overlap / view.syndromes.length
       + weights.cascade * scaled(t.cascade, topCascade)
       + weights.betweenness * scaled(t.betweenness, topBetweenness)) / total : 0 }))
-    .sort((a, b) => b.score - a.score || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+    .sort((a, b) => b.score - a.score || byName(a, b));
 }
 
 /** Fetch the map, again each second while the graph is built or a run's findings are added. A later
@@ -1388,7 +1394,7 @@ function drawNetwork() {
 }
 
 /** Show the link a → b and its passages in `panel` (the map's, or the leaderboard's). */
-async function openEdge(a, b, panel = $("edge-panel")) {
+async function openEdge(a, b, panel = $("edge-panel"), headingId = "edge-heading") {
   panel.hidden = false;
   panel.replaceChildren(el("p", "Reading the passages…", { class: "muted" }));
   let edge;
@@ -1400,7 +1406,7 @@ async function openEdge(a, b, panel = $("edge-panel")) {
   }
   const syndrome = (MAP.view ? MAP.view.links : []).find((l) => l.from === edge.a);
   const heading = el("h3", `${syndrome ? syndrome.syndrome : edge.a} – ${edge.b}: ${edge.label}`,
-    panel.id === "edge-panel" ? { id: "edge-heading" } : {});
+    headingId ? { id: headingId } : {});
   const parts = [heading];
   if (edge.kind === "co-mention") parts.push(el("p", "Mentioned together, which says nothing about cause.", { class: "muted" }));
   if (edge.findings.length) {
@@ -1433,13 +1439,22 @@ async function openEdge(a, b, panel = $("edge-panel")) {
 const LB = { view: null, weights: null, ranked: [], sort: "rank", open: new Set(), timer: null, asked: 0 };
 const SORTS = { // each a comparison; ties go by TOPSIS rank
   rank: () => 0,
-  name: (a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0),
+  name: byName,
   impact: (a, b) => b.criteria.impact - a.criteria.impact,
   coverage: (a, b) => b.criteria.coverage - a.criteria.coverage,
   safety: (a, b) => a.criteria.safety - b.criteria.safety, // a cost: the fewest risks first
   bbb: (a, b) => b.criteria.bbb - a.criteria.bbb,
   readiness: (a, b) => b.criteria.readiness - a.criteria.readiness,
 };
+
+// Each unknown `topsis.Row.assumed` names: the criterion its stand-in is in, and what stands in.
+const ASSUMED = {
+  "safety penalty": { criterion: "safety", stands: "the worst seen" },
+  withdrawal: { criterion: "safety", stands: "a withdrawal" },
+  "CNS MPO": { criterion: "bbb", stands: "the worst seen" },
+  generic: { criterion: "readiness", stands: "none marketed" },
+};
+const assumedIn = (r, criterion) => r.assumed.some((a) => ASSUMED[a].criterion === criterion);
 
 /** Fetch the leaderboard, again each second while the knowledge graph is built. A later call replaces an
  * earlier one still waiting. */
@@ -1538,12 +1553,12 @@ function showLeaderboard() {
     tr.append(drug, el("td", fixed(r.score, 3)), el("td", fixed(r.criteria.impact, 2)));
     const covered = [...new Set(r.targets.flatMap((t) => t.syndromes))].sort();
     tr.append(el("td", covered.length ? covered.join(", ") : "none"));
-    tr.append(assumedCell(String(r.criteria.safety), r.assumed.includes("safety penalty") || r.assumed.includes("withdrawal")));
-    const mpo = assumedCell(fixed(r.criteria.bbb, 1), r.assumed.includes("CNS MPO"));
+    tr.append(assumedCell(String(r.criteria.safety), assumedIn(r, "safety")));
+    const mpo = assumedCell(fixed(r.criteria.bbb, 1), assumedIn(r, "bbb"));
     mpo.title = r.bbb_note;
-    if (!r.assumed.includes("CNS MPO")) mpo.append(el("span", "estimate", { class: "sub" }));
-    tr.append(mpo, assumedCell(fixed(r.criteria.readiness, 2), r.assumed.includes("generic")));
-    tr.append(el("td", r.risks.length ? r.risks.join("; ") : "none known", { class: "wrap" }));
+    if (!assumedIn(r, "bbb")) mpo.append(el("span", "estimate", { class: "sub" }));
+    tr.append(mpo, assumedCell(fixed(r.criteria.readiness, 2), assumedIn(r, "readiness")));
+    tr.append(risksCell(r));
     const toggle = el("button", LB.open.has(r.name) ? "Hide" : "Details", { type: "button", class: "details", "aria-expanded": String(LB.open.has(r.name)) });
     toggle.addEventListener("click", () => {
       if (LB.open.has(r.name)) LB.open.delete(r.name); else LB.open.add(r.name);
@@ -1554,6 +1569,14 @@ function showLeaderboard() {
   }
   $("leaderboard-table").replaceChildren(wrap);
   $("leaderboard-count").textContent = `${rows.length} of ${LB.ranked.length} drugs shown`;
+}
+
+/** Its known risks; with no label read, that they are unknown, never that there are none. */
+function risksCell(r) {
+  const unread = r.unchecked ? "label unchecked: openFDA could not answer" : r.label_url ? null : "no US label: label risks unknown";
+  const cell = el("td", r.risks.length ? r.risks.join("; ") : unread ? "" : "none known", { class: "wrap" });
+  if (unread) cell.append(el("span", unread, { class: r.risks.length ? "sub assumed" : "assumed" }));
+  return cell;
 }
 
 /** A source of a listed risk as a link: a PMID to PubMed, a DOI to doi.org, a web address as it is. */
@@ -1576,7 +1599,7 @@ function detailRow(r, columns) {
     if (!t.links.length) item.append(el("span", "No syndrome link to open.", { class: "muted" }));
     for (const link of t.links) {
       const open = el("button", `${link.syndrome}: ${link.label}`, { type: "button", "data-link": `${link.from}→${t.symbol}` });
-      open.addEventListener("click", () => openEdge(link.from, t.symbol, $("leaderboard-panel")));
+      open.addEventListener("click", () => openEdge(link.from, t.symbol, $("leaderboard-panel"), null));
       item.append(open);
     }
   }
@@ -1595,7 +1618,7 @@ function detailRow(r, columns) {
   const notes = [];
   if (r.unchecked) notes.push(`openFDA could not answer for it (${r.unchecked}).`);
   else if (!r.label_url) notes.push("openFDA holds no US label of it.");
-  for (const a of r.assumed) notes.push(`Its ${a} is unknown; ${a === "generic" ? "none marketed" : a === "withdrawal" ? "a withdrawal" : "the worst seen"} is assumed.`);
+  for (const a of r.assumed) notes.push(`Its ${a} is unknown; ${ASSUMED[a].stands} is assumed.`);
   notes.push(`CNS MPO: ${r.bbb_note}.`);
   cell.append(el("p", notes.join(" "), { class: "muted" }));
   return tr;
@@ -1608,7 +1631,7 @@ function showKnownCauses() {
     item.append(el("a", `ChEMBL ${d.chembl_id}`, { href: d.url, target: "_blank", rel: "noopener" }));
     return item;
   }));
-  if (!LB.view.known_causes.length) list.append(el("li", "None among the drugs fetched.", { class: "muted" }));
+  if (!LB.view.known_causes.length) list.append(el("li", "None of them acts on the targets fetched.", { class: "muted" }));
 }
 
 loadMap();
