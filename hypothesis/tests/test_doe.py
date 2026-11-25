@@ -13,12 +13,12 @@ from itertools import combinations
 
 import pytest
 
-from hypothesis_engine.doe import LETTERS, design
+from hypothesis_engine.doe import LETTERS, Design, design
 
 FIVE = ["A", "B", "C", "D", "E"]
 
 
-def _column(d, effect: str) -> list[int]:
+def _column(d: Design, effect: str) -> list[int]:
     """The ±1 column of a main effect or an interaction, the product of its factors' columns."""
     index = {name: i for i, name in enumerate(d.factors)}
     out = []
@@ -215,3 +215,31 @@ def test_at_least_one_replicate(replicates):
 def test_a_response_cannot_share_a_name_with_a_column():
     with pytest.raises(ValueError, match="name"):
         design(["A", "B"], seed=1).csv(responses=["A"])
+
+
+def test_a_shuffle_may_leave_the_standard_order_rather_than_bias_the_draw():
+    # 1 in 24 orders of 4 runs is the standard order; refusing it would make the draw non-uniform.
+    orders = {design(["A", "B"], seed=s).run_order for s in range(500)}
+    assert (1, 2, 3, 4) in orders
+    assert len(orders) == 24
+
+
+@pytest.mark.parametrize(
+    ("k", "label"),
+    [
+        (3, "Full factorial 2^3, 8 runs"),
+        (5, "Fractional factorial 2^(5-1), resolution V, 16 runs"),
+        (8, "Fractional factorial 2^(8-4), resolution IV, 16 runs"),
+    ],
+)
+def test_the_label_names_the_design_and_its_resolution(k, label):
+    assert design(list(LETTERS[:k]), seed=1).label == label
+
+
+def test_the_note_gives_the_resolution_in_roman_numerals():
+    assert design(list(LETTERS[:6]), seed=1).note.startswith("Resolution IV:")
+
+
+def test_the_safety_warning_says_candidate_for_study():
+    warning = design(["A", "B"], seed=1).csv().split("\n", 1)[0]
+    assert "candidate for study" in warning

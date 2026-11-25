@@ -452,12 +452,14 @@ from hypothesis_engine.doe import design
 
 d = design(["sildenafil", "TSPO", "C", "D", "E"], seed=42, replicates=2)
 d.matrix  # ±1 runs in standard order; d.run_order the run ids shuffled by d.seed
+d.label  # "Fractional factorial 2^(5-1), resolution V, 16 runs"
 d.resolution, d.generators, d.defining_relation  # 5, ("E=ABCD",), ("ABCDE",)
 d.confounded, d.note  # two-factor alias chains, and what can and cannot be separated
 d.csv(responses=["libido"])  # the CSV to download, under its safety warning
 ```
 
-- **2 to 4 factors** are the full factorial (4, 8 or 16 runs), nothing aliased; `resolution` None.
+- **2 to 4 factors** are the full factorial (4, 8 or 16 runs), nothing aliased; `resolution` is
+  None and `label` says "Full factorial".
 - **5 factors** are the 16-run resolution V half fraction, E = ABCD: main effects and two-factor
   interactions all separable.
 - **6 to 8 factors** are the 16-run resolution IV fractions (Box, Hunter and Hunter, table 6.22):
@@ -468,7 +470,10 @@ d.csv(responses=["libido"])  # the CSV to download, under its safety warning
 - **The CSV** lists the runs in run order: run id (its position in standard order), run order,
   seed, one column per factor (`present` or `absent`), the replicate count, and an empty column
   per response, one per replicate (`libido_1`, `libido_2`) when there is more than one. Its first
-  line warns that every combination needs a safety review before any wet-lab or animal use.
+  line warns that every combination needs a safety review before any wet-lab or animal use, a
+  `#` comment: read it with `pandas.read_csv(path, comment="#")`.
+- **The seed** reproduces its order only in Python (`random.Random`), so the web app builds
+  designs on the server, not in the browser.
 
 ## The LLM
 
