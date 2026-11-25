@@ -3,8 +3,10 @@ the bottleneck table, the design built on the server, each factor's known risks 
 
 import csv
 import io
+from dataclasses import replace
 
 import pytest
+from hypothesis_engine.drugs import read_drug_cache, write_drug_cache
 from knowledge_fixture import knowledge_engine, serving
 from test_web_server import api
 
@@ -65,36 +67,50 @@ def test_without_a_seed_one_is_drawn_and_recorded(engine, knowledge):
     assert {r["seed"] for r in runs(view)} == {str(view["seed"])}
 
 
-def test_each_factor_lists_its_known_risks_with_the_design_and_in_the_csv(engine, knowledge):
+def test_five_factors_take_the_16_run_resolution_v_half_fraction(engine, knowledge):
+    picked = [drug("alphadrug"), drug("betadrug"), drug("gammadrug"), target("BDNF"), target("serotonin")]
+    view = build(engine, knowledge, *picked, seed=42)
+    assert view["label"] == "Fractional factorial 2^(5-1), resolution V, 16 runs"
+    assert view["note"] == "Main effects and two-factor interactions are all separable."
+    lines = view["csv"].splitlines()
+    assert lines[0].startswith("# Safety warning")
+    assert "safety review before any wet-lab or animal use" in lines[0]
+    assert len(runs(view)) == 16
+    assert {r["seed"] for r in runs(view)} == {"42"}
+
+
+def test_each_factor_says_its_known_risks_with_the_design_and_in_the_csv(engine, knowledge):
     view = build(engine, knowledge, drug("alphadrug"), drug("betadrug"), drug("gammadrug"), target("BDNF"))
-    factors = {f["name"]: f for f in view["factors"]}
-    assert factors["alphadrug"]["risks"] == []
-    assert factors["betadrug"]["risks"] == ["libido", "raises blood pressure"]
-    # no US label: its label risks are unknown, never none
-    assert factors["gammadrug"]["risks"] == [
-        "withdrawn from a market after approval",
-        "no US label: label risks unknown",
-    ]
-    assert factors["BDNF"]["risks"] == []
-    assert "not a compound" in factors["BDNF"]["about"]
+    said = {f["name"]: f["risks_said"] for f in view["factors"]}
+    assert said == {
+        "alphadrug": "none on its US label or listed",  # what was checked, never a bare "none"
+        "betadrug": "libido; raises blood pressure",
+        # no US label: its label risks are unknown, never none
+        "gammadrug": "withdrawn from a market after approval; no US label: label risks unknown",
+        "BDNF": "none listed: a target, not a compound; the risks of the compound used to act on it apply",
+    }
+    assert {f["name"]: f["risks"] for f in view["factors"]}["betadrug"] == ["libido", "raises blood pressure"]
     assert all(f["label"] == "candidate for study" for f in view["factors"])
     lines = view["csv"].splitlines()
-    assert "safety review before any wet-lab or animal use" in lines[0]
-    assert "# Known risks of alphadrug: none known" in lines
-    assert "# Known risks of betadrug: libido; raises blood pressure" in lines
-    assert (
-        "# Known risks of gammadrug: withdrawn from a market after approval; no US label: label risks unknown"
-        in lines
+    for name, text in said.items():
+        assert f"# {name} (candidate for study), known risks: {text}" in lines
+
+
+def test_an_unchecked_label_is_said_as_unknown(engine, knowledge):
+    cache = read_drug_cache(engine.drugs)
+    alpha = next(d for d in cache.drugs if d.name == "alphadrug")
+    unchecked = replace(alpha, safety=replace(alpha.safety, unchecked="timeout"))
+    write_drug_cache(
+        engine.drugs, replace(cache, drugs=tuple(unchecked if d is alpha else d for d in cache.drugs))
     )
-    assert any(
-        line.startswith("# Known risks of BDNF: none listed, a target, not a compound") for line in lines
-    )
+    view = build(engine, knowledge, drug("alphadrug"), target("COMT"))
+    assert view["factors"][0]["risks_said"] == "label unchecked: openFDA could not answer"
 
 
 def test_a_hormone_can_be_a_factor(engine, knowledge):
     view = build(engine, knowledge, target("serotonin"), target("COMT"))
     (serotonin,) = [f for f in view["factors"] if f["name"] == "serotonin"]
-    assert serotonin["kind"] == "target" and "not a compound" in serotonin["about"]
+    assert serotonin["kind"] == "target" and "not a compound" in serotonin["risks_said"]
 
 
 def test_the_factors_are_named_in_the_order_picked(engine, knowledge):

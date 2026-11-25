@@ -405,7 +405,8 @@
       same run order again. Every combination is a candidate for study, untested, and needs a safety review
       before any wet-lab or animal use.</p>
     <h3>Factors</h3>
-    <p id="experiment-empty" class="muted">None ticked yet.</p>
+    <p id="experiment-empty" class="muted">None ticked yet: tick drugs in the leaderboard or terms in the ranked bottlenecks.</p>
+    <p id="experiment-dropped" class="muted" role="status" hidden></p>
     <ol id="experiment-factors"></ol>
     <div class="map-controls">
       <label>Replicates <input id="experiment-replicates" type="number" min="1" max="20" step="1" value="1"></label>
@@ -1257,6 +1258,7 @@ async function loadMap() {
   const sameRun = before && JSON.stringify(before.run) === JSON.stringify(view.run);
   if (sameRun && before.message === view.message) return;
   MAP.view = view;
+  dropUnlisted(TARGET, new Set(view.terms.filter((t) => t.kind !== "symptom").map((t) => t.name)));
   $("map-body").hidden = false;
   if (!before) setWeights(view.weights); // a researcher's weights stay as the run's findings come and go
   if (before && !sameRun) $("edge-panel").hidden = true; // its link may be gone
@@ -1519,6 +1521,7 @@ async function loadLeaderboard() {
   $("leaderboard-coverage").textContent = view.coverage || ""; // top targets whose drugs were not fetched
   $("leaderboard-coverage").hidden = !view.coverage;
   showKnownCauses();
+  dropUnlisted(DRUG, new Set(view.rows.map((r) => r.name)));
   rerank();
 }
 
@@ -1614,7 +1617,7 @@ function showLeaderboard() {
 
 /** Its known risks; with no label read, that they are unknown, never that there are none. */
 function risksCell(r) {
-  const unread = r.unchecked ? "label unchecked: openFDA could not answer" : r.label_url ? null : "no US label: label risks unknown";
+  const unread = r.unread; // the server's words, so the builder says it alike
   const cell = el("td", r.risks.length ? r.risks.join("; ") : unread ? "" : "none known", { class: "wrap" });
   if (unread) cell.append(el("span", unread, { class: r.risks.length ? "sub assumed" : "assumed" }));
   return cell;
@@ -1680,9 +1683,9 @@ function showKnownCauses() {
 // the same run order only in Python. Its label and note are shown as they come.
 
 const DRUG = "drug", TARGET = "target";
-const EX = { factors: [], view: null }; // the factors in the order ticked: {kind, name}
+const EXPERIMENT = { factors: [], view: null }; // the factors in the order ticked: {kind, name}
 const factorKey = (kind, name) => `${kind}:${name}`;
-const picked = (kind, name) => EX.factors.some((f) => f.kind === kind && f.name === name);
+const picked = (kind, name) => EXPERIMENT.factors.some((f) => f.kind === kind && f.name === name);
 
 /** A box that ticks a drug or term as a factor; ticking it never opens the row. */
 function factorBox(kind, name) {
@@ -1696,27 +1699,37 @@ function factorBox(kind, name) {
 }
 
 function setFactor(kind, name, on) {
-  EX.factors = EX.factors.filter((f) => !(f.kind === kind && f.name === name));
-  if (on) EX.factors.push({ kind, name });
+  EXPERIMENT.factors = EXPERIMENT.factors.filter((f) => !(f.kind === kind && f.name === name));
+  if (on) EXPERIMENT.factors.push({ kind, name });
   for (const box of document.querySelectorAll(`input[data-factor="${CSS.escape(factorKey(kind, name))}"]`)) box.checked = on;
-  EX.view = null; // the design shown was for other factors
+  EXPERIMENT.view = null; // the design shown was for other factors
+  $("experiment-dropped").hidden = true; // dropUnlisted says it again after
   $("experiment-design").hidden = true;
   showError("experiment-error", "");
   showFactors();
 }
 
+/** Untick the factors of a kind its table no longer lists (a run re-scored the graph, say), and say so. */
+function dropUnlisted(kind, listed) {
+  const gone = EXPERIMENT.factors.filter((f) => f.kind === kind && !listed.has(f.name)).map((f) => f.name);
+  if (!gone.length) return;
+  for (const name of gone) setFactor(kind, name, false);
+  const where = kind === DRUG ? "the leaderboard" : "the bottleneck table";
+  $("experiment-dropped").textContent = `${gone.join(", ")} ${gone.length === 1 ? "is" : "are"} no longer in ${where}, so ${gone.length === 1 ? "it was" : "they were"} removed from the factors.`;
+  $("experiment-dropped").hidden = false;
+}
+
 function showFactors() {
   const list = $("experiment-factors");
-  list.replaceChildren(...EX.factors.map((f) => {
+  list.replaceChildren(...EXPERIMENT.factors.map((f) => {
     const item = el("li", `${f.name} (${f.kind === DRUG ? "drug, from the leaderboard" : "target, from the bottleneck table"})`);
     const remove = el("button", "Remove", { type: "button", "aria-label": `Remove ${f.name}` });
     remove.addEventListener("click", () => setFactor(f.kind, f.name, false));
     item.append(remove);
     return item;
   }));
-  const n = EX.factors.length;
+  const n = EXPERIMENT.factors.length;
   $("experiment-empty").hidden = n > 0;
-  $("experiment-empty").textContent = "None ticked yet: tick drugs in the leaderboard or terms in the ranked bottlenecks.";
   $("experiment-build").disabled = n < 2;
   $("experiment-build").title = n < 2 ? "Tick at least 2 factors" : "";
 }
@@ -1725,7 +1738,7 @@ function experimentRequest() {
   const seed = $("experiment-seed").value.trim();
   const responses = $("experiment-responses").value.split(",").map((r) => r.trim()).filter(Boolean);
   return {
-    factors: EX.factors,
+    factors: EXPERIMENT.factors,
     replicates: Number($("experiment-replicates").value) || 1,
     responses: responses.length ? responses : ["response"],
     ...(seed === "" ? {} : { seed: Number(seed) }),
@@ -1734,7 +1747,7 @@ function experimentRequest() {
 
 $("experiment-build").addEventListener("click", async () => {
   showError("experiment-error", "");
-  const asked = JSON.stringify(EX.factors);
+  const asked = JSON.stringify(EXPERIMENT.factors);
   let view;
   try {
     view = await api("/api/experiment", { method: "POST", headers: { "Content-Type": "application/json" },
@@ -1743,19 +1756,13 @@ $("experiment-build").addEventListener("click", async () => {
     showError("experiment-error", error.message);
     return;
   }
-  if (asked !== JSON.stringify(EX.factors)) return; // the factors changed while it was built
-  EX.view = view;
+  if (asked !== JSON.stringify(EXPERIMENT.factors)) return; // the factors changed while it was built
+  EXPERIMENT.view = view;
   showDesign();
 });
 
-/** A factor's known risks as said beside the design: a drug's, or "none known"; a target, why it has none. */
-function riskText(f) {
-  if (f.about) return `none listed, ${f.about}`;
-  return f.risks.length ? f.risks.join("; ") : "none known";
-}
-
 function showDesign() {
-  const v = EX.view, box = $("experiment-design");
+  const v = EXPERIMENT.view, box = $("experiment-design");
   box.replaceChildren();
   box.append(el("h3", v.label, { id: "experiment-label" }));
   box.append(el("p", v.note, { id: "experiment-note" }));
@@ -1765,7 +1772,7 @@ function showDesign() {
   const risks = box.appendChild(el("ul", null, { id: "experiment-risks" }));
   for (const f of v.factors) {
     const item = risks.appendChild(el("li", null, { "data-factor": factorKey(f.kind, f.name) }));
-    item.append(el("strong", `${f.letter}: ${f.name}`), " ", el("span", f.label, { class: "label" }), ` ${riskText(f)}`);
+    item.append(el("strong", `${f.letter}: ${f.name}`), " ", el("span", f.label, { class: "label" }), ` known risks: ${f.risks_said}`);
   }
   const head = ["Run order", "Run id", ...v.factors.map((f) => `${f.letter}: ${f.name}`)];
   const wrap = table(head, v.runs.map((r) => [String(r.run_order), String(r.run_id), ...r.levels.map((l) => (l > 0 ? "present" : "absent"))]));

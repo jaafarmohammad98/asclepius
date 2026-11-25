@@ -8,7 +8,9 @@ they are.
 
 Each factor is a candidate for study with its known risks listed (rule 6), beside the design and in
 its CSV. They are looked up here, never taken from the request: a drug's are the leaderboard's (its
-label unread said as unknown, never as none); a target has none of its own, and says so. A drug that
+label unread said as unknown, never as none, and none found said as what was checked); a target has
+none of its own, and says so. The server writes each factor's risks as one sentence (`risks_said`)
+that the page and the CSV show as they are. A drug that
 causes the syndromes is never ranked, so it cannot be a factor; nor can a symptom.
 """
 
@@ -17,7 +19,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from hypothesis_engine.doe import MAX_FACTORS, MIN_FACTORS, design
+from hypothesis_engine.doe import LETTERS, MAX_FACTORS, MIN_FACTORS, SEED_LIMIT, design
 from hypothesis_engine.hypotheses import CANDIDATE
 
 from asclepius.web.graph import BUILDING, FAILED, READY, KnowledgeGraph
@@ -27,10 +29,8 @@ DRUG, TARGET = "drug", "target"
 SYMPTOM = "symptom"
 MAX_REPLICATES = 20
 MAX_RESPONSES = 10
-SEEDS = 2**31  # a seed is 0 to SEEDS - 1, as `design` draws them
-TARGET_ABOUT = "a target, not a compound: the risks of the compound used to act on it apply"
-UNCHECKED = "label unchecked: openFDA could not answer"
-NO_LABEL = "no US label: label risks unknown"
+NONE_FOUND = "none on its US label or listed"  # what was checked: never a bare "none"
+TARGET_RISKS = "none listed: a target, not a compound; the risks of the compound used to act on it apply"
 
 
 class ExperimentError(ValueError):
@@ -52,17 +52,16 @@ def experiment_view(request: object, drugs: Path, knowledge: KnowledgeGraph) -> 
     resolved = [factors.resolve(f.get("kind"), f.get("name")) for f in picked]
     try:
         built = design([f["name"] for f in resolved], seed=seed, replicates=replicates)
-        text = built.csv(responses, risks={f["name"]: _said(f) for f in resolved})
+        text = built.csv(responses, risks={f["name"]: f["risks_said"] for f in resolved})
     except ValueError as error:
         raise ExperimentError(str(error)) from error
-    letters = "ABCDEFGH"
     return {
         "label": built.label,
         "note": built.note,
         "seed": built.seed,
         "replicates": built.replicates,
         "responses": responses,
-        "factors": [{**f, "letter": letters[i]} for i, f in enumerate(resolved)],
+        "factors": [{**f, "letter": LETTERS[i]} for i, f in enumerate(resolved)],
         "runs": [
             {"run_id": run_id, "run_order": position, "levels": list(built.matrix[run_id - 1])}
             for position, run_id in enumerate(built.run_order, start=1)
@@ -72,15 +71,10 @@ def experiment_view(request: object, drugs: Path, knowledge: KnowledgeGraph) -> 
     }
 
 
-def _said(factor: dict[str, Any]) -> list[str]:
-    """A factor's risks as the CSV says them: a target's, that it has none listed, and why."""
-    return factor["risks"] if factor["about"] is None else [f"none listed, {factor['about']}"]
-
-
 def _settings(request: dict[str, Any]) -> tuple[int | None, int, list[str]]:
     seed = request.get("seed")
-    if seed is not None and (type(seed) is not int or not 0 <= seed < SEEDS):
-        raise ExperimentError(f"The seed must be a whole number from 0 to {SEEDS - 1}, or left out.")
+    if seed is not None and (type(seed) is not int or not 0 <= seed < SEED_LIMIT):
+        raise ExperimentError(f"The seed must be a whole number from 0 to {SEED_LIMIT - 1}, or left out.")
     replicates = request.get("replicates", 1)
     if type(replicates) is not int or not 1 <= replicates <= MAX_REPLICATES:
         raise ExperimentError(f"The replicate count must be a whole number from 1 to {MAX_REPLICATES}.")
@@ -122,12 +116,8 @@ class _Factors:
         row = next((r for r in board["rows"] if r["name"] == name), None)
         if row is None:
             raise ExperimentError(f"{name} is not on the leaderboard.")
-        risks = list(row["risks"])
-        if row["unchecked"]:
-            risks.append(UNCHECKED)
-        elif not row["label_url"]:
-            risks.append(NO_LABEL)
-        return {"kind": DRUG, "name": name, "label": CANDIDATE, "risks": risks, "about": None}
+        said = "; ".join([*row["risks"], *filter(None, [row["unread"]])]) or NONE_FOUND
+        return {"kind": DRUG, "name": name, "label": CANDIDATE, "risks": row["risks"], "risks_said": said}
 
     def _target(self, name: str) -> dict[str, Any]:
         current = self.knowledge.current()
@@ -140,4 +130,4 @@ class _Factors:
             raise ExperimentError(f"{name} is not a term of the bottleneck table.")
         if term.kind == SYMPTOM:
             raise ExperimentError(f"{name} is a symptom: measure it as a response, not a factor.")
-        return {"kind": TARGET, "name": name, "label": CANDIDATE, "risks": [], "about": TARGET_ABOUT}
+        return {"kind": TARGET, "name": name, "label": CANDIDATE, "risks": [], "risks_said": TARGET_RISKS}
