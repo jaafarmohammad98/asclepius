@@ -882,8 +882,26 @@ Each step's one-line statement is shown, and when the run finishes, its findings
      listed apart, never ranked. The section ends: computational research hypotheses, not
      medical advice.
 
+9. **Lab experiment builder** (milestone 6), below the leaderboard, designs a two-level
+   experiment over the drugs ticked in the leaderboard and the terms ticked in the ranked
+   bottlenecks (a symptom is a response, never a factor), each present or absent in a run.
+   **Build the design** asks the server (`asclepius.web.experiment`, `POST /api/experiment`),
+   which builds it with `hypothesis_engine.doe`, since its seed gives the same run order only in
+   Python: 2 to 4 factors the full factorial, 5 the 16-run resolution V half fraction, 6 to 8 a
+   16-run resolution IV fraction whose confounded two-factor interactions the note names; more
+   than 8, and a drug that causes the syndromes, are refused. Set the replicates, the response
+   columns and, to repeat an order, the seed.
+   - **Risks.** Each factor is a candidate for study with its known risks, beside the design and
+     as a `#` line in the CSV, both in the server's one sentence (`risks_said`): a drug's from the
+     leaderboard (an unread label said as unknown, never as none; none found, "none on its US
+     label or listed"); a target has none of its own, and says so.
+   - **Factors dropped.** A ticked factor its table no longer lists (a run re-scored the graph,
+     say) is unticked, and a line says so.
+   - **CSV.** **Download the CSV** saves the server's CSV as it is: the safety warning, each
+     factor's risks, then the runs in run order with their seed and empty response columns.
+
 A run of 100 PSSD, 40 PFS and 100 controls takes about 7 seconds; the full
 r/PSSD export loads (3,153 authors) and runs in about 3. The logic is
 `asclepius.web.workspace.Workspace` (files, review, run), with the findings view in
 `asclepius.web.findings`, the exports in `asclepius.web.export`, the hypotheses in
-`asclepius.web.hypotheses`, the settings screen in `asclepius.web.llm_settings`, the bottleneck map in `asclepius.web.graph` and the leaderboard in `asclepius.web.leaderboard`; `asclepius.web.server` only serves them.
+`asclepius.web.hypotheses`, the settings screen in `asclepius.web.llm_settings`, the bottleneck map in `asclepius.web.graph`, the leaderboard in `asclepius.web.leaderboard` and the experiment builder in `asclepius.web.experiment`; `asclepius.web.server` only serves them.

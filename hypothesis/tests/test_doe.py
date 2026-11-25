@@ -13,7 +13,7 @@ from itertools import combinations
 
 import pytest
 
-from hypothesis_engine.doe import LETTERS, Design, design
+from hypothesis_engine.doe import LETTERS, SEED_LIMIT, Design, design
 
 FIVE = ["A", "B", "C", "D", "E"]
 
@@ -243,3 +243,35 @@ def test_the_note_gives_the_resolution_in_roman_numerals():
 def test_the_safety_warning_says_candidate_for_study():
     warning = design(["A", "B"], seed=1).csv().split("\n", 1)[0]
     assert "candidate for study" in warning
+
+
+def test_the_csv_lists_each_factor_as_a_candidate_with_its_known_risks():
+    d = design(["betadrug", "COMT"], seed=3)
+    text = d.csv(risks={"betadrug": "libido; raises blood pressure", "COMT": "none listed"})
+    lines = text.splitlines()
+    assert lines[0].startswith("# Safety warning")
+    assert lines[1] == "# betadrug (candidate for study), known risks: libido; raises blood pressure"
+    assert lines[2] == "# COMT (candidate for study), known risks: none listed"
+    assert lines[3].startswith("run_id,")
+    rows = list(csv.DictReader(io.StringIO("\n".join(lines[3:]))))
+    assert len(rows) == 4 and rows[0]["betadrug"] in ("present", "absent")
+
+
+def test_a_risk_cannot_break_out_of_its_comment_line():
+    d = design(["A", "B"], seed=3)
+    text = d.csv(risks={"A": "one\nrun_id,forged", "B": "none"})
+    assert "# A (candidate for study), known risks: one run_id,forged" in text.splitlines()
+
+
+def test_given_risks_must_say_something_for_every_factor_and_no_other():
+    d = design(["A", "B"], seed=3)
+    with pytest.raises(ValueError, match="B"):
+        d.csv(risks={"A": "none"})
+    with pytest.raises(ValueError, match="C"):
+        d.csv(risks={"A": "none", "B": "none", "C": "none"})
+    with pytest.raises(ValueError, match="B"):
+        d.csv(risks={"A": "none", "B": " "})
+
+
+def test_the_seed_limit_bounds_the_seeds_drawn():
+    assert 0 <= design(["A", "B"]).seed < SEED_LIMIT

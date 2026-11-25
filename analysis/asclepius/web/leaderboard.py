@@ -28,13 +28,15 @@ from typing import Any
 
 import networkx as nx
 from hypothesis_engine.bottlenecks import Bottleneck
-from hypothesis_engine.drugs import TOP_TARGETS, DrugCache, DrugsError, read_drug_cache, top_targets
+from hypothesis_engine.drugs import TOP_TARGETS, Drug, DrugCache, DrugsError, read_drug_cache, top_targets
 from hypothesis_engine.graph import FINDING, LITERATURE
 from hypothesis_engine.topsis import Row, Weights, rank
 
 from asclepius.web.graph import BUILDING, FAILED, READY, KnowledgeGraph
 
 MISSING = "missing"
+UNCHECKED = "label unchecked: openFDA could not answer"
+NO_LABEL = "no US label: label risks unknown"
 CACHED_SCORES = (
     "The knowledge graph could not be built, so each target's score is the one it had when the drug data "
     "was fetched, and its passages cannot be opened."
@@ -112,6 +114,14 @@ def _links(graph: nx.DiGraph | None, symbol: str) -> list[dict[str, str]]:
     ]
 
 
+def _unread(drug: Drug) -> str | None:
+    """Why its label risks are unknown, when they are: never to be said as none."""
+    safety = drug.safety
+    if safety and safety.unchecked:
+        return UNCHECKED
+    return None if safety and safety.label else NO_LABEL
+
+
 def _row(row: Row, cache: DrugCache, graph: nx.DiGraph | None) -> dict[str, Any]:
     drug, safety = row.drug, row.drug.safety
     targets = {t.symbol: t for t in cache.targets}
@@ -130,6 +140,7 @@ def _row(row: Row, cache: DrugCache, graph: nx.DiGraph | None) -> dict[str, Any]
         "mentions": [asdict(m) for m in safety.label.mentions] if safety and safety.label else [],
         "listed_risks": [asdict(r) for r in safety.risks] if safety else [],
         "unchecked": safety.unchecked if safety else None,
+        "unread": _unread(drug),
         "targets": [
             {
                 "symbol": a.target,

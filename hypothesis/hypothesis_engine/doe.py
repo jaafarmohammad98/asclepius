@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import csv
 import io
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from itertools import combinations, product
 from math import prod
@@ -35,6 +35,7 @@ from hypothesis_engine.hypotheses import CANDIDATE
 
 MIN_FACTORS = 2
 MAX_FACTORS = 8
+SEED_LIMIT = 2**31  # a seed is 0 to SEED_LIMIT - 1
 LETTERS = "ABCDEFGH"
 LEVELS = {1: "present", -1: "absent"}
 ROMAN = {4: "IV", 5: "V"}
@@ -55,6 +56,11 @@ GENERATORS: dict[int, tuple[tuple[str, str], ...]] = {
 def _word_product(a: str, b: str) -> str:
     """The product of two effect words: letters in both cancel, since every column squares to 1."""
     return "".join(sorted(set(a) ^ set(b)))
+
+
+def _one_line(text: str) -> str:
+    """The text on one line, so it stays inside its comment."""
+    return " ".join(text.split())
 
 
 @dataclass(frozen=True)
@@ -134,10 +140,14 @@ class Design:
             f"but two-factor interactions are confounded with each other: {chains}."
         )
 
-    def csv(self, responses: Sequence[str] = ("response",)) -> str:
+    def csv(self, responses: Sequence[str] = ("response",), risks: Mapping[str, str] | None = None) -> str:
         """The runs in run order as CSV under the safety warning (D4): run id, run order, seed, one
         column per factor (present or absent), the replicate count, and an empty column for each
-        response, one per replicate (`libido_1`, `libido_2`…) when there is more than one."""
+        response, one per replicate (`libido_1`, `libido_2`…) when there is more than one.
+
+        `risks` says each factor's known risks (rule 6), written under the warning as a `#` line per
+        factor labelled a candidate for study; it must say something for every factor and name no
+        other. What it says (unknown, say, rather than none) is the caller's to choose."""
         if self.replicates == 1:
             measured = list(responses)
         else:
@@ -147,6 +157,15 @@ class Design:
             raise ValueError("Each column needs its own name: " + ", ".join(header))
         out = io.StringIO()
         out.write(SAFETY_WARNING + "\n")
+        if risks is not None:
+            said = {f: _one_line(r) for f, r in risks.items()}
+            odd = sorted((set(said) ^ set(self.factors)) | {f for f in self.factors if not said.get(f)})
+            if odd:
+                raise ValueError(
+                    "The risks must say something for every factor and no other: " + ", ".join(odd)
+                )
+            for factor in self.factors:
+                out.write(f"# {_one_line(factor)} ({CANDIDATE}), known risks: {said[factor]}\n")
         writer = csv.writer(out, lineterminator="\n")
         writer.writerow(header)
         for position, run_id in enumerate(self.run_order, start=1):
@@ -174,7 +193,7 @@ def design(factors: Sequence[str], *, seed: int | None = None, replicates: int =
             run[letter] = prod(run[b] for b in word)
         matrix.append(tuple(run[letter] for letter in LETTERS[:k]))
     if seed is None:
-        seed = randbelow(2**31)
+        seed = randbelow(SEED_LIMIT)
     order = list(range(1, len(matrix) + 1))
     Random(seed).shuffle(order)
     return Design(

@@ -179,3 +179,9 @@ def test_the_leaderboard_says_which_top_targets_have_no_drugs_fetched(tmp_path):
     view = leaderboard_view(engine.drugs, built)
     assert view["uncovered"] == {"stale": ["BDNF"], "raised": []}
     assert view["coverage"].startswith("BDNF is now among the top 1 target")
+
+
+def test_a_row_says_why_its_label_risks_are_unknown_when_they_are(engine, knowledge):
+    view = rows(leaderboard_view(engine.drugs, knowledge))
+    assert view["gammadrug"]["unread"] == "no US label: label risks unknown"
+    assert view["alphadrug"]["unread"] is None and view["betadrug"]["unread"] is None
