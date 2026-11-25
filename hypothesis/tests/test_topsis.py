@@ -7,12 +7,16 @@ ideal best over its distances to the ideal best and the ideal worst.
 
 from __future__ import annotations
 
+from typing import get_args
+
 import pytest
+from test_drugs import _update
+from test_drugs import library as library  # noqa: F401  (the fixture, by its name "library")
 
 from hypothesis_engine.drugs import Action, Drug, DrugCache, Target
 from hypothesis_engine.hypotheses import CANDIDATE
-from hypothesis_engine.safety import Label, Mention, Risk, Safety
-from hypothesis_engine.topsis import Weights, cns_mpo, rank
+from hypothesis_engine.safety import Concern, Label, Mention, Risk, Safety
+from hypothesis_engine.topsis import WITHDRAWN, Weights, cns_mpo, rank
 
 
 def _properties(**given: float) -> dict[str, float | None]:
@@ -30,10 +34,12 @@ def test_cns_mpo_of_chembl_properties_scores_four_of_six_terms_rescaled_to_six()
 
 
 def test_cns_mpo_tpsa_is_a_hump_low_and_high_both_score_zero():
-    assert cns_mpo(_properties(psa=15)) == (0.0, 1)
-    assert cns_mpo(_properties(psa=130)) == (0.0, 1)
-    assert cns_mpo(_properties(psa=40)) == (6.0, 1)
-    assert cns_mpo(_properties(psa=90)) == (6.0, 1)
+    # ClogP 2, MW 300, HBD 0 score 1 each: 3 of 4 with TPSA 0 (4.5 of 6), 4 of 4 with TPSA 1.
+    others = dict(alogp=2, mw_freebase=300, hbd=0)
+    assert cns_mpo(_properties(psa=15, **others)) == (4.5, 4)
+    assert cns_mpo(_properties(psa=130, **others)) == (4.5, 4)
+    assert cns_mpo(_properties(psa=40, **others)) == (6.0, 4)
+    assert cns_mpo(_properties(psa=90, **others)) == (6.0, 4)
 
 
 def test_cns_mpo_uses_the_chemaxon_values_when_chembl_gives_them():
@@ -48,6 +54,11 @@ def test_cns_mpo_is_unknown_without_any_property():
     assert cns_mpo(_properties()) is None
 
 
+def test_cns_mpo_is_unknown_from_fewer_than_four_terms_not_scaled_up_from_one():
+    assert cns_mpo(_properties(psa=40)) is None
+    assert cns_mpo(_properties(alogp=2, mw_freebase=300, psa=50)) is None
+
+
 TARGETS = (
     Target("SRD5A1", 0.8, ("PAS", "PFS", "PSSD"), (), "chembl"),
     Target("HTR2A", 0.4, ("PSSD",), (), "chembl"),
@@ -59,8 +70,8 @@ POOR_MPO = {"alogp": 5, "mw_freebase": 500, "psa": 30, "hbd": 2}  # 1.5
 
 
 def _safety(concerns: int = 0, generic: bool | None = True, label: bool = True, risks=()) -> Safety:
-    names = ("sexual dysfunction", "libido", "anhedonia", "emotional blunting")[:concerns]
-    mentions = tuple(Mention(c, "adverse_reactions", f"...{c}...") for c in names)  # type: ignore[arg-type]
+    names: tuple[Concern, ...] = get_args(Concern)[:concerns]
+    mentions = tuple(Mention(c, "adverse_reactions", f"...{c}...") for c in names)
     return Safety(
         Label("set", "20260101", "NDA000001", mentions) if label else None,
         tuple(risks),
@@ -228,3 +239,43 @@ def test_with_nothing_to_rank_the_ranking_is_empty():
 def test_a_drug_ranked_alone_scores_one_half_for_it_is_both_best_and_worst():
     (row,) = rank(_cache(ALPHA)).ranked
     assert row.score == 0.5
+
+
+def test_an_unknown_withdrawal_counts_as_one_and_is_marked():
+    unknown = _drug("delta", ("TSPO",), FAIR_MPO, _safety(), withdrawn=None)
+    (row,) = rank(_cache(unknown)).ranked
+    assert row.criteria.safety == 1
+    assert row.assumed == ("withdrawal",)
+    assert row.risks == ()  # not known to be withdrawn
+
+
+def test_with_no_penalty_known_the_worst_possible_stands_in():
+    no_label = _drug("delta", ("TSPO",), FAIR_MPO, _safety(label=False, risks=[Risk("nausea", "PMID:1")]))
+    (row,) = rank(_cache(no_label)).ranked
+    assert row.criteria.safety == 5  # all four concerns, and its listed risk
+
+
+def test_a_stand_in_penalty_is_never_below_the_drugs_own_listed_risks():
+    risks = [Risk("nausea", "PMID:1"), Risk("rash", "PMID:2"), Risk("seizures", "PMID:3")]
+    no_label = _drug("delta", ("TSPO",), FAIR_MPO, _safety(label=False, risks=risks))
+    rows = {r.drug.name: r for r in rank(_cache(ALPHA, no_label)).ranked}
+    assert rows["delta"].criteria.safety == 3  # its own three risks, above alpha's 2
+
+
+def test_the_cns_mpo_is_shown_as_an_estimate():
+    no_properties = _drug("delta", ("TSPO",), {}, _safety())
+    rows = {r.drug.name: r for r in rank(_cache(ALPHA, no_properties)).ranked}
+    assert rows["alpha"].bbb_note == "estimate, 4 of 6 terms"
+    assert rows["delta"].bbb_note == "unknown, worst seen assumed"
+
+
+def test_the_recorded_drugs_rank_with_known_causes_apart(library, tmp_path):
+    ranking = rank(_update(library, tmp_path / "drugs.json"))
+    ranked = {r.drug.name: r for r in ranking.ranked}
+    assert {"FINASTERIDE", "DUTASTERIDE", "PAROXETINE"} <= {d.name for d in ranking.known_causes}
+    assert not {d.name for d in ranking.known_causes} & ranked.keys()
+    assert WITHDRAWN in ranked["ALPIDEM"].risks
+    assert "safety penalty" in ranked["ALPIDEM"].assumed  # no US label
+    assert {r.label for r in ranking.ranked} == {CANDIDATE}
+    scores = [r.score for r in ranking.ranked]
+    assert scores == sorted(scores, reverse=True) and all(0 <= s <= 1 for s in scores)
