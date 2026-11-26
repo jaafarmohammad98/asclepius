@@ -37,7 +37,7 @@ from hypothesis_engine.search import DEFAULT_INDEX, Embedder, SearchIndexError
 from hypothesis_engine.vocabulary import DEFAULT_VOCABULARY
 
 from asclepius.run import PROVISIONAL
-from asclepius.web.export import STYLE
+from asclepius.web.style import head as page_head
 
 IDLE, RUNNING, FINISHED, FAILED = "idle", "running", "finished", "failed"
 BUILD_LIBRARY = (
@@ -279,14 +279,6 @@ def generation_record(
 
 # ---------------------------------------------------------------------------------- HTML report
 
-REPORT_STYLE = """
-.notice { border: 2px solid var(--warn); border-radius: 8px; padding: 10px 14px; font-weight: 600; }
-article { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 4px; }
-blockquote { margin: 4px 0 2px; padding: 2px 10px; border-left: 3px solid var(--accent); }
-mark { background: color-mix(in srgb, var(--accent) 25%, transparent); color: inherit; }
-.cite { font-size: .9em; } li { margin-bottom: 8px; } details { margin: 2px 0 4px; }
-"""
-
 
 def _e(value: object) -> str:
     return escape("" if value is None else str(value))
@@ -392,10 +384,8 @@ def report_html(view: Mapping[str, Any], analysis: Mapping[str, Any], exported: 
         )
     notice = f'<p class="notice">{_e(view["notice"])}</p>' if view.get("notice") else ""
     return (
-        '<!doctype html>\n<html lang="en"><head><meta charset="utf-8">'
-        '<meta name="viewport" content="width=device-width, initial-scale=1">'
-        f"<title>Asclepius hypotheses</title><style>{STYLE}{REPORT_STYLE}</style></head><body>"
-        f"{notice}<h1>Asclepius hypotheses</h1><span class='label'>{_e(PROVISIONAL)}</span>{head}"
+        page_head("Asclepius hypotheses")
+        + f"{notice}<h1>Asclepius hypotheses</h1><span class='label'>{_e(PROVISIONAL)}</span>{head}"
         '<p class="muted">Each hypothesis is built from group-level findings only. Every quote was found '
         "word for word in the paper it cites; unverified citations were removed. These are ideas to "
         "test, not conclusions.</p>"
