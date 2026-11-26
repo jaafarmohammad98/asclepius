@@ -851,7 +851,8 @@ Each step's one-line statement is shown, and when the run finishes, its findings
      passage (up to 50, then how many more) with its paper's title, journal and year and links to
      PubMed, the full text and the DOI, and a finding link's findings.
    - **Ranked bottlenecks.** Every term's score beside its raw metrics (the syndromes linking to
-     it, cascade, betweenness), the top 50 or all; a row picks its term on the network.
+     it, cascade, betweenness) and its evidence, its posterior mean in the evidence log, which
+     multiplies the score; the top 50 or all; a row picks its term on the network.
    - **Weights.** Three sliders, overlap, cascade and betweenness (45, 35, 20 by default, each
      counting as its share of their sum), re-score and re-rank in the page at once, by the same
      formula as `hypothesis_engine.bottlenecks`; a browser test checks both rank alike.
@@ -863,8 +864,9 @@ Each step's one-line statement is shown, and when the run finishes, its findings
    - **Criteria.** TOPSIS on five (`hypothesis_engine.topsis`): bottleneck impact, coverage of
      PSSD, PFS and PAS, safety (a cost: label concerns, listed risks, a withdrawal), the CNS MPO
      estimate and readiness. Each target's score and syndromes are the knowledge graph's as it is
-     now, so a run's finding links re-rank the drugs; without a graph, those of when the drugs
-     were fetched, and the section says so. An unknown is given the worst seen and marked
+     now, times its posterior mean in the evidence log, so a run's finding links and a logged
+     result re-rank the drugs; without a graph, those of when the drugs were fetched, and the
+     section says so. An unknown is given the worst seen and marked
      *assumed*.
    - **Weights.** Five sliders (30, 25, 20, 15, 10 by default, each its share of their sum)
      re-rank in the page at once, by TOPSIS in `asclepius/web/topsis.js`, with no request to the
@@ -877,7 +879,7 @@ Each step's one-line statement is shown, and when the run finishes, its findings
    - **Coverage.** The drugs are those fetched for the top targets of when the drug data was
      fetched. When a gene now among the top ones was never looked up, a line above the table
      names it: the library has changed since (run `asclepius-library drugs`), or this run's
-     findings raised it, and its drugs are not ranked.
+     findings or the evidence log raised it, and its drugs are not ranked.
    - **Known causes, excluded.** SSRIs, SNRIs, finasteride, dutasteride and isotretinoin are
      listed apart, never ranked. The section ends: computational research hypotheses, not
      medical advice.
@@ -900,8 +902,26 @@ Each step's one-line statement is shown, and when the run finishes, its findings
    - **CSV.** **Download the CSV** saves the server's CSV as it is: the safety warning, each
      factor's risks, then the runs in run order with their seed and empty response columns.
 
+10. **Evidence and hypothesis log** (milestone 6), below the experiment builder, treats each term
+    of the knowledge graph as a hypothesis with a Beta posterior (`asclepius.web.evidence_log`,
+    `GET /api/evidence`, over `hypothesis_engine.evidence_log`).
+    - **Terms.** Each with its papers, its prior (Beta(1, 1) and 0.25 per paper, at most 2), its
+      posterior and the results logged on it, each linking to its PubMed record or DOI. The terms
+      with results are listed, or all of them.
+    - **Log a result.** A term, supports or refutes, a study type and a PMID or DOI, or ticked as
+      an unpublished observation (`POST /api/evidence`). Each study type adds its pseudo-count
+      (RCT 4, cohort 2, case series 1, in vitro or animal 0.5, self-report 0.25), labelled
+      provisional, needing expert review. A result already logged (the same source, term and
+      direction) is refused. The map and the leaderboard are fetched again and re-rank.
+    - **Export and import.** **Export the log** saves its JSON file; **Import a log** merges
+      another researcher's (`POST /api/evidence/import`), dropping what the log has, and says
+      how many entries were new. Results on terms this library lacks are kept and listed apart.
+    - **Storage.** `evidence-log.json` in the data folder, never sent anywhere. A file that
+      cannot be read is never written over: the section says why, and logging and importing
+      wait until it is fixed or moved.
+
 A run of 100 PSSD, 40 PFS and 100 controls takes about 7 seconds; the full
 r/PSSD export loads (3,153 authors) and runs in about 3. The logic is
 `asclepius.web.workspace.Workspace` (files, review, run), with the findings view in
 `asclepius.web.findings`, the exports in `asclepius.web.export`, the hypotheses in
-`asclepius.web.hypotheses`, the settings screen in `asclepius.web.llm_settings`, the bottleneck map in `asclepius.web.graph`, the leaderboard in `asclepius.web.leaderboard` and the experiment builder in `asclepius.web.experiment`; `asclepius.web.server` only serves them.
+`asclepius.web.hypotheses`, the settings screen in `asclepius.web.llm_settings`, the bottleneck map in `asclepius.web.graph`, the leaderboard in `asclepius.web.leaderboard`, the experiment builder in `asclepius.web.experiment` and the evidence log in `asclepius.web.evidence_log`; `asclepius.web.server` only serves them.

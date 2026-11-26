@@ -46,8 +46,9 @@ def test_the_leaderboard_gives_the_criteria_and_default_weights(engine, knowledg
 
 def test_impact_and_coverage_come_from_the_app_s_graph_not_the_cache(engine, knowledge):
     alpha = rows(leaderboard_view(engine.drugs, knowledge))["alphadrug"]
-    # BDNF in the graph: two of three syndromes, the highest cascade and betweenness (the cache says 0.1)
-    assert alpha["criteria"]["impact"] == pytest.approx(0.45 * 2 / 3 + 0.35 + 0.20)
+    # BDNF in the graph: two of three syndromes, the highest cascade and betweenness (the cache says 0.1),
+    # times its posterior mean, its 3 papers alone with no result logged (M6-11)
+    assert alpha["criteria"]["impact"] == pytest.approx((0.45 * 2 / 3 + 0.35 + 0.20) * 1.75 / 2.75)
     assert alpha["criteria"]["coverage"] == 2  # PFS and PSSD; the cache says PAS
     assert alpha["criteria"]["bbb"] == pytest.approx(6.0)
     assert alpha["criteria"]["readiness"] == 1.0

@@ -1,5 +1,5 @@
 """The bottleneck map in Google Chrome (M6-04): drawn from the app alone, re-ranked by the weight
-sliders as the Python scores rank, and a clicked link showing its passages (`browser/bottleneck_map.mjs`);
+sliders as the Python scores rank (each times its posterior mean in the evidence log), and a clicked link showing its passages (`browser/bottleneck_map.mjs`);
 after a run, its solid finding line showing its findings (M6-04b, `browser/finding_link.mjs`).
 
 Skipped when node, the extractor's packages (`npm install` in `extractor`) or Chrome are absent.
@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytest
 from hypothesis_engine.bottlenecks import Weights, bottlenecks
+from hypothesis_engine.evidence_log import weighted
 from knowledge_fixture import serving
 from test_web_finding_links import run_example, settled
 
@@ -26,14 +27,13 @@ pytestmark = pytest.mark.skipif(
 
 def test_the_map_works_in_the_browser(tmp_path):
     with serving(tmp_path) as (server, url):
-        graph = server.knowledge.graph
-        ranked = bottlenecks(graph)
+        graph, log = server.knowledge.graph, server.knowledge.evidence.log()
+        ranked = weighted(bottlenecks(graph), graph, log)  # each score times its posterior mean (M6-11)
+        cascade_only = bottlenecks(graph, Weights(overlap=0, cascade=1, betweenness=0))
         expected = {
             "default": [b.name for b in ranked],
             "top_score": f"{ranked[0].score:.2f}",
-            "cascade_only": [
-                b.name for b in bottlenecks(graph, Weights(overlap=0, cascade=1, betweenness=0))
-            ],
+            "cascade_only": [b.name for b in weighted(cascade_only, graph, log)],
         }
         done = subprocess.run(
             ["node", str(SCRIPT), url, json.dumps(expected)], capture_output=True, text=True, timeout=120

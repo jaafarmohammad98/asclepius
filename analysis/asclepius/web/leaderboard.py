@@ -3,7 +3,8 @@ the top bottleneck targets, ranked by TOPSIS as candidates for study, never as t
 
 The drugs are the cache `asclepius-library drugs` wrote (`hypothesis_engine.drugs`); nothing is fetched
 here. Each target's bottleneck score and syndromes are the app's knowledge graph's as it is now, a run's
-finding links included (M6-04b), not those of when the drugs were fetched; so a run re-ranks the drugs.
+finding links included (M6-04b), not those of when the drugs were fetched, and each score is times the
+target's posterior mean in the evidence log (spec B4, M6-11); so a run or a logged result re-ranks the drugs.
 When the graph cannot be built, the cache's are used, and the message says so.
 
 `hypothesis_engine.topsis` gives each drug's five criteria, stand-ins for unknowns included; the page
@@ -15,7 +16,7 @@ causes are listed apart, never ranked.
 The drugs are only those fetched for the targets of the cache (the library's top genes when it was
 fetched). When a gene now among as many top genes was never looked up, the view says so (`uncovered`):
 either the library has changed since (`asclepius-library drugs` fetches its drugs), or a run's findings
-raised it, which that command cannot see; its drugs are then not ranked, and the page must not look
+or the evidence log raised it, which that command cannot see (agreed 2026-11-26); its drugs are then not ranked, and the page must not look
 complete. Agreed 2026-11-25.
 """
 
@@ -46,7 +47,7 @@ CACHED_SCORES = (
 @dataclass(frozen=True)
 class Uncovered:
     """The top genes no drugs were looked up for: those the library alone now puts at the top (the
-    drug data is stale) and those a run's findings raised there."""
+    drug data is stale) and those a run's findings or the evidence log raised there."""
 
     stale: tuple[str, ...]
     raised: tuple[str, ...]
@@ -63,8 +64,8 @@ class Uncovered:
             )
         if self.raised:
             said.append(
-                f"{self._among(self.raised)}, raised by this run's findings; {_its(self.raised)} drugs were "
-                "not fetched, so none of them are ranked."
+                f"{self._among(self.raised)}, raised by this run's findings or the evidence log; "
+                f"{_its(self.raised)} drugs were not fetched, so none of them are ranked."
             )
         return " ".join(said) or None
 
@@ -80,7 +81,8 @@ def _its(genes: Sequence[str]) -> str:
 
 def uncovered(cache: DrugCache, live: list[Bottleneck], library: list[Bottleneck]) -> Uncovered:
     """The genes among the top ones by `live` scores (as many as the cache looked up) that were never
-    looked up; each stale when the `library` scores alone put it there too, else raised by a run."""
+    looked up; each stale when the `library` scores alone (unweighted) put it there too, else raised
+    by a run or by logged evidence."""
     top = len(cache.targets) or TOP_TARGETS
     looked_up = {t.symbol for t in cache.targets}
     at_top = {b.name for b in top_targets(library, top)}

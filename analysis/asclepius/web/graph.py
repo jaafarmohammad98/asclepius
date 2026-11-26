@@ -10,7 +10,9 @@ load, run or clear drops them (`drop`), back to the library-only graph, kept in 
 
 The bottleneck map (M6-04) draws it: `map_view` is every term with its bottleneck score and raw
 metrics (`hypothesis_engine.bottlenecks`), each co-mention once and each syndrome link; the page
-re-scores the terms itself when a weight slider moves. `edge` is what is behind one link: the
+re-scores the terms itself when a weight slider moves. Each score is multiplied by the term's
+posterior mean in the evidence log (`evidence`, spec B4, M6-11), as are the scores `current` gives
+the leaderboard, so logging a result re-ranks both. `edge` is what is behind one link: the
 passages it was counted from, each with its paper and where to read it.
 """
 
@@ -23,6 +25,7 @@ from typing import Any
 import networkx as nx
 from hypothesis_engine.bottlenecks import Bottleneck, Weights, bottlenecks
 from hypothesis_engine.evidence import Finding
+from hypothesis_engine.evidence_log import weighted
 from hypothesis_engine.graph import (
     CO_MENTION,
     FINDING,
@@ -37,6 +40,7 @@ from hypothesis_engine.passages import split
 from hypothesis_engine.pipeline import Source
 from hypothesis_engine.vocabulary import Vocabulary, VocabularyError, load_vocabulary
 
+from asclepius.web.evidence_log import EvidenceStore
 from asclepius.web.hypotheses import BUILD_LIBRARY, Engine, links
 
 BUILDING, READY, FAILED = "building", "ready", "failed"
@@ -68,6 +72,7 @@ class KnowledgeGraph:
         self.version: int | None = None  # the library version it was built from
         self.vocabulary: Vocabulary | None = None
         self.run: Run | None = None  # whose findings are in `graph`
+        self.evidence = EvidenceStore(engine.evidence)  # weighs the scores (spec B4)
         self._library: tuple[nx.DiGraph, list[Bottleneck]] | None = None  # the graph without them
         self._lock = threading.Lock()  # `run`, `graph` and `scores` change together
         self._done = threading.Event()
@@ -141,12 +146,14 @@ class KnowledgeGraph:
             self.graph, self.scores = self._library
 
     def current(self) -> tuple[nx.DiGraph, list[Bottleneck], list[Bottleneck]] | None:
-        """As of one moment: the graph and its scores, a run's findings and all, and the scores of the
-        library's graph alone; None until built."""
+        """As of one moment: the graph and its scores, a run's findings and all, each times its
+        posterior mean in the evidence log (spec B4); and the scores of the library's graph alone,
+        unweighted. None until built."""
         with self._lock:
             if self.state != READY or self.graph is None or self._library is None:
                 return None
-            return self.graph, self.scores, self._library[1]
+            graph, scores, library = self.graph, self.scores, self._library[1]
+        return graph, weighted(scores, graph, self.evidence.log()), library
 
     def map_view(self) -> dict[str, Any]:
         """The bottleneck map's data once the graph is built; until then its state and why. `run` is
@@ -154,6 +161,7 @@ class KnowledgeGraph:
         with self._lock:
             graph, scores, run = self.graph, self.scores, self.run
             said = run and (run.running, run.updating, run.finding_links)  # as of one moment
+        log = self.evidence.log()
         shown = None
         if run and said:
             running, updating, count = said
@@ -174,13 +182,18 @@ class KnowledgeGraph:
                 links = f"{count} finding link{'' if count == 1 else 's'}"
                 message += f" With the findings of the run on dataset {shown['fingerprint']}: {links}."
         terms = {n for n, kind in graph.nodes(data="kind") if kind != SYNDROME}
+        evidence = {b.name: log.posterior(b.name, graph.nodes[b.name]["papers"]).mean for b in scores}
         return {
             "state": READY,
             "message": message,
             "run": shown,
             "weights": asdict(Weights()),
             "syndromes": list(SYNDROMES),
-            "terms": [asdict(b) | {"syndromes": list(b.syndromes), "overlap": b.overlap} for b in scores],
+            "terms": [
+                asdict(b)
+                | {"syndromes": list(b.syndromes), "overlap": b.overlap, "evidence": evidence[b.name]}
+                for b in weighted(scores, graph, log)
+            ],
             "co_mentions": [
                 {"a": a, "b": b, "papers": data["papers"], "label": data["label"]}
                 for a, b, data in graph.edges(data=True)

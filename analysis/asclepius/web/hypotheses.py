@@ -28,6 +28,7 @@ from hypothesis_engine.citations import quote_span
 from hypothesis_engine.drugs import DEFAULT_DRUGS
 from hypothesis_engine.embedding import DEFAULT_MODELS, LocalEmbedder, ModelMissing
 from hypothesis_engine.evidence import EvidenceBundle, FindingsError, read_findings
+from hypothesis_engine.evidence_log import LOG_PATH
 from hypothesis_engine.hypotheses import Failure, Hypothesis, export
 from hypothesis_engine.library import DEFAULT_LIBRARY, LibraryError
 from hypothesis_engine.llm import DEFAULT_SETTINGS, LLMNotConfigured, connect, load_settings
@@ -62,6 +63,7 @@ class Engine:
     settings: Path = DEFAULT_SETTINGS
     vocabulary: Path = DEFAULT_VOCABULARY  # the knowledge graph's terms (`asclepius.web.graph`)
     drugs: Path = DEFAULT_DRUGS  # the drug cache the leaderboard ranks (`asclepius.web.leaderboard`)
+    evidence: Path = LOG_PATH  # the evidence log that weighs the terms (`asclepius.web.evidence_log`)
     env: Mapping[str, str] = field(default_factory=lambda: os.environ)
     embedder: Callable[[Path], Embedder] = LocalEmbedder
     connect_llm: Connect = connect
