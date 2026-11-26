@@ -99,6 +99,8 @@ def test_unpublished_observations_are_kept_apart_unless_the_same_entry_comes_bac
         ("10.1016/J.X.2020.01.002", "doi:10.1016/j.x.2020.01.002"),
         ("doi:10.1016/j.x", "doi:10.1016/j.x"),
         ("https://doi.org/10.1016/j.x", "doi:10.1016/j.x"),
+        ("10.1016/j.x.", "doi:10.1016/j.x"),  # pasted from a sentence
+        ("(10.1016/j.x)", "doi:10.1016/j.x"),
     ],
 )
 def test_a_source_is_kept_in_one_form(given, kept):
@@ -110,6 +112,7 @@ def test_a_source_is_kept_in_one_form(given, kept):
     [
         ("supports", "rct", ""),  # B3: a PMID, a DOI or "unpublished observation"
         ("supports", "rct", "a blog post"),
+        ("supports", "rct", "PMID:0"),
         ("maybe", "rct", "PMID:1"),
         ("supports", "anecdote", "PMID:1"),
     ],
@@ -127,6 +130,7 @@ def test_an_entry_without_a_known_direction_study_type_or_source_is_refused(dire
         '{"version": 1, "entries": [{"id": "x"}]}',
         '{"version": 1, "entries": [{"id": "x", "node": "COMT", "direction": "maybe", "study_type": "rct", "source": "PMID:1"}]}',
         '{"version": 2, "entries": []}',
+        '{"version": 1, "entries": [{"id": "x", "node": "COMT", "direction": "supports", "study_type": 7, "source": "PMID:1"}]}',
     ],
 )
 def test_an_unreadable_import_is_refused(text):

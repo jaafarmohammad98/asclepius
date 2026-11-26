@@ -25,10 +25,12 @@ from __future__ import annotations
 import json
 import os
 import re
+import tempfile
 import uuid
 from collections.abc import Iterable
 from dataclasses import asdict, dataclass, fields, replace
 from pathlib import Path
+from typing import NamedTuple
 
 import networkx as nx
 
@@ -41,17 +43,24 @@ LITERATURE_CAP = 2.0
 SUPPORTS, REFUTES = "supports", "refutes"
 DIRECTIONS = (SUPPORTS, REFUTES)
 PROVISIONAL = "provisional, needs expert review"
-# A study type's key, its label and its pseudo-count (B2). Provisional: see `PROVISIONAL`.
-STUDY_TYPES: dict[str, tuple[str, float]] = {
-    "rct": ("randomised controlled trial", 4.0),
-    "cohort": ("cohort study", 2.0),
-    "case-series": ("case series", 1.0),
-    "in-vitro-or-animal": ("in vitro or animal study", 0.5),
-    "self-report": ("self-report", 0.25),
+
+
+class StudyType(NamedTuple):
+    label: str
+    weight: float  # the pseudo-count a result of this type adds
+
+
+# The study types by key (B2). Provisional: see `PROVISIONAL`.
+STUDY_TYPES = {
+    "rct": StudyType("randomised controlled trial", 4.0),
+    "cohort": StudyType("cohort study", 2.0),
+    "case-series": StudyType("case series", 1.0),
+    "in-vitro-or-animal": StudyType("in vitro or animal study", 0.5),
+    "self-report": StudyType("self-report", 0.25),
 }
 UNPUBLISHED = "unpublished observation"
 LOG_PATH = DATA / "evidence-log.json"
-VERSION = 1  # of the file's layout
+LOG_VERSION = 1  # of the file's layout
 
 _PMID = re.compile(r"(?:pmid\s*:?\s*)?(\d{1,9})", re.IGNORECASE)
 _DOI = re.compile(r"(?:doi\s*:\s*|https?://(?:dx\.)?doi\.org/)?(10\.\d{4,9}/\S+)", re.IGNORECASE)
@@ -63,10 +72,10 @@ class EvidenceLogError(Exception):
 
 def _source(text: str) -> str:
     """The source in its one kept form, or EvidenceLogError."""
-    text = text.strip()
+    text = text.strip().strip("()[]<>").rstrip(".,;:")  # as pasted from a sentence
     if text.lower() == UNPUBLISHED:
         return UNPUBLISHED
-    if pmid := _PMID.fullmatch(text):
+    if (pmid := _PMID.fullmatch(text)) and int(pmid[1]) > 0:
         return f"PMID:{int(pmid[1])}"
     if doi := _DOI.fullmatch(text):
         return f"doi:{doi[1].lower()}"
@@ -99,11 +108,12 @@ class Entry:
 
     @classmethod
     def new(cls, node: str, direction: str, study_type: str, source: str) -> Entry:
+        """A new entry, with an id of its own."""
         return cls(uuid.uuid4().hex, node, direction, study_type, source)
 
     @property
     def weight(self) -> float:
-        return STUDY_TYPES[self.study_type][1]
+        return STUDY_TYPES[self.study_type].weight
 
     @property
     def key(self) -> tuple[str, str, str]:
@@ -113,6 +123,8 @@ class Entry:
 
 @dataclass(frozen=True)
 class Posterior:
+    """A node's Beta(alpha, beta): its pseudo-supports and pseudo-refutes, prior included."""
+
     alpha: float
     beta: float
 
@@ -139,7 +151,6 @@ class EvidenceLog:
     def __init__(self, entries: Iterable[Entry] = ()) -> None:
         self._entries: list[Entry] = []
         self._keys: set[tuple[str, str, str]] = set()
-        self._ids: set[str] = set()
         for entry in entries:
             self.add(entry)
 
@@ -149,11 +160,10 @@ class EvidenceLog:
 
     def add(self, entry: Entry) -> bool:
         """Log `entry`; False, and nothing logged, when the log has it already."""
-        if entry.key in self._keys or entry.id in self._ids:
+        if entry.key in self._keys:
             return False
         self._entries.append(entry)
         self._keys.add(entry.key)
-        self._ids.add(entry.id)
         return True
 
     def merge(self, other: EvidenceLog) -> int:
@@ -165,7 +175,9 @@ class EvidenceLog:
         return posterior(papers, (e for e in self._entries if e.node == node))
 
     def to_json(self) -> str:
-        return json.dumps({"version": VERSION, "entries": [asdict(e) for e in self._entries]}, indent=2)
+        """The log as an export, which `from_json` reads back."""
+        data = {"version": LOG_VERSION, "entries": [asdict(e) for e in self._entries]}
+        return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
 
     @classmethod
     def from_json(cls, text: str) -> EvidenceLog:
@@ -176,9 +188,9 @@ class EvidenceLog:
             raise EvidenceLogError(f"not an evidence log: {error}") from error
         if not isinstance(data, dict) or not isinstance(data.get("entries"), list):
             raise EvidenceLogError("not an evidence log: no list of entries")
-        if data.get("version") != VERSION:
+        if data.get("version") != LOG_VERSION:
             raise EvidenceLogError(
-                f"an evidence log of version {data.get('version')!r}; this reads {VERSION}"
+                f"an evidence log of version {data.get('version')!r}; this reads {LOG_VERSION}"
             )
         names = {f.name for f in fields(Entry)}
         entries = []
@@ -202,9 +214,14 @@ class EvidenceLog:
     def save(self, path: Path = LOG_PATH) -> None:
         """Keep the log at `path`, whole or not at all."""
         path.parent.mkdir(parents=True, exist_ok=True)
-        scratch = path.with_name(path.name + ".tmp")
-        scratch.write_text(self.to_json(), encoding="utf-8")
-        os.replace(scratch, path)
+        handle, scratch = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+        try:
+            with os.fdopen(handle, "w", encoding="utf-8") as f:
+                f.write(self.to_json())
+            os.replace(scratch, path)
+        except BaseException:
+            Path(scratch).unlink(missing_ok=True)
+            raise
 
 
 def weighted(scores: Iterable[Bottleneck], graph: nx.DiGraph, log: EvidenceLog) -> list[Bottleneck]:
