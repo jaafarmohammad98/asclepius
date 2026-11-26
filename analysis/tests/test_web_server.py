@@ -52,6 +52,25 @@ def test_the_page_is_served(app):
     assert b"<title>Asclepius</title>" in page
 
 
+def test_the_page_asks_only_this_app_for_its_styles_fonts_and_icon(app):
+    status, page = call(app + "/")
+    assert b"fonts.googleapis" not in page and b"https://" not in page.split(b"<script>")[0]
+    for path, kind in (
+        ("/almanac.css", "text/css"),
+        ("/favicon.svg", "image/svg+xml"),
+        ("/vendor/fonts/newsreader.woff2", "font/woff2"),
+        ("/vendor/fonts/hanken-grotesk.woff2", "font/woff2"),
+        ("/vendor/fonts/ibm-plex-mono-400.woff2", "font/woff2"),
+        ("/vendor/fonts/ibm-plex-mono-500.woff2", "font/woff2"),
+    ):
+        with urllib.request.urlopen(app + path) as response:
+            assert response.status == 200 and response.headers["Content-Type"].startswith(kind), path
+            assert response.read()
+    with urllib.request.urlopen(app + "/almanac.css") as response:
+        css = response.read().decode()
+    assert "https://" not in css  # its fonts are the app's own
+
+
 def test_a_dataset_file_goes_to_a_finished_run(app, tmp_path):
     out = synthetic.write_lab_reports(tmp_path / "lab", groups={"PSSD": 40, "healthy control": 40}, seed=1)
     assert api(app, "/api/clear", "POST")[0] == 200

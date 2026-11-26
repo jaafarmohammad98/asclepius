@@ -50,6 +50,15 @@ def test_it_holds_the_app_the_engine_the_extractor_page_and_the_examples(wheel):
         "asclepius/web/vendor/cytoscape.min.js",  # the bottleneck map draws with it, no CDN
         "asclepius/web/vendor/cytoscape.LICENSE",
         "asclepius/web/topsis.js",  # the leaderboard ranks with it in the page
+        "asclepius/web/almanac.css",  # the page's look, which the exports carry too
+        "asclepius/web/favicon.svg",
+        "asclepius/web/vendor/fonts/newsreader.woff2",  # the fonts ship with the app, no font CDN
+        "asclepius/web/vendor/fonts/newsreader.OFL.txt",
+        "asclepius/web/vendor/fonts/hanken-grotesk.woff2",
+        "asclepius/web/vendor/fonts/hanken-grotesk.OFL.txt",
+        "asclepius/web/vendor/fonts/ibm-plex-mono-400.woff2",
+        "asclepius/web/vendor/fonts/ibm-plex-mono-500.woff2",
+        "asclepius/web/vendor/fonts/ibm-plex-mono.OFL.txt",
         "asclepius/examples.py",
         "asclepius/synthetic.py",
         "hypothesis_engine/pipeline.py",
