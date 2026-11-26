@@ -496,6 +496,10 @@ log.merge(EvidenceLog.from_json(text))  # import another researcher's export (lo
 - **Results** are `supports` or `refutes`, adding their study type's pseudo-count: `rct` 4,
   `cohort` 2, `case-series` 1, `in-vitro-or-animal` 0.5, `self-report` 0.25. The table is
   provisional and needs expert review (`PROVISIONAL`).
+- **Re-ranking.** With an empty log every node with 8 papers or more sits at Beta(3, 1), so those
+  keep the bottleneck order; only terms with fewer papers are lowered. From there a refutation
+  moves a node further than a support: one supporting RCT multiplies its score by 7/6, one
+  refuting RCT by 1/2. Worth weighing in the expert review.
 - **Sources.** Every entry has a PMID (kept as `PMID:123`), a DOI (kept as `doi:10.…`, lower
   case) or `"unpublished observation"`; anything else is refused.
 - **Duplicates.** An entry with the same source, node and direction as one already logged is

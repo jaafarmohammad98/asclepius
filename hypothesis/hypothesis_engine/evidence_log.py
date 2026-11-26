@@ -16,8 +16,13 @@ The log is a JSON file in the data folder (`LOG_PATH`, `hypothesis_engine.home`)
 online. `to_json` and `from_json` export and import it; `merge` adds an imported log's new entries.
 
 `weighted` multiplies each bottleneck score by its node's posterior mean (B4), so the bottleneck map
-and the leaderboard re-rank as results are logged. A node with no entries keeps its literature's
-posterior, so the order before any entry is already the literature's.
+and the leaderboard re-rank as results are logged. With no entries, every node with 8 papers or
+more is at the literature cap, Beta(3, 1), so those keep the bottleneck order; the literature only
+lowers terms with fewer papers behind them. On the built library all of the top 40 have dozens, so
+an empty log leaves the leaderboard as it was (checked 2026-11-26). From Beta(3, 1) a refutation
+moves a node further than a support of the same type: one supporting RCT multiplies its score by
+7/6, one refuting RCT by 1/2. Both kept as specified, the weights being provisional; agreed
+2026-11-26.
 """
 
 from __future__ import annotations

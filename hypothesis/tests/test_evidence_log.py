@@ -172,3 +172,16 @@ def test_a_refuting_rct_re_ranks_the_bottlenecks():
     ranked = weighted(bottlenecks(graph), graph, log)
     assert [b.name for b in ranked][:2] == ["H", "X"]
     assert ranked[1].score == pytest.approx(X_SCORE * 3 / 8)  # Beta(3, 5)
+
+
+def test_an_empty_log_keeps_the_bottleneck_order_when_every_node_is_at_the_literature_cap():
+    graph = _fixture({name: 8 + i for i, name in enumerate(FIXTURE)})
+    assert [b.name for b in weighted(bottlenecks(graph), graph, EvidenceLog())] == [
+        b.name for b in bottlenecks(graph)
+    ]
+
+
+def test_a_node_with_fewer_papers_is_lowered_by_its_literature_alone():
+    # H's 0.7 at the cap's 3/4 outranks X's 0.76263 with no papers, at 1/2.
+    graph = _fixture({"X": 0, "H": 8})
+    assert [b.name for b in weighted(bottlenecks(graph), graph, EvidenceLog())][:2] == ["H", "X"]
