@@ -28,8 +28,10 @@ def test_the_map_ranks_terms_with_their_raw_metrics(knowledge):
     assert first["name"] == "BDNF"
     assert first["kind"] == "gene"
     assert first["syndromes"] == ["PFS", "PSSD"]
-    # two of three syndromes, and the highest cascade and betweenness
-    assert first["score"] == pytest.approx(0.45 * 2 / 3 + 0.35 + 0.20)
+    # two of three syndromes, and the highest cascade and betweenness; times its posterior mean in the
+    # evidence log, empty here: Beta(1 + 0.25 × 3 papers, 1) (M6-11)
+    assert first["evidence"] == pytest.approx(1.75 / 2.75)
+    assert first["score"] == pytest.approx((0.45 * 2 / 3 + 0.35 + 0.20) * 1.75 / 2.75)
     assert {"betweenness", "cascade"} <= set(first)
     assert [t["name"] for t in view["terms"]] == ["BDNF", "serotonin", "COMT"]
 

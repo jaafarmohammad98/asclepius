@@ -3,7 +3,7 @@
 BDNF is in a PSSD paper and a PFS paper, so two syndromes link to it; it is co-mentioned with
 serotonin in two papers (31000001, 31000003) and with COMT in one (31000002).
 
-A drug cache (`DRUGS`) gives the leaderboard (M6-07) four drugs on BDNF and COMT: alphadrug on BDNF,
+A drug cache (`DRUGS`, and `RERANKED` with two more) gives the leaderboard (M6-07) four drugs on BDNF and COMT: alphadrug on BDNF,
 safe and generic; betadrug on COMT, its label naming libido and a listed risk; gammadrug on both, with
 no US label and withdrawn; and sertraline, a known cause. The cache's target scores are not the
 graph's, so a test can tell which the leaderboard used.
@@ -17,6 +17,7 @@ from __future__ import annotations
 import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
+from dataclasses import replace
 from pathlib import Path
 
 from hypothesis_engine.drugs import Action, Drug, DrugCache, Target, write_drug_cache
@@ -162,7 +163,10 @@ def knowledge_engine(folder: Path, with_androsterone: bool = False) -> Engine:
     (folder / "vocabulary.toml").write_text(vocabulary, encoding="utf-8")
     write_drug_cache(folder / "drugs.json", DRUGS)
     return Engine(
-        library=folder / "library.sqlite", vocabulary=folder / "vocabulary.toml", drugs=folder / "drugs.json"
+        library=folder / "library.sqlite",
+        vocabulary=folder / "vocabulary.toml",
+        drugs=folder / "drugs.json",
+        evidence=folder / "evidence-log.json",
     )
 
 
@@ -184,3 +188,15 @@ def serving(folder: Path, with_androsterone: bool = False) -> Iterator[tuple[App
     finally:
         server.shutdown()
         server.server_close()
+
+
+# Two more drugs, so one logged result visibly re-ranks the leaderboard (M6-11): deltadrug on COMT and
+# epsilondrug on BDNF, both clean and generic. A refuting RCT on BDNF drops gammadrug below betadrug.
+RERANKED = replace(
+    DRUGS,
+    drugs=DRUGS.drugs
+    + (
+        _drug("deltadrug", ("COMT",), GOOD_MPO, Safety(Label("set-d", None, "NDA4", ()), (), ("ANDA4",))),
+        _drug("epsilondrug", ("BDNF",), FAIR_MPO, Safety(Label("set-e", None, "NDA5", ()), (), ("ANDA5",))),
+    ),
+)

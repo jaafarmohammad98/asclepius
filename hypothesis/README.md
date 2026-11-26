@@ -508,6 +508,8 @@ log.merge(EvidenceLog.from_json(text))  # import another researcher's export (lo
   node are both kept.
 - **Storage.** One JSON file in the data folder, written whole or not at all. Nothing is synced
   online; researchers share logs by export and import.
+- **In the web app.** The Evidence and hypothesis log section logs, exports and imports results,
+  and the bottleneck map and the leaderboard use `weighted` scores (M6-11, `analysis/README.md`).
 
 ## The LLM
 

@@ -96,8 +96,24 @@
   .field { display: grid; gap: var(--space-xs); margin-bottom: var(--space-md); color: var(--color-muted); }
   .field input, .field select { width: 100%; }
   .settings label.inline { display: inline-flex; gap: 6px; align-items: center; margin: 0 0 var(--space-md); color: var(--color-ink-2); }
+  /* the evidence and hypothesis log (M6-11) */
+  .evidence-grid { display: grid; grid-template-columns: 380px minmax(0, 1fr); gap: var(--space-xl); align-items: start; }
+  .evidence-grid aside h3 { font-size: var(--text-base); margin: 0 0 var(--space-sm); border-top: 2px solid var(--color-rule-2); padding-top: var(--space-sm); }
+  .evidence-form { display: grid; gap: var(--space-sm); margin-bottom: var(--space-md); }
+  .evidence-form label { color: var(--color-muted); }
+  .evidence-form select, .evidence-form input[type=text] { display: block; width: 100%; margin-top: 2px; }
+  .evidence-form label.inline { display: inline-flex; gap: 6px; align-items: center; color: var(--color-ink-2); }
+  #evidence-study-types table { font-size: var(--text-sm); }
+  #evidence-study-types caption { caption-side: bottom; text-align: left; font-size: var(--text-sm); padding-top: var(--space-xs); }
+  label.button { display: inline-block; font: 500 var(--text-sm)/1 var(--font-display); border-radius: 2px; padding: 11px 18px;
+    border: 1px solid var(--color-ink); color: var(--color-ink); cursor: pointer; margin: 0; }
+  label.button:hover, label.button:focus-within { background: var(--color-paper-2); }
+  label.button input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; }
+  .evidence-table td.entries { white-space: normal; min-width: 260px; }
+  .evidence-table td.entries ul { margin: 0; padding-left: 18px; }
+  #evidence-all { margin-top: var(--space-sm); }
   @media (max-width: 900px) {
-    .controls, .mapgrid, .builder, .settings-grid { grid-template-columns: minmax(0, 1fr); }
+    .controls, .mapgrid, .builder, .evidence-grid, .settings-grid { grid-template-columns: minmax(0, 1fr); }
     #edge-panel { border-left: 0; padding-left: 0; border-top: 1px solid var(--color-rule); padding-top: var(--space-md); }
     #network { height: 440px; }
   }
@@ -123,6 +139,7 @@
       <li><a href="#bottlenecks"><span class="n"></span>Systems bottleneck map</a></li>
       <li><a href="#leaderboard"><span class="n"></span>Drug repurposing leaderboard</a></li>
       <li><a href="#experiment"><span class="n"></span>Lab experiment builder</a></li>
+      <li><a href="#evidence"><span class="n"></span>Evidence and hypothesis log</a></li>
     </ol>
     <ol>
       <li><a href="#settings-panel"><span class="n"></span>Settings: the LLM that writes hypotheses</a></li>
@@ -227,8 +244,9 @@
     <h2>Systems bottleneck map</h2>
     <p class="lede">The terms of your paper library (genes, hormones, receptors, symptoms) and where PSSD, PFS
       and PAS converge on them. A line between two terms means they were co-mentioned in the same passages of
-      that many papers, not that one acts on the other; a score says where to look, not a cause. Click a line
-      to read the passages it was counted from.</p>
+      that many papers, not that one acts on the other; a score says where to look, not a cause. Each score is
+      multiplied by the term's posterior mean in the evidence log below, so logging a result re-ranks the terms.
+      Click a line to read the passages it was counted from.</p>
     <p id="map-status" class="status" aria-live="polite">Loading the knowledge graph…</p>
     <div id="map-error" class="error" role="alert" hidden></div>
     <div id="map-body" hidden>
@@ -285,7 +303,8 @@
       studying, never that a drug helps, and each row lists the risks known of it. A value marked assumed was
       unknown, and the worst seen stands in for it. The score is TOPSIS closeness (0 to 1) among these drugs
       alone, under the weights below: it orders them, it measures no benefit. Targets are scored with the
-      default bottleneck weights, not the map's sliders, and the drugs are those fetched for the top targets
+      default bottleneck weights, not the map's sliders, times their posterior mean in the evidence log below,
+      and the drugs are those fetched for the top targets
       when the drug data was fetched. The drugs that cause PSSD, PFS and PAS are never ranked.</p>
     <p id="leaderboard-status" class="status" aria-live="polite">Loading the drug data…</p>
     <div id="leaderboard-error" class="error" role="alert" hidden></div>
@@ -372,6 +391,52 @@
     </div>
   </section>
 
+  <section id="evidence">
+    <h2>Evidence and hypothesis log</h2>
+    <p class="lede">Every term of the knowledge graph is a hypothesis: that it is a bottleneck of PSSD, PFS and
+      PAS. It starts at Beta(1, 1); each paper of the library it is in adds 0.25 supports, at most 2; each result
+      you log adds its study type's weight to its supports or its refutes. The posterior mean multiplies the
+      term's bottleneck score, so the map and the leaderboard above re-rank. Every result needs its PMID or DOI,
+      or is marked an unpublished observation. The log is kept in this computer's data folder and never sent
+      anywhere: export it to share it, and import another researcher's to merge them; a result already in the
+      log (the same source, term and direction) is dropped.</p>
+    <p id="evidence-status" class="status" aria-live="polite">Loading the evidence log…</p>
+    <div id="evidence-error" class="error" role="alert" hidden></div>
+    <div id="evidence-body" hidden>
+      <div class="evidence-grid">
+        <aside>
+          <fieldset>
+            <legend>Log a result</legend>
+            <div class="evidence-form">
+              <label>Term <select id="evidence-node"></select></label>
+              <label>The result <select id="evidence-direction"><option value="supports">supports it</option><option value="refutes">refutes it</option></select></label>
+              <label>Study type <select id="evidence-study-type"></select></label>
+              <label>Source <input id="evidence-source" type="text" placeholder="PMID or DOI, e.g. 31000009 or 10.1000/xyz"></label>
+              <label class="inline"><input id="evidence-unpublished" type="checkbox"> unpublished observation, no PMID or DOI</label>
+            </div>
+            <button id="evidence-add" class="primary" type="button">Log the result</button>
+            <div id="evidence-form-error" class="error" role="alert" hidden></div>
+          </fieldset>
+          <h3>Study types and what each adds <span class="label" id="evidence-provisional"></span></h3>
+          <div id="evidence-study-types"></div>
+          <div class="actions">
+            <a class="button" href="/api/export/evidence-log.json" download>Export the log (JSON)</a>
+            <label class="button">Import a log (JSON) <input id="evidence-import" type="file" accept=".json,application/json"></label>
+          </div>
+        </aside>
+        <div>
+          <p id="evidence-message" class="example-note" role="status" hidden></p>
+          <div class="sheet-head">
+            <h3>Terms and their evidence <span class="label">provisional, needs expert review</span></h3>
+            <p id="evidence-count"></p>
+          </div>
+          <div id="evidence-table"></div>
+          <button id="evidence-all" class="small" type="button"></button>
+          <div id="evidence-elsewhere" hidden></div>
+        </div>
+      </div>
+    </div>
+  </section>
   <section id="settings-panel">
     <details class="settings" id="settings">
       <summary>Settings: the LLM that writes hypotheses</summary>
@@ -1240,7 +1305,7 @@ function fixed(x, digits) { return x === null || x === undefined ? "–" : x.toF
 
 /** Each term's score under `weights`, as `hypothesis_engine.bottlenecks` computes it: each metric scaled
  * to 0-1 (overlap over the three syndromes, the others over the highest of any term), weighted, over
- * the weights' sum. */
+ * the weights' sum; times its posterior mean in the evidence log (`evidence`, spec B4). */
 function rescore(view, weights) {
   const terms = view.terms;
   const highest = (key) => Math.max(0, ...terms.map((t) => t[key]));
@@ -1250,13 +1315,14 @@ function rescore(view, weights) {
   return terms
     .map((t) => ({ ...t, score: total ? (weights.overlap * t.overlap / view.syndromes.length
       + weights.cascade * scaled(t.cascade, topCascade)
-      + weights.betweenness * scaled(t.betweenness, topBetweenness)) / total : 0 }))
+      + weights.betweenness * scaled(t.betweenness, topBetweenness)) / total * t.evidence : 0 }))
     .sort((a, b) => b.score - a.score || byName(a, b));
 }
 
 /** Fetch the map, again each second while the graph is built or a run's findings are added. A later
- * call replaces an earlier one still waiting. */
-async function loadMap() {
+ * call replaces an earlier one still waiting. `force` redraws it though the run is the same (a result
+ * was logged). */
+async function loadMap(force = false) {
   clearTimeout(MAP.timer);
   const asked = ++MAP.asked;
   let view;
@@ -1283,14 +1349,14 @@ async function loadMap() {
   if (view.run && view.run.updating) MAP.timer = setTimeout(loadMap, 1000);
   $("map-status").textContent = view.message;
   const sameRun = before && JSON.stringify(before.run) === JSON.stringify(view.run);
-  if (sameRun && before.message === view.message) return;
+  if (!force && sameRun && before.message === view.message) return;
   MAP.view = view;
   dropUnlisted(TARGET, new Set(view.terms.filter((t) => t.kind !== "symptom").map((t) => t.name)));
   $("map-body").hidden = false;
   if (!before) setWeights(view.weights); // a researcher's weights stay as the run's findings come and go
   if (before && !sameRun) $("edge-panel").hidden = true; // its link may be gone
   redraw();
-  if (before && !sameRun) loadLeaderboard(); // the run's findings re-score the drugs' targets
+  if (before && !sameRun) { loadLeaderboard(); loadEvidence(); } // the run's findings re-score the drugs' targets
 }
 
 function setWeights(weights) {
@@ -1326,9 +1392,9 @@ function redraw() {
 }
 
 function showTable() {
-  const head = ["Rank", "Term", "Kind", "Score", "Syndromes linking to it", "Cascade", "Betweenness"];
+  const head = ["Rank", "Term", "Kind", "Score", "Evidence (posterior mean)", "Syndromes linking to it", "Cascade", "Betweenness"];
   const rows = MAP.ranked.slice(0, MAP.shown).map((t, i) => [String(i + 1), t.name, KIND_NAMES[t.kind] || t.kind,
-    fixed(t.score, 2), t.syndromes.length ? t.syndromes.join(", ") : "none", fixed(t.cascade, 2), fixed(t.betweenness, 3)]);
+    fixed(t.score, 2), fixed(t.evidence, 2), t.syndromes.length ? t.syndromes.join(", ") : "none", fixed(t.cascade, 2), fixed(t.betweenness, 3)]);
   const wrap = table(head, rows);
   wrap.classList.add("bottleneck-table");
   wrap.querySelector("thead tr").prepend(el("th", "Pick", { scope: "col", class: "pick" }));
@@ -1837,6 +1903,138 @@ function showDesign() {
   box.hidden = false;
 }
 
+// ------------------------------------------------------------------ the evidence and hypothesis log (M6-11)
+// Each term's prior, posterior and logged results (`/api/evidence`). A result logged or a log imported
+// re-weighs the bottleneck scores on the server, so the map and the leaderboard are fetched again.
+
+const EVIDENCE = { view: null, all: false, timer: null };
+const beta = (p) => `Beta(${NUMBER.format(p.alpha)}, ${NUMBER.format(p.beta)}), mean ${p.mean.toFixed(2)}`;
+
+async function loadEvidence() {
+  clearTimeout(EVIDENCE.timer);
+  let view;
+  try {
+    view = await api("/api/evidence");
+  } catch (error) {
+    $("evidence-status").hidden = true;
+    showError("evidence-error", error.message);
+    return;
+  }
+  if (view.state === "building") {
+    $("evidence-status").textContent = view.graph_message;
+    EVIDENCE.timer = setTimeout(loadEvidence, 1000);
+    return;
+  }
+  if (view.state !== "ready") {
+    $("evidence-status").hidden = true;
+    showError("evidence-error", view.graph_message);
+    return;
+  }
+  $("evidence-status").hidden = true;
+  showEvidence(view);
+}
+
+function showEvidence(view) {
+  const first = !EVIDENCE.view;
+  EVIDENCE.view = view;
+  $("evidence-body").hidden = false;
+  showError("evidence-error", view.error);
+  $("evidence-add").disabled = Boolean(view.error);
+  $("evidence-import").disabled = Boolean(view.error);
+  const term = $("evidence-node").value; // a run's findings may change the terms; the choice stays
+  $("evidence-node").replaceChildren(...view.nodes.map((n) => el("option", n.name, { value: n.name })));
+  if (view.nodes.some((n) => n.name === term)) $("evidence-node").value = term;
+  if (first) {
+    $("evidence-study-type").replaceChildren(...view.study_types.map((t) => el("option", `${t.label} (adds ${NUMBER.format(t.weight)})`, { value: t.key })));
+    $("evidence-provisional").textContent = view.provisional;
+    const types = table(["Study type", "Adds to supports or refutes"], view.study_types.map((t) => [t.label, NUMBER.format(t.weight)]));
+    types.querySelector("table").append(el("caption", `Pseudo-counts, ${view.provisional}`, { class: "muted" }));
+    $("evidence-study-types").replaceChildren(types);
+  }
+  $("evidence-message").textContent = view.message;
+  $("evidence-message").hidden = !view.message;
+  showEvidenceTable();
+}
+
+function entryItem(e) {
+  const item = el("li", `${e.direction} · ${e.study_type} (adds ${NUMBER.format(e.weight)}) · `);
+  item.append(e.url ? el("a", e.source, { href: e.url, target: "_blank", rel: "noopener" }) : e.source);
+  return item;
+}
+
+function showEvidenceTable() {
+  const view = EVIDENCE.view;
+  const logged = view.nodes.filter((n) => n.entries.length);
+  const shown = EVIDENCE.all ? view.nodes : logged;
+  const head = ["Term", "Kind", "Papers", "Prior: Beta(1, 1) and the literature", "Posterior: with the logged results", "Logged results"];
+  const wrap = table(head, shown.map((n) => [n.name, KIND_NAMES[n.kind] || n.kind, String(n.papers), beta(n.prior), beta(n.posterior), ""]));
+  wrap.classList.add("evidence-table");
+  wrap.querySelectorAll("tbody tr").forEach((tr, i) => {
+    tr.dataset.term = shown[i].name;
+    const cell = tr.lastChild;
+    cell.classList.add("entries");
+    if (!shown[i].entries.length) { cell.textContent = "none"; return; }
+    cell.appendChild(el("ul")).append(...shown[i].entries.map(entryItem));
+  });
+  $("evidence-table").replaceChildren(shown.length ? wrap : el("p", "No result logged yet.", { class: "muted" }));
+  $("evidence-count").textContent = `${view.count} result${view.count === 1 ? "" : "s"} logged, on ${logged.length} of ${view.nodes.length} terms.`;
+  $("evidence-all").textContent = EVIDENCE.all ? "Show the terms with logged results only" : `Show all ${view.nodes.length} terms`;
+  const elsewhere = $("evidence-elsewhere");
+  elsewhere.replaceChildren();
+  elsewhere.hidden = !view.elsewhere.length;
+  if (view.elsewhere.length) {
+    elsewhere.append(el("h4", "Logged on terms this paper library does not have"),
+      el("p", "Kept in the log, as imported; they weigh nothing here.", { class: "muted" }));
+    const list = elsewhere.appendChild(el("ul"));
+    for (const e of view.elsewhere) list.appendChild(entryItem(e)).prepend(`${e.node}: `);
+  }
+}
+
+$("evidence-all").addEventListener("click", () => { EVIDENCE.all = !EVIDENCE.all; showEvidenceTable(); });
+$("evidence-unpublished").addEventListener("change", () => { $("evidence-source").disabled = $("evidence-unpublished").checked; });
+
+/** A result logged or a log imported changes the terms' weights: the map and the leaderboard are fetched again. */
+function refreshRankings(view) {
+  showEvidence(view);
+  loadMap(true);
+  loadLeaderboard();
+}
+
+$("evidence-add").addEventListener("click", async () => {
+  showError("evidence-form-error", "");
+  const unpublished = $("evidence-unpublished").checked;
+  const result = {
+    node: $("evidence-node").value,
+    direction: $("evidence-direction").value,
+    study_type: $("evidence-study-type").value,
+    source: unpublished ? EVIDENCE.view.unpublished : $("evidence-source").value,
+  };
+  let view;
+  try {
+    view = await api("/api/evidence", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(result) });
+  } catch (error) {
+    showError("evidence-form-error", error.message);
+    return;
+  }
+  $("evidence-source").value = "";
+  refreshRankings(view);
+});
+
+$("evidence-import").addEventListener("change", async () => {
+  const input = $("evidence-import"), file = input.files[0];
+  input.value = ""; // the same file can be picked again
+  if (!file) return;
+  showError("evidence-form-error", "");
+  let view;
+  try {
+    view = await api("/api/evidence/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: await file.text() });
+  } catch (error) {
+    showError("evidence-form-error", `${file.name}: ${error.message}`);
+    return;
+  }
+  refreshRankings(view);
+});
+
 // ------------------------------------------------------------------ the contents
 // Each entry marks the section in view, and is greyed while its section is hidden (not ready yet).
 
@@ -1875,6 +2073,7 @@ markCurrent();
 showFactors();
 loadMap();
 loadLeaderboard();
+loadEvidence();
 </script>
 </body>
 </html>

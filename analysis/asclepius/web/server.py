@@ -23,6 +23,10 @@ The page (`index.html`) talks to a small JSON API over `asclepius.web.workspace.
 | `GET /api/graph/edge?a=<term>&b=<term>` | the link a → b and the passages it was counted from; 404 when the graph has none |
 | `GET /api/leaderboard` | the drug repurposing leaderboard (`asclepius.web.leaderboard`): each cached drug's TOPSIS criteria, risks and targets, and the known causes apart |
 | `POST /api/experiment` | build a lab experiment (`asclepius.web.experiment`), `{"factors": [{"kind": "drug" or "target", "name": ...}], "seed": ..., "replicates": ..., "responses": [...]}`: its design, each factor's known risks, its runs and its CSV; 400 when a factor or setting is refused |
+| `GET /api/evidence` | the evidence and hypothesis log (`asclepius.web.evidence_log`): each term's prior, posterior and logged results, the study types and their provisional weights |
+| `POST /api/evidence` | log a result, `{"node": ..., "direction": "supports" or "refutes", "study_type": ..., "source": <PMID, DOI or "unpublished observation">}`; the log after; 400 when it is refused or logged already |
+| `POST /api/evidence/import` | merge an exported log, its JSON as the body, dropping the entries it has; the log after, saying how many were new |
+| `GET /api/export/evidence-log.json` | the evidence log as a JSON file to save, which another researcher can import |
 | `GET /topsis.js` | the leaderboard's TOPSIS, which the page ranks with as the weight sliders move |
 | `GET /vendor/cytoscape.min.js` | the network-drawing library, shipped with the app so the page needs no network |
 | `GET /almanac.css` | the page's styles |
@@ -55,6 +59,7 @@ from urllib.parse import parse_qs, unquote, urlsplit
 from asclepius.examples import EXAMPLES
 from asclepius.run import Settings
 from asclepius.web import llm_settings
+from asclepius.web.evidence_log import EXPORT_NAME, EvidenceViewError, add_entry, evidence_view, import_log
 from asclepius.web.experiment import ExperimentError, experiment_view
 from asclepius.web.graph import KnowledgeGraph
 from asclepius.web.hypotheses import Engine
@@ -145,6 +150,16 @@ class Handler(BaseHTTPRequestHandler):
             self._json(HTTPStatus.OK, self.server.knowledge.map_view())
         elif path == "/api/leaderboard":
             self._json(HTTPStatus.OK, leaderboard_view(self.server.engine.drugs, self.server.knowledge))
+        elif path == "/api/evidence":
+            self._json(HTTPStatus.OK, evidence_view(self.server.knowledge))
+        elif path == "/api/export/evidence-log.json":
+            try:
+                content = self.server.knowledge.evidence.export().encode("utf-8")
+            except EvidenceViewError as error:
+                self._json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
+                return
+            disposition = {"Content-Disposition": f'attachment; filename="{EXPORT_NAME}"'}
+            self._send(HTTPStatus.OK, content, "application/json", disposition)
         elif path == "/api/graph/edge":
             self._edge(parse_qs(urlsplit(self.path).query))
         elif path in STATIC:
@@ -223,12 +238,20 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(
                     HTTPStatus.OK, experiment_view(request, self.server.engine.drugs, self.server.knowledge)
                 )
+            elif path == "/api/evidence":
+                self._json(HTTPStatus.OK, add_entry(json.loads(body or b"{}"), self.server.knowledge))
+            elif path == "/api/evidence/import":
+                try:
+                    text = body.decode("utf-8")
+                except UnicodeDecodeError:
+                    raise EvidenceViewError("The imported log is not a text file.") from None
+                self._json(HTTPStatus.OK, import_log(text, self.server.knowledge))
             elif path == "/api/settings/check":
                 engine = self.server.engine
                 self._json(HTTPStatus.OK, llm_settings.check(engine.settings, engine.env, engine.connect_llm))
             else:
                 self._json(HTTPStatus.NOT_FOUND, {"error": "Not found."})
-        except (LoadError, RunError, SettingsError, ExperimentError) as error:
+        except (LoadError, RunError, SettingsError, ExperimentError, EvidenceViewError) as error:
             self._json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
         except json.JSONDecodeError:
             self._json(HTTPStatus.BAD_REQUEST, {"error": "The request was not valid JSON."})
