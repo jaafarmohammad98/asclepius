@@ -476,6 +476,39 @@ d.csv(responses=["libido"], risks={"sildenafil": "headache; ...", ...})  # the C
 - **The seed** reproduces its order only in Python (`random.Random`), so the web app builds
   designs on the server, not in the browser.
 
+## Evidence log
+
+`evidence_log` treats each graph node as a hypothesis with a Beta posterior, updated by the
+literature and by logged study results.
+
+```python
+from hypothesis_engine.evidence_log import SUPPORTS, Entry, EvidenceLog, weighted
+
+log = EvidenceLog.load()  # data/evidence-log.json; empty when there is none yet
+log.add(Entry.new("SRD5A2", SUPPORTS, "rct", "PMID:12345678"))  # False when it is a duplicate
+log.save()
+log.posterior("SRD5A2", papers=graph.nodes["SRD5A2"]["papers"])  # Posterior(alpha, beta); .mean
+weighted(bottlenecks(graph), graph, log)  # each score times its node's posterior mean, re-ranked
+log.merge(EvidenceLog.from_json(text))  # import another researcher's export (log.to_json())
+```
+
+- **Prior.** Beta(1, 1), plus 0.25 pseudo-supports per distinct paper behind the node, at most +2.
+- **Results** are `supports` or `refutes`, adding their study type's pseudo-count: `rct` 4,
+  `cohort` 2, `case-series` 1, `in-vitro-or-animal` 0.5, `self-report` 0.25. The table is
+  provisional and needs expert review (`PROVISIONAL`).
+- **Re-ranking.** With an empty log every node with 8 papers or more sits at Beta(3, 1), so those
+  keep the bottleneck order; only terms with fewer papers are lowered. From there a refutation
+  moves a node further than a support: one supporting RCT multiplies its score by 7/6, one
+  refuting RCT by 1/2. Worth weighing in the expert review.
+- **Sources.** Every entry has a PMID (kept as `PMID:123`), a DOI (kept as `doi:10.…`, lower
+  case) or `"unpublished observation"`; anything else is refused.
+- **Duplicates.** An entry with the same source, node and direction as one already logged is
+  dropped. Unpublished observations all share one source, so they are told apart by each
+  entry's own random id: importing the same log twice adds nothing, and two observations of one
+  node are both kept.
+- **Storage.** One JSON file in the data folder, written whole or not at all. Nothing is synced
+  online; researchers share logs by export and import.
+
 ## The LLM
 
 The engine reaches an LLM only through `hypothesis_engine.llm`, and the researcher pays for
